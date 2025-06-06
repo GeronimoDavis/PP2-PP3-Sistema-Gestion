@@ -18,10 +18,27 @@ class ClientController{
     {
         try {
             $clients = $this->clientServices->GetAll();
-        $response->getBody()->write(json_encode(['clientes'=>$clients]));
-        return $response;
+            $response->getBody()->write(json_encode(['clientes'=>$clients]));
+            return $response;
         } catch (\Throwable $e) {
           return "Error no se trajeron los clientes" . $e->getMessage();
+          //slim espera que se retorne un response, no un string
+        }
+    }
+
+    public function getClientById(Request $request, Response $response, $args)
+    {
+        try {
+            $id = $args['id'];
+            $client = $this->clientServices->GetById($id);
+            $response->getBody()->write(json_encode(['cliente' => $client]));
+            return $response;
+        } catch (\Throwable $e) {
+            $error = ['error' => 'No se trajeron los clientes', 'detalle' => $e->getMessage()];
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus(500);
         }
     }
 }

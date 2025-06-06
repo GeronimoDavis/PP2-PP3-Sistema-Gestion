@@ -29,6 +29,25 @@ class ClientServices{
 
     }
 
+    public function GetById($id)
+    {
+      try{
+        $stmt = $this->pdo->prepare("SELECT * FROM clientes WHERE IdCliente = ?");
+        $stmt->execute([$id]);
+        $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$cliente) {
+            throw new Exception("Cliente no encontrado con el ID: $id");
+        }
+        return $cliente;
+        }catch (PDOException $e) {
+            throw new Exception("Error al atraer el cliente con ID: $id" . $e->getMessage());
+        }
+    }
+        
+    
+       
+         
+
 }
 
 
