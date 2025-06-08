@@ -8,7 +8,7 @@ class DataBase{
     private static $user = 'root';
     private static $host = 'localhost';
     private static $password = '';
-    private static $database = 'clientesdb';
+    private static $database = 'stockRepuestos';
     
 
     public static function Connect()
