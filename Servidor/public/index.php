@@ -7,6 +7,7 @@ use Slim\Factory\AppFactory;
 require __DIR__ . '/../vendor/autoload.php';
 
 $app = AppFactory::create();
+$app->addbodyParsingMiddleware();//esta linea permite que el servidor pueda recibir datos en formato JSON en el cuerpo de la solicitud
 
 
 require __DIR__ . '/../src/routes/clientRoute.php';
