@@ -18,7 +18,10 @@ class ClientController{
     {
         try {
             $personas = $this->clientServices->GetAll();
-            $response->getBody()->write(json_encode(['personas'=>$personas]));
+            //convertir cada objeto Persona a un array asociativo para poder enviarlo como JSON
+            $personasArray = array_map(fn($p) => $p->toArray(), $personas);
+
+            $response->getBody()->write(json_encode(['personas'=>$personasArray]));
             return $response;
         } catch (\Throwable $e) {
             $error = ['error' => 'No se pudieron obtener las personas', 'detalle' => $e->getMessage()];
@@ -29,13 +32,12 @@ class ClientController{
           
         }
     }
-
     public function getPersonaById(Request $request, Response $response, $args)
     {
         try {
             $id = $args['id'];
             $persona = $this->clientServices->GetById($id);
-            $response->getBody()->write(json_encode(['perona' => $persona]));
+            $response->getBody()->write(json_encode(['perona' => $persona->toArray()]));//convertir el objeto Persona a un array asociativo
             return $response;
         } catch (\Throwable $e) {
             $error = ['error' => 'No se pudo obtener la persona', 'detalle' => $e->getMessage()];

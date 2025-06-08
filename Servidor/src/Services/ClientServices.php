@@ -1,6 +1,7 @@
 <?php
 namespace Services;
 use Config\DataBase;
+use Entities\Persona;
 use Exception;
 use PDO;
 use PDOException;
@@ -22,7 +23,16 @@ class ClientServices{
         try {
             $stmt = $this->pdo->prepare("SELECT * FROM personas ORDER BY razon_social");
             $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);//se obtienen todas las filas de la tabla personas como un array asociativo
+            
+            //por cada fila, crear una instancia de Persona
+            $personas = [];
+            foreach ($rows as $row) {
+                $personas[] = new Persona($row);
+            }
+
+            return $personas;//se devuelve un array de objetos Persona
+
         } catch (PDOException $e) {
             throw new Exception("Error al obtener todas las personas: " . $e->getMessage());
         }
@@ -35,10 +45,13 @@ class ClientServices{
         $stmt = $this->pdo->prepare("SELECT * FROM personas WHERE id = ?");
         $stmt->execute([$id]);
         $persona = $stmt->fetch(PDO::FETCH_ASSOC);
+
+
         if (!$persona) {
             throw new Exception("Persona no encontrada con el ID: $id");
         }
-        return $persona;
+        //retorna una instancia de Persona con los datos obtenidos del array asociativo
+        return new Persona($persona);
         }catch (PDOException $e) {
             throw new Exception("Error al obtener la persona con ID $id: " . $e->getMessage());
         }
