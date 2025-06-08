@@ -33,7 +33,7 @@ class ClientController{
           
         }
     }
-    public function getPersonaById(Request $request, Response $response, $args)
+    public function GetPersonaById(Request $request, Response $response, $args)
     {
         try {
             $id = $args['id'];
@@ -69,6 +69,23 @@ class ClientController{
     }
 
       
+    public function DeletePersona(Request $request, Response $response, $args){
+        try{
+            $id = $args["id"];
+            $this->clientServices->delete($id);
+            $response->getBody()->write(json_encode(['message' => 'Persona eliminada correctamente']));
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus(200);
+            
+        }catch(Throwable $e){
+            $error = ["error" => "No se pudo eliminar la persona", "detalle" => $e->getMessage()];
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus(500);
+        }
+    }
 
 }
 

@@ -80,6 +80,19 @@ class ClientServices{
         }
     }
        
+
+    public function Delete($id){
+        try{
+            $stmt = $this->pdo->prepare("DELETE FROM personas WHERE id = ?");
+            $stmt->execute([$id]);
+
+            if($stmt->rowCount() === 0) {
+                throw new Exception("No se encontró una persona con el ID: $id");
+            }
+        }catch (PDOException $e) {
+            throw new Exception("Error al eliminar la persona con ID $id: " . $e->getMessage());
+        }
+    }
          
 
 }
