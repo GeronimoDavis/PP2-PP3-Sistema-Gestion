@@ -20,11 +20,11 @@ class ClientServices{
     public function GetAll()
     {
         try {
-            $stmt = $this->pdo->prepare("SELECT * FROM clientes ORDER BY Nombre");
+            $stmt = $this->pdo->prepare("SELECT * FROM personas ORDER BY razon_social");
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            throw new Exception("Error al atraer todos los productos" . $e->getMessage());
+            throw new Exception("Error al obtener todas las personas: " . $e->getMessage());
         }
 
     }
@@ -32,15 +32,15 @@ class ClientServices{
     public function GetById($id)
     {
       try{
-        $stmt = $this->pdo->prepare("SELECT * FROM clientes WHERE IdCliente = ?");
+        $stmt = $this->pdo->prepare("SELECT * FROM personas WHERE id = ?");
         $stmt->execute([$id]);
-        $cliente = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$cliente) {
-            throw new Exception("Cliente no encontrado con el ID: $id");
+        $persona = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$persona) {
+            throw new Exception("Persona no encontrada con el ID: $id");
         }
-        return $cliente;
+        return $persona;
         }catch (PDOException $e) {
-            throw new Exception("Error al atraer el cliente con ID: $id" . $e->getMessage());
+            throw new Exception("Error al obtener la persona con ID $id: " . $e->getMessage());
         }
     }
         
