@@ -1,8 +1,9 @@
 <?php
 
 namespace Controllers;
-
 use Services\ClientServices;
+use Entities\Persona;
+use Throwable;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Http\Message\ResponseInterface as Response;
 
@@ -23,7 +24,7 @@ class ClientController{
 
             $response->getBody()->write(json_encode(['personas'=>$personasArray]));
             return $response;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $error = ['error' => 'No se pudieron obtener las personas', 'detalle' => $e->getMessage()];
             $response->getBody()->write(json_encode($error));
             return $response
@@ -37,9 +38,9 @@ class ClientController{
         try {
             $id = $args['id'];
             $persona = $this->clientServices->GetById($id);
-            $response->getBody()->write(json_encode(['perona' => $persona->toArray()]));//convertir el objeto Persona a un array asociativo
+            $response->getBody()->write(json_encode(['persona' => $persona->toArray()]));//convertir el objeto Persona a un array asociativo
             return $response;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $error = ['error' => 'No se pudo obtener la persona', 'detalle' => $e->getMessage()];
             $response->getBody()->write(json_encode($error));
             return $response
@@ -47,6 +48,28 @@ class ClientController{
                 ->withStatus(500);
         }
     }
+
+    public function CreatePersona(Request $request, Response $response, $args)
+    {
+        try {
+            $data = $request->getParsedBody();//obtener los datos del cuerpo de la solicitud POST en formato JSON y convertirlos a un array asociativo
+            $persona = new Persona($data);
+            $createdPersona = $this->clientServices->Create($persona);
+            $response->getBody()->write(json_encode(['persona' => $createdPersona->toArray()]));//convertir el objeto Persona a un array asociativo y enviarlo como JSON
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus(201);
+        }catch(Throwable $e) {
+            $error = ['error' => 'No se pudo crear la persona', 'detalle' => $e->getMessage()];
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus(500);
+        }
+    }
+
+      
+
 }
 
 ?>

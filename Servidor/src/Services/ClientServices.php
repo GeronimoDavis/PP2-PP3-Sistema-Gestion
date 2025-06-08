@@ -57,7 +57,28 @@ class ClientServices{
         }
     }
         
-    
+    public function Create(Persona $persona)
+    {
+        try{
+            $stmt = $this->pdo->prepare("INSERT INTO personas (cuit, razon_social, nombre, mail, tel, observaciones, direccion, impuestos) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $persona->cuit,
+                $persona->razon_social,
+                $persona->nombre,
+                $persona->mail,
+                $persona->tel,
+                $persona->observaciones,
+                $persona->direccion,
+                $persona->impuestos
+            ]);
+
+            $persona->id = $this->pdo->lastInsertId(); //asigna el id generado por la base de datos al objeto Persona
+
+            return $persona; //retorna el objeto Persona con el id asignado
+        }catch (PDOException $e) {
+            throw new Exception("Error al crear la persona: " . $e->getMessage());
+        }
+    }
        
          
 
