@@ -6,7 +6,7 @@ use Exception;
 use PDO;
 use PDOException;
 
-class ClientServices{
+class PersonaServices{
     private $pdo;
     public function __construct()
     {
@@ -92,6 +92,29 @@ class ClientServices{
         }catch (PDOException $e) {
             throw new Exception("Error al eliminar la persona con ID $id: " . $e->getMessage());
         }
+    }
+    public function Update( Persona $persona)
+    {
+        
+       try {
+        $stmt = $this->pdo->prepare("UPDATE personas SET cuit = ?, razon_social = ?, nombre = ?, mail = ?, tel = ?, observaciones = ?, direccion = ?, impuestos = ? WHERE id = ?");
+        $stmt->execute([
+            $persona->cuit,
+            $persona->razon_social,
+            $persona->nombre,
+            $persona->mail,
+            $persona->tel,
+            $persona->observaciones,
+            $persona->direccion,
+            $persona->impuestos,
+            $persona->id
+            
+        ]);
+        return $persona; 
+      
+       } catch (\Throwable $e) {
+            throw new Exception("Error al actualizar la persona: " . $e->getMessage());
+       }
     }
          
 
