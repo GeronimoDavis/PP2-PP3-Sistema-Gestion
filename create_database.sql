@@ -9,6 +9,7 @@ create table if not EXISTS person (
 	phone varchar(15) not null,
 	notes tinytext,
 	address varchar(20) not null,
+	provider bool not null,
 	tax_type enum("R.I",
 	"Exento",
 	"R.N.I",
