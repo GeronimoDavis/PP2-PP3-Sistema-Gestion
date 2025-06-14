@@ -8,7 +8,8 @@
       "Controllers\\": "src/controllers/",
       "Services\\": "src/services/",
       "Config\\": "config/",
-      "Entities\\": "src/entities/"
+      "Entities\\": "src/entities/",
+      "Middlewares\\": "src/middlewares/"
     }
   }
 }
