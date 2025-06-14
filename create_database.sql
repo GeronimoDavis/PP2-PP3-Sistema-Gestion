@@ -1,3 +1,5 @@
+CREATE DATABASE IF NOT EXISTS stockRepuestos
+
 use stockRepuestos;
 
 create table if not EXISTS person (
