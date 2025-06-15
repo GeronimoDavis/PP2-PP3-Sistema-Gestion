@@ -19,7 +19,7 @@ class CategoryService{
 
     public function getAll(){
         try{
-            $stmt = $this->pdo->prepare("SELECT * FROM category ORDER BY name");
+            $stmt = $this->pdo->prepare("SELECT * FROM category ORDER BY description");
             $stmt->execute();
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -38,8 +38,8 @@ class CategoryService{
 
     public function create(Category $category){
         try{
-            $stmt = $this->pdo->prepare("INSERT INTO category (category_description) VALUES (?)");
-            $stmt->execute([$category->category_description]);
+            $stmt = $this->pdo->prepare("INSERT INTO category (description) VALUES (?)");
+            $stmt->execute([$category->description]);
 
             $category->category_id = $this->pdo->lastInsertId();
             return $category;
