@@ -36,6 +36,22 @@ class CategoryService{
 
     }
 
+    public function getByDescription($description){
+        try{
+            $stmt = $this->pdo->prepare("SELECT * FROM category WHERE description = ?");
+            $stmt->execute([$description]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if(!$row){
+                throw new Exception("Category not found with description: $description");
+            }
+
+            return new Category($row);
+        }catch(PDOException $e){
+            throw new Exception("Error fetching category by description $description: " . $e->getMessage());
+        }
+    }
+
     public function create(Category $category){
         try{
             $stmt = $this->pdo->prepare("INSERT INTO category (description) VALUES (?)");
@@ -45,6 +61,17 @@ class CategoryService{
             return $category;
         }catch(PDOException $e){
             throw new Exception('Error creating category: ' . $e->getMessage());
+        }
+    }
+
+    public function update(Category $category){
+        try{
+            $stmt = $this->pdo->prepare("UPDATE category SET description = ? WHERE category_id = ?");
+            $stmt->execute([$category->description, $category->category_id]);
+
+            return $category;
+        }catch(PDOException $e){
+            throw new Exception('Error updating category: ' . $e->getMessage());
         }
     }
 }
