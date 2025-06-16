@@ -27,6 +27,50 @@ class CategoryController{
            throw new Exception("Error fetching all categories: " . $e->getMessage());
         }
     }
+
+    public function getCategoryByDescription(Request $request, Response $response, $args)
+    {
+       try{
+            $queryParams = $request->getQueryParams();
+            $description = $queryParams['description'] ?? null;
+
+            if (!$description) {
+                throw new Exception("Description parameter is required");
+            }
+
+            $category = $this->categoryService->getByDescription($description);
+            $response->getBody()->write(json_encode(["category" => $category->toArray()]));
+            return $response->withHeader('Content-Type', 'application/json');
+        }catch(Throwable $e){
+           throw new Exception("Error fetching category by description $description: " . $e->getMessage());
+       }
+    }
+
+    public function createCategory(Request $request, Response $response, $args){
+        try{
+            $data = $request->getParsedBody();
+            $category = new Category($data);
+            $createdCategory = $this->categoryService->create($category);
+            $response->getBody()->write(json_encode(["category" => $createdCategory->toArray()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+        }catch(Throwable $e){
+            throw new Exception("Error creating category: " . $e->getMessage());
+        }
+    }
+
+    public function updateCategory(Request $request, Response $response, $args){
+        try{
+            $id = $args['id'];
+            $data = $request->getParsedBody();
+            $category = new Category($data);
+            $category->category_id = $id;
+            $updateCategory = $this->categoryService->update($category);
+            $response->getBody()->write(json_encode(["category" => $updateCategory->toArray()]));
+            return $response->withHeader('Content-Type', 'application/json');
+        }catch(Throwable $e){
+            throw new Exception("Error updating category: " . $e->getMessage());
+        }
+    }
 }
 
 ?>
