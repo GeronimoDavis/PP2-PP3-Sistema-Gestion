@@ -11,6 +11,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 
 class CategoryController{
 
+    private CategoryService  $categoryService;
     public function __construct()
     {
         $this->categoryService = new CategoryService();
