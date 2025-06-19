@@ -28,21 +28,15 @@ class CategoryController{
         }
     }
 
-    public function getCategoryByDescription(Request $request, Response $response, $args)
+    public function getCategoryById(Request $request, Response $response, $args)
     {
-       try{
-            $queryParams = $request->getQueryParams();
-            $description = $queryParams['description'] ?? null;
-
-            if (!$description) {
-                throw new Exception("Description parameter is required");
-            }
-
-            $category = $this->categoryService->getByDescription($description);
+        try {
+            $id = $args['id'] ?? null;
+            $category = $this->categoryService->getById($id);
             $response->getBody()->write(json_encode(["category" => $category->toArray()]));
             return $response->withHeader('Content-Type', 'application/json');
         }catch(Throwable $e){
-           throw new Exception("Error fetching category by description $description: " . $e->getMessage());
+           throw new Exception("Error fetching category by ID $id: " . $e->getMessage());
        }
     }
 

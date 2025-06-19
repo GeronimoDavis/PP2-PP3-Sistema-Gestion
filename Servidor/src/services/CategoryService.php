@@ -36,19 +36,19 @@ class CategoryService{
 
     }
 
-    public function getByDescription($description){
+    public function getById($id){
         try{
-            $stmt = $this->pdo->prepare("SELECT * FROM category WHERE description = ?");
-            $stmt->execute([$description]);
+            $stmt = $this->pdo->prepare("SELECT * FROM category WHERE category_id = ?");
+            $stmt->execute([$id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if(!$row){
-                throw new Exception("Category not found with description: $description");
+                throw new Exception("Category not found with ID: $id");
             }
 
             return new Category($row);
         }catch(PDOException $e){
-            throw new Exception("Error fetching category by description $description: " . $e->getMessage());
+            throw new Exception("Error fetching category by ID $id: " . $e->getMessage());
         }
     }
 
