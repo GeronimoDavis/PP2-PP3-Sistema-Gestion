@@ -12,8 +12,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 class CategoryController{
 
     private CategoryService  $categoryService;
-    public function __construct()
-    {
+    public function __construct()    {
         $this->categoryService = new CategoryService();
     }
 
@@ -29,8 +28,7 @@ class CategoryController{
         }
     }
 
-    public function getCategoryByDescription(Request $request, Response $response, $args)
-    {
+    public function getCategoryByDescription(Request $request, Response $response, $args)  {
        try{
             $queryParams = $request->getQueryParams();
             $description = $queryParams['description'] ?? null;
@@ -72,6 +70,8 @@ class CategoryController{
             throw new Exception("Error updating category: " . $e->getMessage());
         }
     }
+
+    
 }
 
 ?>
