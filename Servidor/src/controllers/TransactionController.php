@@ -47,7 +47,7 @@ class TransactionController{
 
     public function createTransaction(Request $request, Response $response, $args){
         try{
-            $data = $request->getParseBody();
+            $data = $request->getParsedBody();
             $transaction = new Transaction($data);
             $createdTransaction = $this->transactionService->create($transaction);
             $response->getBody()->write(json_encode(['transaction' => $createdTransactio->toArray()]));
