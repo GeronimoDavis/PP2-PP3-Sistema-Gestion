@@ -21,6 +21,13 @@ create table if not EXISTS person (
 	primary key(person_id)
 );
 
+create TABLE users (
+	user_id int primary key auto_increment unique,
+	username varchar(20) not null unique,
+	password varchar(255) not null,
+	role enum("Administrador", "Contador") not null
+	);
+
 create table if not EXISTS category(
 	category_id int primary key auto_increment unique,
 	description varchar(30)

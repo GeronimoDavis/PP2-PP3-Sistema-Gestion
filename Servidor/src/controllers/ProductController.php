@@ -93,7 +93,7 @@ class ProductController
     {
         try {
             $price = $args['price'];
-            $products = $this->productService->getByPrice($price);
+            $products = $this->productService->getByPurchasePrice($price);
             $productsArray = array_map(fn($p) => $p->toArray(), $products);
             $response->getBody()->write(json_encode(['products' => $productsArray]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);

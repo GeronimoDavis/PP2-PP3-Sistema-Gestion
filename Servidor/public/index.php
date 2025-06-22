@@ -11,6 +11,7 @@ $app->addBodyParsingMiddleware();
 require __DIR__ . '/../src/routes/personRoutes.php';
 require __DIR__ . '/../src/routes/categoryRoutes.php';
 require __DIR__ . '/../src/routes/productRoute.php';
+require __DIR__ . '/../src/routes/transportServiceRoute.php';
 
 $app->run();
 ?>

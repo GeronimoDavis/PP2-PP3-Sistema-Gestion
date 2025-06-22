@@ -15,7 +15,7 @@ $app->group('/product', function(RouteCollectorProxy $group) use ($productContro
     $group->get('/description/{description}', [$productController, 'getProductByDescription']);
     $group->get('/category/{category_id}', [$productController, 'getProductByCategory']);
     $group->get('/stock/{stock}', [$productController, 'getProductByStock']);
-    $group->get('/price/{price}', [$productController, 'getProductByPrice']);
+    $group->get('/purchasePrice/{price}', [$productController, 'getProductByPrice']);
     $group->get('/priceRange/{min}/{max}', [$productController, 'getProductByPriceRange']);
     $group->get('/stockRange/{min}/{max}', [$productController, 'getProductByStockRange']);
     
