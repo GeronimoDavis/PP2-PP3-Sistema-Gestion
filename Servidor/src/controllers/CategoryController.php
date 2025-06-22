@@ -22,7 +22,6 @@ class CategoryController{
             $categoriesArray = array_map(fn($c) => $c->toArray(), $categories);
             $response->getBody()->write(json_encode(['categories' => $categoriesArray]));
             return $response->withHeader('Content-Type', 'application/json');
-
         }catch(Throwable $e){
            throw new Exception("Error fetching all categories: " . $e->getMessage());
         }
