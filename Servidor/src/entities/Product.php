@@ -29,5 +29,6 @@ class Product {
             'purchase_price' => $this->purchase_price,
             'category_id' => $this->category_id,
         ];
+
     }
 }
