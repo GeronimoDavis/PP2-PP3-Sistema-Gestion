@@ -50,7 +50,7 @@ class TransactionController{
             $data = $request->getParsedBody();
             $transaction = new Transaction($data);
             $createdTransaction = $this->transactionService->create($transaction);
-            $response->getBody()->write(json_encode(['transaction' => $createdTransactio->toArray()]));
+            $response->getBody()->write(json_encode(['transaction' => $createdTransaction->toArray()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
         }catch(Throwable $e){
             $response->getBody()->write(json_encode(['error' => 'Error creating transaction: ' . $e->getMessage()]));
