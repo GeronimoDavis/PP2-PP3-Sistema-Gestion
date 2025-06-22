@@ -11,8 +11,8 @@ use Psr\Http\Message\ResponseInterface as Response;
 
 class CategoryController{
 
-    public function __construct()
-    {
+    private CategoryService  $categoryService;
+    public function __construct()    {
         $this->categoryService = new CategoryService();
     }
 
@@ -32,6 +32,7 @@ class CategoryController{
         try {
             $id = $args['id'] ?? null;
             $category = $this->categoryService->getById($id);
+
             $response->getBody()->write(json_encode(["category" => $category->toArray()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         }catch(Throwable $e){
@@ -66,6 +67,8 @@ class CategoryController{
             throw new Exception("Error updating category: " . $e->getMessage());
         }
     }
+
+    
 }
 
 ?>
