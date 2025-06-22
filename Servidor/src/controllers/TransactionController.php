@@ -50,7 +50,7 @@ class TransactionController{
             $data = $request->getParseBody();
             $transaction = new Transaction($data);
             $createdTransaction = $this->transactionService->create($transaction);
-            $response->getBody()->write(json_encode(['transaction' => $createdTransactiom->toArray()]));
+            $response->getBody()->write(json_encode(['transaction' => $createdTransactio->toArray()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
         }catch(Throwable $e){
             $response->getBody()->write(json_encode(['error' => 'Error creating transaction: ' . $e->getMessage()]));
@@ -61,7 +61,7 @@ class TransactionController{
     public function updateTransaction(Request $request, Response $response , $args){
         try{
             $id = $args['id'];
-            $data = $request->getParserdBody();
+            $data = $request->getParsedBody();
             $transaction = new Transaction($data);
             $transaction->transaction_id = $id;
             $transactionUpdated = $this->transactionService->update($transaction);

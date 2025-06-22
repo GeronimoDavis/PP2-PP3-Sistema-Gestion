@@ -33,9 +33,10 @@ class CategoryController{
             $id = $args['id'] ?? null;
             $category = $this->categoryService->getById($id);
             $response->getBody()->write(json_encode(["category" => $category->toArray()]));
-            return $response->withHeader('Content-Type', 'application/json');
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         }catch(Throwable $e){
-           throw new Exception("Error fetching category by ID $id: " . $e->getMessage());
+            $response->getBody()->write(json_encode(['error' => 'Error fetching category by ID: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
        }
     }
 
@@ -47,7 +48,8 @@ class CategoryController{
             $response->getBody()->write(json_encode(["category" => $createdCategory->toArray()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
         }catch(Throwable $e){
-            throw new Exception("Error creating category: " . $e->getMessage());
+            $response->getBody()->write(json_encode(['error' => 'Error creating category: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
 
@@ -59,7 +61,7 @@ class CategoryController{
             $category->category_id = $id;
             $updateCategory = $this->categoryService->update($category);
             $response->getBody()->write(json_encode(["category" => $updateCategory->toArray()]));
-            return $response->withHeader('Content-Type', 'application/json');
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         }catch(Throwable $e){
             throw new Exception("Error updating category: " . $e->getMessage());
         }

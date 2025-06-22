@@ -22,9 +22,10 @@ class PersonController {
             $persons = $this->personService->getAll();
             $personsArray = array_map(fn($p) => $p->toArray(), $persons);
             $response->getBody()->write(json_encode(['persons' => $personsArray]));
-            return $response->withHeader('Content-Type', 'application/json');
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Throwable $e) {
-            throw new Exception("Error fetching all persons: " . $e->getMessage());
+            $response->getBody()->write(json_encode(['error' => 'Error fetching persons: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
 
@@ -34,9 +35,10 @@ class PersonController {
             $id = $args['id'];
             $person = $this->personService->getById($id);
             $response->getBody()->write(json_encode(['person' => $person->toArray()]));
-            return $response->withHeader('Content-Type', 'application/json');
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Throwable $e) {
-            throw new Exception("Error fetching person by ID: " . $e->getMessage());
+            $response->getBody()->write(json_encode(['error' => 'Error fetching person by ID: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
 
@@ -49,7 +51,8 @@ class PersonController {
             $response->getBody()->write(json_encode(['person' => $createdPerson->toArray()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
         } catch (Throwable $e) {
-            throw new Exception("Error creating person: " . $e->getMessage());
+            $response->getBody()->write(json_encode(['error' => 'Error creating person: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
 
@@ -61,7 +64,8 @@ class PersonController {
             $response->getBody()->write(json_encode(['message' => 'Person deleted successfully']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Throwable $e) {
-            throw new Exception("Error deleting person: " . $e->getMessage());
+            $response->getBody()->write(json_encode(['error' => 'Error deleting person: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
 
@@ -76,7 +80,8 @@ class PersonController {
             $response->getBody()->write(json_encode(['message' => 'Person updated successfully']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Throwable $e) {
-            throw new Exception("Error updating person: " . $e->getMessage());
+            $response->getBody()->write(json_encode(['error' => 'Error updating person: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
 }
