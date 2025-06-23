@@ -10,6 +10,8 @@ use Psr\Http\Message\ResponseInterface as Response;
 
 class TransactionController{
 
+    private TransactionService $transactionService;
+
     public function __construct()
     {
         $this->transactionService = new TransactionService();

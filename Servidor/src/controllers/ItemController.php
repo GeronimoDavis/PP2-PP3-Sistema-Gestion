@@ -1,6 +1,8 @@
 <?php
 namespace Controllers;
 use Services\ItemService;
+use Entities\Item;
+use PDOException;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -18,7 +20,7 @@ class ItemController
             $items = $this->itemService->getAllItems();
             $response->getBody()->write(json_encode($items));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-        } catch (\Exception $e) {
+        } catch (PDOException $e) {
             $response->getBody()->write("Error fetching items: " . $e->getMessage());
             return $response->withStatus(500);
         }
@@ -34,7 +36,7 @@ class ItemController
                 $response->getBody()->write("Item not found");
                 return $response->withStatus(404);
             }
-        } catch (\Exception $e) {
+        } catch (PDOException $e) {
             $response->getBody()->write("Error fetching item: " . $e->getMessage());
             return $response->withStatus(500);
         }
@@ -43,11 +45,11 @@ class ItemController
     {
         try {
             $data = json_decode($request->getBody()->getContents(), true);
-            $item = new \Entities\Item($data);
+            $item = new Item($data);
             $createdItem = $this->itemService->createItem($item);
             $response->getBody()->write(json_encode($createdItem));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
-        } catch (\Exception $e) {
+        } catch (PDOException $e) {
             $response->getBody()->write("Error creating item: " . $e->getMessage());
             return $response->withStatus(500);
         }
@@ -56,7 +58,7 @@ class ItemController
     {
         try {
             $data = json_decode($request->getBody()->getContents(), true);
-            $item = new \Entities\Item($data);
+            $item = new Item($data);
             $item->item_id = $args['id']; 
             $updatedItem = $this->itemService->updateItem($item);
             if ($updatedItem) {
@@ -66,7 +68,7 @@ class ItemController
                 $response->getBody()->write("Item not found");
                 return $response->withStatus(404);
             }
-        } catch (\Exception $e) {
+        } catch (PDOException $e) {
             $response->getBody()->write("Error updating item: " . $e->getMessage());
             return $response->withStatus(500);
         }
@@ -81,7 +83,7 @@ class ItemController
                 $response->getBody()->write("Item not found");
                 return $response->withStatus(404);
             }
-        } catch (\Exception $e) {
+        } catch (PDOException $e) {
             $response->getBody()->write("Error deleting item: " . $e->getMessage());
             return $response->withStatus(500);
         }

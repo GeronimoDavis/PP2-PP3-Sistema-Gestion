@@ -96,6 +96,6 @@ create table payments(
 		"Cheque",
 		"Otro"
 	),
-	date date,
+	date datetime,
 	foreign key(transaction_id) references transaction(transaction_id)
 );
