@@ -19,10 +19,50 @@ class PersonService {
         }
     }
 
-    public function getAll()
+    public function getAll(array $filters = [])
     {
         try {
-            $stmt = $this->pdo->prepare("SELECT * FROM person ORDER BY company_name");
+            $query = "SELECT * FROM person WHERE 1=1";
+            $params = [];
+
+            //filtrar por razon social
+            if (isset($filters['company_name'])) {
+                $query .= " AND company_name LIKE ?";
+                $params[] = '%' . $filters['company_name'] . '%';
+            }
+
+            //filtrar por nombre
+            if (isset($filters['name'])) {
+                $query .= " AND name LIKE ?";
+                $params[] = '%' . $filters['name'] . '%';
+            }
+
+            //filtrar por email
+            if (isset($filters['email'])) {
+                $query .= " AND email LIKE ?";
+                $params[] = '%' . $filters['email'] . '%';
+            }
+            //filtrar por telefono
+            if (isset($filters['phone'])) {
+                $query .= " AND phone LIKE ?";
+                $params[] = '%' . $filters['phone'] . '%';
+            }
+
+           if (isset($filters['tax_type'])) {
+                $query .= " AND tax_type = ?";
+                $params[] = $filters['tax_type'];
+            }
+            
+            if (isset($filters['provider'])) {
+                $query .= " AND provider = ?";
+                $params[] = filter_var($filters['provider'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            }
+
+
+            $query .= " ORDER BY name ASC"; 
+
+
+            $stmt = $this->pdo->prepare($query);
             $stmt->execute();
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

@@ -19,7 +19,8 @@ class TransactionController{
 
     public function getAllTransactions(Request $request, Response $response, $args){
         try{
-            $transactions = $this->transactionService->getAll();
+            $filtres = $request->getQueryParams();
+            $transactions = $this->transactionService->getAll($filtres);
             $transactionsArray = array_map(fn($t) => $t->toArray(), $transactions);
             $response->getBody()->write(json_encode(['transactions' => $transactionsArray]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
