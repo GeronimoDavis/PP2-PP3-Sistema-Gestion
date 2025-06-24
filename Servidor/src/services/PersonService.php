@@ -63,7 +63,7 @@ class PersonService {
 
 
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute();
+            $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $persons = [];
