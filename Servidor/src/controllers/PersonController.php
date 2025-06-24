@@ -19,7 +19,8 @@ class PersonController {
     public function getAllPersons(Request $request, Response $response, $args)
     {
         try {
-            $persons = $this->personService->getAll();
+            $filters = $request->getQueryParams();
+            $persons = $this->personService->getAll($filters);
             $personsArray = array_map(fn($p) => $p->toArray(), $persons);
             $response->getBody()->write(json_encode(['persons' => $personsArray]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);

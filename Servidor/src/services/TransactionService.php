@@ -19,10 +19,47 @@ class TransactionService{
         }
     }
 
-    public function getAll(){
+    public function getAll(array $filters = []) {
         try{
-            $stmt = $this->pdo->prepare("SELECT * FROM transaction ORDER BY date DESC");
-            $stmt->execute();
+            $query = "SELECT * FROM transaction WHERE 1=1";//consulta dinámica para filtrar
+            $params = [];
+
+            // Filtro por person_id (si se pasa en query params)
+            if (isset($filters['person_id'])) {
+                $query .= " AND person_id = ?";
+                $params[] = $filters['person_id'];
+            }
+
+            if(isset($filters["transport_id"])){
+                $query .= " AND transport_id = ?";
+                $params[] = $filters['transport_id'];
+            }
+
+            if (isset($filters['is_sale'])) {
+            $query .= " AND is_sale = ?";
+            // Convertimos a entero 1 o 0 para que la bd lo entienda
+            $params[] = filter_var($filters['is_sale'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+            }
+
+            if(isset($filters["date"])){
+                $query .= " AND date = ?";
+                $params[] = $filters['date'];
+            }
+
+              if (isset($filters['start_date'])) {
+            $query .= " AND date >= ?";
+            $params[] = $filters['start_date'];
+            }
+
+             if (isset($filters['end_date'])) {
+            $query .= " AND date <= ?";
+            $params[] = $filters['end_date'];
+            }
+
+            $query .= " ORDER BY date DESC";
+
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $transactions = [];
