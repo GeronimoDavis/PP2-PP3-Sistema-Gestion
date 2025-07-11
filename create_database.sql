@@ -57,6 +57,7 @@ create table transaction(
 	person_id int,
 	transport_id int, 
 	tracking_number varchar(20),
+	total DECIMAL(10,2) NOT NULL,
 	tax_type enum("R.I",
 	"Exento",
 	"R.N.I",
