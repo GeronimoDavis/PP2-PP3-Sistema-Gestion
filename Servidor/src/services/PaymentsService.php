@@ -96,7 +96,7 @@ class PaymentsService {
     {
         try {
 
-            $transactionTotal = $this->getTansactionTotal($payment->transaction_id);
+            $transactionTotal = $this->getTransactionTotal($payment->transaction_id);
             $totalPaid = $this->getTotalPaid($payment->transaction_id);
 
             if ($totalPaid + $payment->amount > $transactionTotal) {
@@ -212,7 +212,7 @@ class PaymentsService {
         }
     }
     //metodos privados
-    private function getTansactionTotal(int $transactionId): float{
+    private function getTransactionTotal(int $transactionId): float{
         try{
             $stmt = $this->pdo->prepare("SELECT total FROM transaction WHERE transaction_id = ?");
             $stmt->execute([$transactionId]);
@@ -238,6 +238,23 @@ class PaymentsService {
         } catch (PDOException $e) {
             throw new Exception("Error fetching total paid: " . $e->getMessage());
         }
+    }
+
+    public function getPaymentStatus(int $transactionId) : array
+    {
+        $total = $this->getTransactionTotal($transactionId);
+        $totalPaid = $this->getTotalPaid($transactionId);
+
+        $remaining = $total - $totalPaid;
+        $isFullyPaid = $remaining <= 0;
+
+        return[
+            "transaction_id" => $transactionId,
+            "total" => $total,
+            "total_paid" => $totalPaid,
+            "remaining" => max(0, $remaining),
+            "is_fully_paid" => $isFullyPaid
+        ];
     }
 
 }

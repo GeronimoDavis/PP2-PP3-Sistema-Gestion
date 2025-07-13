@@ -12,4 +12,6 @@ $app->group('/payments', function (RouteCollectorProxy $group) use ($paymentsCon
     $group->get('/transaction/{transactionId}', [$paymentsController, 'getPaymentsByTransactionId']);
     $group->get('/type/{type}', [$paymentsController, 'getPaymentsByType']);
     $group->get('/date/{date}', [$paymentsController, 'getPaymentsByDate']);
+    $group->get("/status/{transactionId}", [$paymentsController, 'getPaymentStatus']);
 });
+    

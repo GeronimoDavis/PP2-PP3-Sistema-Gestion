@@ -140,7 +140,20 @@ class PaymentsController
         }
     }
     
+    public function getPaymentStatus(Request $request, Response $response, array $args): Response{
+        try{
 
+            $transactionId = (int)$args['transactionId'];
+
+            $status = $this->paymentsService->getPaymentStatus($transactionId);
+
+            $response->getBody()->write(json_encode(['status' => $status]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }catch(Exception $e){
+            $response->getBody()->write("Error fetching payment status: " . $e->getMessage());
+            return $response->withStatus(500);
+        }
+    }
  
 
 }
