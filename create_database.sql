@@ -30,12 +30,12 @@ create TABLE users (
 
 create table if not EXISTS category(
 	category_id int primary key auto_increment unique,
-	description varchar(30)
+	name varchar(30)
 );
 
-create table product(
+create table if not EXISTS product(
 	product_id int primary key auto_increment unique,
-	description varchar(50),
+	name varchar(50),
 	code varchar(20) not null,
 	stock mediumint,
 	purchase_price float,
@@ -57,7 +57,6 @@ create table transaction(
 	person_id int,
 	transport_id int, 
 	tracking_number varchar(20),
-	total DECIMAL(10,2) NOT NULL,
 	tax_type enum("R.I",
 	"Exento",
 	"R.N.I",
