@@ -12,7 +12,7 @@ $app->group('/product', function(RouteCollectorProxy $group) use ($productContro
     $group->put('/update/{id}' , [$productController, 'updateProduct']);
     $group->delete('/delete/{id}', [$productController, 'deleteProduct']);
     $group->get('/code/{code}', [$productController, 'getProductByCode']);
-    $group->get('/description/{description}', [$productController, 'getProductByDescription']);
+    $group->get('/name/{name}', [$productController, 'getProductByName']);
     $group->get('/category/{category_id}', [$productController, 'getProductByCategory']);
     $group->get('/stock/{stock}', [$productController, 'getProductByStock']);
     $group->get('/purchasePrice/{price}', [$productController, 'getProductByPrice']);

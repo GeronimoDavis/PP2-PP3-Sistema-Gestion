@@ -3,7 +3,7 @@ namespace Entities;
 
 class Product {
     public ?int $product_id;
-    public string $description;
+    public string $name;
     public string $code;
     public int $stock;
     public float $purchase_price;
@@ -12,7 +12,7 @@ class Product {
     public function __construct(array $data)
     {
         $this->product_id = $data['product_id'] ?? null;
-        $this->description = $data['description'] ?? '';
+        $this->name = $data['name'] ?? '';
         $this->code = $data['code'] ?? '';
         $this->stock = isset($data['stock']) ? (int)$data['stock'] : 0;
         $this->purchase_price = isset($data['purchase_price']) ? (float)$data['purchase_price'] : 0.0;
@@ -23,7 +23,7 @@ class Product {
     {
         return [
             'product_id' => $this->product_id,
-            'description' => $this->description,
+            'name' => $this->name,
             'code' => $this->code,
             'stock' => $this->stock,
             'purchase_price' => $this->purchase_price,

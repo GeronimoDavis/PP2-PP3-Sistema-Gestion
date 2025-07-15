@@ -1,4 +1,4 @@
-CREATE DATABASE IF NOT EXISTS stockRepuestos
+CREATE DATABASE IF NOT EXISTS stockRepuestos;
 
 use stockRepuestos;
 
