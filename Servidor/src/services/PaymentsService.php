@@ -95,14 +95,6 @@ class PaymentsService {
     public function create(Payments $payment)
     {
         try {
-
-            $transactionTotal = $this->getTransactionTotal($payment->transaction_id);
-            $totalPaid = $this->getTotalPaid($payment->transaction_id);
-
-            if ($totalPaid + $payment->amount > $transactionTotal) {
-                throw new Exception("Payment amount exceeds the total transaction amount.");
-            } 
-
             $stmt = $this->pdo->prepare("INSERT INTO payments (transaction_id, amount, type, date) VALUES (?, ?, ?, ?)");
             $stmt->execute([
                 $payment->transaction_id,
@@ -211,50 +203,6 @@ class PaymentsService {
             throw new Exception("Error fetching payments by type: " . $e->getMessage());
         }
     }
-    //metodos privados
-    private function getTransactionTotal(int $transactionId): float{
-        try{
-            $stmt = $this->pdo->prepare("SELECT total FROM transaction WHERE transaction_id = ?");
-            $stmt->execute([$transactionId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row) {
-                throw new Exception("Transaction not found with ID: $transactionId");
-            }
-            return (float)$row['total'];
-        } catch (PDOException $e) {
-            throw new Exception("Error fetching transaction total: " . $e->getMessage());
-        }
-    }
-
-    private function getTotalPaid(int $transactionId): float{
-        try{
-            $stmt = $this->pdo->prepare("SELECT SUM(amount) as total_paid FROM payments WHERE transaction_id = ?");
-            $stmt->execute([$transactionId]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$row) {
-                throw new Exception("Transaction not found with ID: $transactionId");
-            }
-            return (float)$row['total_paid'];
-        } catch (PDOException $e) {
-            throw new Exception("Error fetching total paid: " . $e->getMessage());
-        }
-    }
-
-    public function getPaymentStatus(int $transactionId) : array
-    {
-        $total = $this->getTransactionTotal($transactionId);
-        $totalPaid = $this->getTotalPaid($transactionId);
-
-        $remaining = $total - $totalPaid;
-        $isFullyPaid = $remaining <= 0;
-
-        return[
-            "transaction_id" => $transactionId,
-            "total" => $total,
-            "total_paid" => $totalPaid,
-            "remaining" => max(0, $remaining),
-            "is_fully_paid" => $isFullyPaid
-        ];
-    }
+ 
 
 }
