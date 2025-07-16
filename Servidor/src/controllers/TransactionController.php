@@ -51,6 +51,25 @@ class TransactionController{
     public function createTransaction(Request $request, Response $response, $args){
         try{
             $data = $request->getParsedBody();
+            //validaciones
+            if (!isset($data['date'], $data['amount'], $data['type'], $data['person_id'])) {
+                throw new Exception("Missing required fields.");
+            }
+
+            if (!is_numeric($data['amount']) || $data['amount'] <= 0) {
+                throw new Exception("Amount must be a positive number.");
+            }
+
+            if ($data["person_id"] && $data["transport_id"] <= 0) {
+                throw new Exception("Invalid person or transport ID.");
+            }
+
+            $validTaxTypes = ["R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"];
+            if (!isset($data['tax_type']) || !in_array($data['tax_type'], $validTaxTypes)) {
+                throw new Exception("Invalid tax type.");
+            }
+
+
             $transaction = new Transaction($data);
             $createdTransaction = $this->transactionService->create($transaction);
             $response->getBody()->write(json_encode(['transaction' => $createdTransaction->toArray()]));
@@ -66,6 +85,25 @@ class TransactionController{
         try{
             $id = $args['id'];
             $data = $request->getParsedBody();
+            
+            //validaciones
+            if (!isset($data['date'], $data['amount'], $data['type'], $data['person_id'])) {
+                throw new Exception("Missing required fields.");
+            }
+
+            if (!is_numeric($data['amount']) || $data['amount'] <= 0) {
+                throw new Exception("Amount must be a positive number.");
+            }
+
+            if ($data["person_id"] && $data["transport_id"] <= 0) {
+                throw new Exception("Invalid person or transport ID.");
+            }
+
+            $validTaxTypes = ["R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"];
+            if (!isset($data['tax_type']) || !in_array($data['tax_type'], $validTaxTypes)) {
+                throw new Exception("Invalid tax type.");
+            }
+
             $transaction = new Transaction($data);
             $transaction->transaction_id = $id;
             $transactionUpdated = $this->transactionService->update($transaction);
