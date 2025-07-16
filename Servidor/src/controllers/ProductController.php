@@ -129,11 +129,16 @@ class ProductController
     }
 
    public function createProduct(Request $request, Response $response, $args)
-   {
-   
-       
+   {   
            try {
             $data = $request->getParsedBody();
+
+            //validaciones
+            if (!isset($data['code'], $data['description'], $data['category_id'], $data['stock'], $data['purchase_price'])) {
+                throw new Exception("Missing required fields.");
+            }
+
+            
             $product = new Product($data);
             $createdProduct = $this->productService->create($product);
             $response->getBody()->write(json_encode(['product' => $createdProduct->toArray()]));
