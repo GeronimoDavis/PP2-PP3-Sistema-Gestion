@@ -11,4 +11,4 @@ $app->group('/extras', function(RouteCollectorProxy $group) use ($extrasControll
     $group->post('/create', [$extrasController, 'createExtra']);
     $group->put('/update/{id}', [$extrasController, 'updateExtra']);
     $group->delete('/delete/{id}', [$extrasController, 'deleteExtra']);
-})->add(new AuthMiddleware());  
+})->add(new AuthMiddleware());
