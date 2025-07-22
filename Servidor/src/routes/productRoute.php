@@ -1,11 +1,11 @@
 <?php
 use Controllers\ProductController;
 use Slim\Routing\RouteCollectorProxy;
+use Middlewares\AuthMiddleware;
 
 $productController = new ProductController();
 
 $app->group('/product', function(RouteCollectorProxy $group) use ($productController){
-
     $group->get('/show',[$productController,"getAllProducts"]);
     $group->get('/show/{id}',[$productController,'getProductById']);
     $group->post('/create',[$productController,'createProduct']);
@@ -20,4 +20,4 @@ $app->group('/product', function(RouteCollectorProxy $group) use ($productContro
     $group->get('/stockRange/{min}/{max}', [$productController, 'getProductByStockRange']);
     
 
-});
+})->add(new AuthMiddleware());

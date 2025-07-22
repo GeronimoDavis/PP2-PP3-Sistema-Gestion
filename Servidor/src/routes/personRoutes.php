@@ -1,6 +1,7 @@
 <?php
 use Slim\Routing\RouteCollectorProxy;
 use Controllers\PersonController;
+use Middlewares\AuthMiddleware;
 
 $personController = new PersonController();
 
@@ -10,6 +11,6 @@ $app->group("/person", function(RouteCollectorProxy $group) use ($personControll
     $group->post("/create", [$personController, "createPerson"]);
     $group->delete("/delete/{id}", [$personController, "deletePerson"]);
     $group->put("/update/{id}", [$personController, "updatePerson"]);
-});
+})->add(new AuthMiddleware());
 ?>
 
