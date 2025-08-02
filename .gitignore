@@ -1,3 +1,4 @@
 /Servidor/vendor
 /Servidor/composer.lock
 /vendor/
+Servidor/.env
