@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, MoreHorizontal, UserPlus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -42,14 +42,64 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { redirect } from "next/navigation";
+import {
+  getPersons,
+  getPersonById,
+  createPerson,
+  updatePerson,
+  deletePerson,
+} from "@/api/personsApi";
 
 export default function ClientesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const { user, token } = useAuth();
 
   if (!token || !user) {
     return redirect("/"); //pasar prop para dar mensaje de error
   }
+
+  const loadClients = async () => {
+    setLoading(true);
+    try {
+      const data = await getPersons();
+      setClients(data);
+      setError(null);
+    } catch (error) {
+      setError("Error al cargar los clientes");
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateClient = async (clientData) => {
+    try {
+      const newClient = await createPerson(clientData);
+      setClients([...clients, newClient]);
+      setIsDialogOpen(false);
+    } catch (error) {
+      setError("Error al crear el cliente");
+      console.error("Error:", error);
+    }
+  };
+
+  const handleDeleteClient = async (id) => {
+    try {
+      await deletePerson(id);
+      setClients(clients.filter((client) => client.id !== id));
+    } catch (error) {
+      setError("Error al eliminar el cliente");
+      console.error("Error:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadClients();
+  }, []);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">

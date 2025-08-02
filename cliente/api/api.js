@@ -23,26 +23,4 @@ api.interceptors.request.use(
   }
 );
 
-// Función para login de usuario
-const loginUser = async (username, password) => {
-  try {
-    const response = await api.post("/user/login", {
-      username: username,
-      password: password,
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-const getProducts = async () => {
-  try {
-    const response = await api.get("/products/show");
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export { loginUser, getProducts };
+export default api;
