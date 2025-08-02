@@ -3,7 +3,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
 use Dotenv\Dotenv;
-use App\middlewares\CorsMiddleware;
+use Middlewares\CorsMiddleware;
 
 require __DIR__ . '/../vendor/autoload.php';
 
