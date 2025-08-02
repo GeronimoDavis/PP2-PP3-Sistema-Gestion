@@ -48,6 +48,16 @@ class PaymentsController
     {
         try {
             $data = json_decode($request->getBody()->getContents(), true);
+
+            //validaciones
+            if (!isset($data['transaction_id'], $data['amount'], $data['type'], $data['date'])) {
+                throw new Exception("Missing required fields.");
+            }
+
+             if (!is_numeric($data['amount']) || $data['amount'] <= 0) {
+                throw new Exception("Amount must be a positive number.");
+            }
+
             $payment = new Payments(
                 0, 
                 $data['transaction_id'],
@@ -67,6 +77,17 @@ class PaymentsController
     {
         try {
             $data = json_decode($request->getBody()->getContents(), true);
+
+            //validaciones
+            if (!isset($data['transaction_id'], $data['amount'], $data['type'], $data['date'])) {
+                throw new Exception("Missing required fields.");
+            }
+
+             if (!is_numeric($data['amount']) || $data['amount'] <= 0) {
+                throw new Exception("Amount must be a positive number."); 
+            }
+
+
             $payment = new Payments(
                 (int)$args['id'], 
                 $data['transaction_id'],
@@ -140,7 +161,20 @@ class PaymentsController
         }
     }
     
+    public function getPaymentStatus(Request $request, Response $response, array $args): Response{
+        try{
 
+            $transactionId = (int)$args['transactionId'];
+
+            $status = $this->paymentsService->getPaymentStatus($transactionId);
+
+            $response->getBody()->write(json_encode(['status' => $status]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }catch(Exception $e){
+            $response->getBody()->write("Error fetching payment status: " . $e->getMessage());
+            return $response->withStatus(500);
+        }
+    }
  
 
 }

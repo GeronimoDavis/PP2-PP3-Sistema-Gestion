@@ -68,21 +68,21 @@ class ProductService{
         }
     }
 
-    public function getByDescription($description)
+    public function getByName($name)
     {
         try {
-            $query = "SELECT * FROM product WHERE description LIKE ?";
+            $query = "SELECT * FROM product WHERE name LIKE ?";
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute(['%' . $description . '%']);
+            $stmt->execute(['%' . $name . '%']);
             $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             if (!$products) {
-                throw new Exception("No products found with description: $description");
+                throw new Exception("No products found with name: $name");
             }
 
             return array_map(fn($p) => new Product($p), $products);
         } catch (PDOException $e) {
-            throw new Exception("Error fetching products by description: " . $e->getMessage());
+            throw new Exception("Error fetching products by name: " . $e->getMessage());
         }
     }
     public function getByCategory($category_id)
@@ -181,9 +181,9 @@ class ProductService{
 
     public function create(Product $product){
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO product (description, code, stock, purchase_price, category_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO product (name, code, stock, purchase_price, category_id) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([
-                $product->description,
+                $product->name,
                 $product->code,
                 $product->stock,
                 $product->purchase_price,
@@ -201,9 +201,9 @@ class ProductService{
     public function update(Product $product)
     {
         try {
-            $stmt = $this->pdo->prepare("UPDATE product SET description = ?, code = ?, stock = ?, purchase_price = ?, category_id = ? WHERE product_id = ?");
+            $stmt = $this->pdo->prepare("UPDATE product SET name = ?, code = ?, stock = ?, purchase_price = ?, category_id = ? WHERE product_id = ?");
             $stmt->execute([
-                $product->description,
+                $product->name,
                 $product->code,
                 $product->stock,
                 $product->purchase_price,

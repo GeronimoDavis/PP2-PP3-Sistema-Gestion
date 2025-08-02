@@ -3,19 +3,19 @@ namespace Entities;
 
 class Category{
     public ?int $category_id;
-    public ?string $description;
+    public ?string $name;
 
     public function __construct(array $data)
     {
         $this->category_id = $data['category_id'] ?? null;
-        $this->description = $data['description'] ?? null;
+        $this->name = $data['name'] ?? null;
     }
 
     public function toArray(): array
     {
         return [
             'category_id' => $this->category_id,
-            'description' => $this->description,
+            'name' => $this->name,
         ];
     }
 }

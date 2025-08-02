@@ -1,5 +1,4 @@
 <?php
-
 namespace Middlewares;
 
 use Psr\Http\Message\ResponseInterface as Response;

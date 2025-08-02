@@ -19,7 +19,8 @@ class PersonController {
     public function getAllPersons(Request $request, Response $response, $args)
     {
         try {
-            $persons = $this->personService->getAll();
+            $filters = $request->getQueryParams();
+            $persons = $this->personService->getAll($filters);
             $personsArray = array_map(fn($p) => $p->toArray(), $persons);
             $response->getBody()->write(json_encode(['persons' => $personsArray]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
@@ -46,6 +47,21 @@ class PersonController {
     {
         try {
             $data = $request->getParsedBody();
+            //validaciones
+
+            if (!isset($data["email"]) || !filter_var($data["email"], FILTER_VALIDATE_EMAIL)) {
+                throw new Exception("Invalid email format");
+            }
+
+            if (!isset($data['tax_id']) || strlen($data['tax_id']) !== 11) {
+                throw new Exception("Invalid tax ID");
+            }
+
+            $validTaxTypes = ["R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"];
+            if (!isset($data['tax_type']) || !in_array($data['tax_type'], $validTaxTypes)) {
+                throw new Exception("Invalid tax type");
+            }
+
             $person = new Person($data);
             $createdPerson = $this->personService->create($person);
             $response->getBody()->write(json_encode(['person' => $createdPerson->toArray()]));
@@ -74,6 +90,19 @@ class PersonController {
         try {
             $id = $args['id'];
             $data = $request->getParsedBody();
+            //validaciones
+            if (!isset($data["email"]) || !filter_var($data["email"], FILTER_VALIDATE_EMAIL)) {
+                throw new Exception("Invalid email format");
+            }
+            if (!isset($data['tax_id']) || strlen($data['tax_id']) !== 11) {
+                throw new Exception("Invalid tax ID");
+            }
+            $validTaxTypes = ["R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"];
+            if (!isset($data['tax_type']) || !in_array($data['tax_type'], $validTaxTypes)) {
+                throw new Exception("Invalid tax type");
+            }
+
+
             $person = new Person($data);
             $person->person_id = $id;
             $this->personService->update($person);

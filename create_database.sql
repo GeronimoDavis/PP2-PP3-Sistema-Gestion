@@ -1,4 +1,4 @@
-CREATE DATABASE IF NOT EXISTS stockRepuestos
+CREATE DATABASE IF NOT EXISTS stockRepuestos;
 
 use stockRepuestos;
 
@@ -30,12 +30,12 @@ create TABLE users (
 
 create table if not EXISTS category(
 	category_id int primary key auto_increment unique,
-	description varchar(30)
+	name varchar(30)
 );
 
-create table product(
+create table if not EXISTS product(
 	product_id int primary key auto_increment unique,
-	description varchar(50),
+	name varchar(50),
 	code varchar(20) not null,
 	stock mediumint,
 	purchase_price float,
