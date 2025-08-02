@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { loginUser } from "@/api/api";
+import { loginUser } from "@/api/loginApi";
+import { redirect } from "next/navigation";
 
 function Login() {
   // username y password son los estados del input de username y password
@@ -10,8 +11,13 @@ function Login() {
   // password es el estado del input de password
   const [password, setPassword] = useState("");
   // login es una funcion que se ejecuta cuando se loguea el usuario
-  const { login } = useAuth();
+  const { login, user, token } = useAuth();
   // handleSubmit es una funcion que se ejecuta cuando se envía el formulario
+  console.log(token, user);
+  if (token && user) {
+    redirect("/dashboard");
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 

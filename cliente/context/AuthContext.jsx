@@ -18,8 +18,12 @@ export const AuthProvider = ({ children }) => {
   // Usar useEffect para acceder a localStorage después del montaje
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
     if (savedToken) {
       setToken(savedToken);
+    }
+    if (savedUser) {
+      setUser(savedUser);
     }
   }, []);
 
@@ -27,12 +31,14 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
     setToken(userToken);
     localStorage.setItem("token", userToken);
+    localStorage.setItem("user", userData);
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
   };
 
   return (
