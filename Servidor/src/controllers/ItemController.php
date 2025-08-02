@@ -16,6 +16,8 @@ class ItemController
     }
     public function getAllItems(Request $request, Response $response): Response
     {
+        
+        
         try {
             $items = $this->itemService->getAllItems();
             $response->getBody()->write(json_encode($items));
@@ -27,6 +29,7 @@ class ItemController
     }
     public function getItemById(Request $request, Response $response, array $args): Response
     {
+        
         try {
             $item = $this->itemService->getItemById($args['id']);
             if ($item) {

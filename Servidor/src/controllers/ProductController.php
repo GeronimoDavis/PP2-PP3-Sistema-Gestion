@@ -53,16 +53,16 @@ class ProductController
             throw new Exception("Error fetching product by code: " . $e->getMessage());
         }
     }
-    public function getProductByDescription(Request $request, Response $response, $args)
+    public function getProductByName(Request $request, Response $response, $args)
     {
         try {
-            $description = $args['description'];
-            $products = $this->productService->getByDescription($description);
+            $name = $args['name'];
+            $products = $this->productService->getByName($name);
             $productsArray = array_map(fn($p) => $p->toArray(), $products);
             $response->getBody()->write(json_encode(['products' => $productsArray]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Throwable $e) {
-            throw new Exception("Error fetching products by description: " . $e->getMessage());
+            throw new Exception("Error fetching products by name: " . $e->getMessage());
         }
     }
     public function getProductByCategory(Request $request, Response $response, $args)
@@ -129,11 +129,16 @@ class ProductController
     }
 
    public function createProduct(Request $request, Response $response, $args)
-   {
-   
-       
+   {   
            try {
             $data = $request->getParsedBody();
+
+            //validaciones
+            if (!isset($data['code'], $data['description'], $data['category_id'], $data['stock'], $data['purchase_price'])) {
+                throw new Exception("Missing required fields.");
+            }
+
+            
             $product = new Product($data);
             $createdProduct = $this->productService->create($product);
             $response->getBody()->write(json_encode(['product' => $createdProduct->toArray()]));
