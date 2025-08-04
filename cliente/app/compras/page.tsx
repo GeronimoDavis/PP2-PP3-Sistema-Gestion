@@ -44,9 +44,11 @@ import { useAuth } from "@/context/AuthContext";
 import { redirect } from "next/navigation";
 
 export default function ComprasPage() {
-  const { user, token } = useAuth();
+  const { user, token, validateToken } = useAuth();
 
-  if (!token || !user) {
+  if (!token || !user || !validateToken(token)) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     return redirect("/");
   }
 

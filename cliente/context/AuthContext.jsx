@@ -15,15 +15,34 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null); // Inicializar como null
 
+  const validateToken = (token) => {
+    if (!token) return false;
+
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const currentTime = Date.now() / 1000;
+
+      // Si el token expiró o expira en menos de 1 minuto
+      return payload.exp > currentTime + 60;
+    } catch (error) {
+      return false;
+    }
+  };
+
   // Usar useEffect para acceder a localStorage después del montaje
   useEffect(() => {
-    const savedToken = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
-    if (savedToken) {
-      setToken(savedToken);
-    }
-    if (savedUser) {
-      setUser(savedUser);
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+
+    if (token && user && validateToken(token)) {
+      setToken(token);
+      setUser(JSON.parse(user));
+    } else {
+      // Limpiar si el token es inválido
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setToken(null);
+      setUser(null);
     }
   }, []);
 
@@ -42,7 +61,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, validateToken }}>
       {children}
     </AuthContext.Provider>
   );

@@ -51,9 +51,11 @@ import { redirect } from "next/navigation";
 
 export default function InventarioPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { user, token } = useAuth();
+  const { user, token, validateToken } = useAuth();
 
-  if (!token || !user) {
+  if (!token || !user || !validateToken(token)) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     return redirect("/");
   }
 

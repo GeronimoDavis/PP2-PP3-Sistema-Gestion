@@ -11,10 +11,10 @@ function Login() {
   // password es el estado del input de password
   const [password, setPassword] = useState("");
   // login es una funcion que se ejecuta cuando se loguea el usuario
-  const { login, user, token } = useAuth();
+  const { login, user, token, validateToken } = useAuth();
   // handleSubmit es una funcion que se ejecuta cuando se envía el formulario
   console.log(token, user);
-  if (token && user) {
+  if (token && user && validateToken(token)) {
     redirect("/dashboard");
   }
 

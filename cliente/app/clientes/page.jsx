@@ -68,10 +68,12 @@ export default function ClientesPage() {
     provider: false,
   });
 
-  const { user, token } = useAuth();
+  const { user, token, validateToken } = useAuth();
 
-  if (!token || !user) {
-    return redirect("/"); //pasar prop para dar mensaje de error
+  if (!token || !user || !validateToken(token)) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    return redirect("/");
   }
 
   const loadClients = async () => {

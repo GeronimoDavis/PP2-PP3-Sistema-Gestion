@@ -19,6 +19,9 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.log("error", error);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     return Promise.reject(error);
   }
 );

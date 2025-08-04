@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DatePickerWithRange } from "@/components/date-range-picker";
-import type { DateRange } from "react-day-picker";
+import { DateRange } from "react-day-picker";
 import { addDays } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -61,14 +61,19 @@ import { useAuth } from "@/context/AuthContext";
 import { redirect } from "next/navigation";
 
 export default function ReportesPage() {
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(2023, 0, 1),
-    to: addDays(new Date(), 0),
-  });
+  const [date, setDate] =
+    (useState < DateRange) |
+    (undefined >
+      {
+        from: new Date(2023, 0, 1),
+        to: addDays(new Date(), 0),
+      });
 
-  const { user, token } = useAuth();
+  const { user, token, validateToken } = useAuth();
 
-  if (!token || !user) {
+  if (!token || !user || !validateToken(token)) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     return redirect("/");
   }
 
