@@ -36,4 +36,13 @@ const updateCategory = async (id, categoryData) => {
   }
 };
 
-export { getCategories, getCategoryById, createCategory, updateCategory };
+const getCategoryByStatus = async (status) => {
+  try {
+    const response = await api.get(`/category/status/${status}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export { getCategories, getCategoryById, createCategory, updateCategory, getCategoryByStatus };

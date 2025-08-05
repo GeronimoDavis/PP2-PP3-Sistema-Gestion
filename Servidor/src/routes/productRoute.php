@@ -18,6 +18,6 @@ $app->group('/product', function(RouteCollectorProxy $group) use ($productContro
     $group->get('/purchasePrice/{price}', [$productController, 'getProductByPrice']);
     $group->get('/priceRange/{min}/{max}', [$productController, 'getProductByPriceRange']);
     $group->get('/stockRange/{min}/{max}', [$productController, 'getProductByStockRange']);
-    
+    $group->put('/updateStatus/{id}', [$productController, 'updateProductStatus']);
 
 })->add(new AuthMiddleware());

@@ -7,7 +7,7 @@ class Transaction{
     public string $date;
     public bool $is_sale;
     public int $person_id;
-    public int $transport_id;
+    public ?int $transport_id;
     public ?string $tracking_number;
     public string $tax_type;
 
@@ -16,7 +16,7 @@ class Transaction{
         $this->date = $data['date'];
         $this->is_sale = (bool)$data['is_sale'];
         $this->person_id = $data['person_id'];
-        $this->transport_id = $data['transport_id'];
+        $this->transport_id = $data['transport_id'] ?? null;
         $this->tracking_number = $data['tracking_number'] ?? null;
         $this->tax_type = $data['tax_type'];
     }
