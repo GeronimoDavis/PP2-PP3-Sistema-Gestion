@@ -72,15 +72,15 @@ class PersonController {
         }
     }
 
-    public function deletePerson(Request $request, Response $response, $args)
+    public function updatePersonStatus(Request $request, Response $response, $args)
     {
-        try {
+        try {  //no se elimina, se desactiva
             $id = $args["id"];
-            $this->personService->delete($id);
-            $response->getBody()->write(json_encode(['message' => 'Person deleted successfully']));
+            $this->personService->updateStatus($id);
+            $response->getBody()->write(json_encode(['message' => 'Person status updated successfully']));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Throwable $e) {
-            $response->getBody()->write(json_encode(['error' => 'Error deleting person: ' . $e->getMessage()]));
+            $response->getBody()->write(json_encode(['error' => 'Error updating person status: ' . $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
@@ -113,5 +113,27 @@ class PersonController {
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+    public function clientPerson(Request $request, Response $response, $args)
+    {
+        try {
+            $id = $args['id'];
+            $person = $this->personService->getById($id);
+        }
+        catch (Throwable $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error updating person: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+    public function providerPerson(Request $request, Response $response, $args)
+    {
+        try {
+            $id = $args['id'];
+            $person = $this->personService->getById($id);
+        }
+        catch (Throwable $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error updating person: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }   
 }
 ?>

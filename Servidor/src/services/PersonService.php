@@ -22,7 +22,7 @@ class PersonService {
     public function getAll(array $filters = [])
     {
         try {
-            $query = "SELECT * FROM person WHERE 1=1";
+            $query = "SELECT * FROM person WHERE active = 1";
             $params = [];
 
             //filtrar por razon social
@@ -58,9 +58,7 @@ class PersonService {
                 $params[] = filter_var($filters['provider'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
             }
 
-
             $query .= " ORDER BY name ASC"; 
-
 
             $stmt = $this->pdo->prepare($query);
             $stmt->execute($params);
@@ -118,17 +116,17 @@ class PersonService {
         }
     }
 
-    public function delete($id)
+    public function updateStatus($id)
     {
         try {
-            $stmt = $this->pdo->prepare("DELETE FROM person WHERE person_id = ?");
+            $stmt = $this->pdo->prepare("UPDATE person SET active = 0 WHERE person_id = ? AND active = 1"); //no se elimina, se desactiva
             $stmt->execute([$id]);
 
             if ($stmt->rowCount() === 0) {
-                throw new Exception("No person found with ID: $id");
+                throw new Exception("No person found with ID: $id or person is already inactive");  
             }
         } catch (PDOException $e) {
-            throw new Exception("Error deleting person with ID $id: " . $e->getMessage());
+            throw new Exception("Error updating person status with ID $id: " . $e->getMessage());
         }
     }
 
@@ -152,6 +150,30 @@ class PersonService {
             return $person;
         } catch (PDOException $e) {
             throw new Exception("Error updating person: " . $e->getMessage());
+        }
+    }
+
+    public function getProviderPerson($id)
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM person WHERE provider = 1 AND person_id = ?");
+            $stmt->execute([$id]);
+            $person = $stmt->fetch(PDO::FETCH_ASSOC);
+            return new Person($person);
+        } catch (PDOException $e) {
+            throw new Exception("Error fetching provider person: " . $e->getMessage());
+        }
+    }
+
+    public function getClientPerson($id)
+    {
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM person WHERE provider = 0 AND person_id = ?");
+            $stmt->execute([$id]);
+            $person = $stmt->fetch(PDO::FETCH_ASSOC);
+            return new Person($person);
+        } catch (PDOException $e) {
+            throw new Exception("Error fetching client person: " . $e->getMessage());
         }
     }
 }

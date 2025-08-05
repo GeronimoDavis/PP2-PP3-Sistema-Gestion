@@ -47,7 +47,7 @@ import {
   getPersonById,
   createPerson,
   updatePerson,
-  deletePerson,
+  updatePersonStatus,
 } from "@/api/personsApi";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -67,40 +67,51 @@ export default function ClientesPage() {
     notes: "",
     provider: false,
   });
+  const [originalClients, setOriginalClients] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { user, token } = useAuth();
 
   if (!token || !user) {
     return redirect("/"); //pasar prop para dar mensaje de error
   }
-
+//este es el que se encarga de obtener los clientes para paginarlos
   const loadClients = async () => {
     setLoading(true);
     try {
+      //obtener los clientes
       const { persons } = await getPersons();
       setClients(persons);
+      setOriginalClients(persons); // Agregar esta línea para la paginación
       setError(null);
     } catch (error) {
-      setError("Error al cargar los clientes");
+      if (error.response?.status === 401) {
+        setError("Sesión expirada. Por favor, inicie sesión nuevamente.");
+        // Redirigir al login si el token no es válido
+        window.location.href = "/";
+      } else {
+        setError("Error al cargar los clientes: " + (error.response?.data?.error || error.message));
+      }
       console.error("Error:", error);
     } finally {
       setLoading(false);
     }
   };
-
+ //este es el que se encarga de crear un cliente
   const handleCreateClient = async (clientData) => {
     try {
-      // Validaciones básicas
+      // Validaciones 
       if (!clientData.email || !clientData.tax_id || !clientData.tax_type) {
         setError("Todos los campos son obligatorios");
         return;
       }
-
+    //validar que el CUIT/CUIL tenga 11 dígitos
       if (clientData.tax_id.length !== 11) {
         setError("El CUIT/CUIL debe tener 11 dígitos");
         return;
       }
-
+      //crear el cliente
       const newClient = await createPerson(clientData);
       setClients([...clients, newClient.person]);
       setIsDialogOpen(false);
@@ -123,15 +134,124 @@ export default function ClientesPage() {
       console.error("Error:", error);
     }
   };
-
-  const handleDeleteClient = async (id) => {
+  //este es el que se encarga de actualizar el estado de un cliente
+      const handleUpdatePersonStatus = async (id) => {
     try {
-      await deletePerson(id);
-      setClients(clients.filter((client) => client.id !== id));
+      console.log("id", id);
+      await updatePersonStatus(id);
+      // Recargar la lista completa para mostrar solo personas activas
+      await loadClients();
     } catch (error) {
-      setError("Error al eliminar el cliente");
+      setError("Error al actualizar el estado del cliente");
       console.error("Error:", error);
     }
+  };
+
+  // Funciones de paginación
+  const getPaginatedClients = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return clients.slice(startIndex, endIndex);
+  };
+
+  //este es el que se encarga de obtener el total de paginas
+  const totalPages = Math.ceil(clients.length / itemsPerPage);
+//este es el que se encarga de obtener las paginas
+  const Pagination = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    return (
+      <div className="flex items-center justify-between px-2 py-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-700">
+            Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, clients.length)} de {clients.length} clientes
+          </span>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+          >
+            Primera
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          
+          {pages.map((page) => (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrentPage(page)}
+            >
+              {page}
+            </Button>
+          ))}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+          >
+            Última
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const ItemsPerPageSelector = () => {
+    return (
+      <div className="flex items-center space-x-2">
+        <span className="text-sm text-gray-700">Mostrar:</span>
+        <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+          setItemsPerPage(parseInt(value));
+          setCurrentPage(1); // Reset a la primera página
+        }}>
+          <SelectTrigger className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="5">5</SelectItem>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="20">20</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-gray-700">por página</span>
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -325,67 +445,116 @@ export default function ClientesPage() {
           <Input
             placeholder="Buscar clientes..."
             className="h-9 w-[150px] lg:w-[250px]"
+            onChange={(e) => {
+              const searchTerm = e.target.value.toLowerCase();
+              if (searchTerm === '') {
+                setClients(originalClients);
+              } else {
+                const filteredClients = originalClients.filter(client => 
+                  client.name.toLowerCase().includes(searchTerm) ||
+                  client.email.toLowerCase().includes(searchTerm) ||
+                  client.tax_id.includes(searchTerm)
+                );
+                setClients(filteredClients);
+              }
+              setCurrentPage(1); // Reset a la primera página
+            }}
           />
         </div>
       </div>
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>CUIT/CUIL</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="text-right">Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clients.map((client) => (
-                <TableRow key={client.person_id}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
-                  <TableCell>{client.tax_type}</TableCell>
-                  <TableCell>{client.tax_id}</TableCell>
-                  <TableCell>{client.phone}</TableCell>
-                  <TableCell>{client.email}</TableCell>
-                  <TableCell className="text-right">
-                    <Badge className="bg-green-500">
-                      {client.provider ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menú</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                        <DropdownMenuItem>Editar cliente</DropdownMenuItem>
-                        <DropdownMenuItem>
-                          Historial de compras
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => handleDeleteClient(client.person_id)}
-                        >
-                          Desactivar cliente
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {loading ? (
+        <Card>
+          <CardContent className="p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Cargando clientes...</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : error ? (
+        <Card>
+          <CardContent className="p-8">
+            <div className="text-center">
+              <p className="text-red-600">{error}</p>
+              <Button 
+                onClick={loadClients} 
+                className="mt-4 bg-blue-600 hover:bg-blue-700"
+              >
+                Reintentar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>CUIT/CUIL</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-right">Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {getPaginatedClients().map((client) => (
+                  <TableRow key={client.person_id}>
+                    <TableCell className="font-medium">{client.name}</TableCell>
+                    <TableCell>{client.tax_type}</TableCell>
+                    <TableCell>{client.tax_id}</TableCell>
+                    <TableCell>{client.phone}</TableCell>
+                    <TableCell>{client.email}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge className="bg-green-500">
+                        {client.provider ? "Activo" : "Inactivo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menú</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem>Ver detalles</DropdownMenuItem>
+                          <DropdownMenuItem>Editar cliente</DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Historial de compras
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleUpdatePersonStatus(client.person_id)}
+                          >
+                            Desactivar cliente
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        
+        {/* Paginación */}
+        {clients.length > 0 && (
+          <div className="flex items-center justify-between">
+            <ItemsPerPageSelector />
+            <Pagination />
+          </div>
+        )}
+      </>
+      )}
     </div>
   );
 }

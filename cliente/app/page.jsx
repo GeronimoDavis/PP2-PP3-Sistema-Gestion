@@ -13,7 +13,6 @@ function Login() {
   // login es una funcion que se ejecuta cuando se loguea el usuario
   const { login, user, token } = useAuth();
   // handleSubmit es una funcion que se ejecuta cuando se envía el formulario
-  console.log(token, user);
   if (token && user) {
     redirect("/dashboard");
   }

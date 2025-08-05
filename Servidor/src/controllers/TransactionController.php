@@ -52,23 +52,23 @@ class TransactionController{
         try{
             $data = $request->getParsedBody();
             //validaciones
-            if (!isset($data['date'], $data['amount'], $data['type'], $data['person_id'])) {
-                throw new Exception("Missing required fields.");
+            if (!isset($data['date'], $data['is_sale'], $data['person_id'], $data['tax_type'])) {
+                throw new Exception("Missing required fields: date, is_sale, person_id, tax_type");
             }
 
-            if (!is_numeric($data['amount']) || $data['amount'] <= 0) {
-                throw new Exception("Amount must be a positive number.");
+            if (!is_numeric($data['person_id']) || $data['person_id'] <= 0) {
+                throw new Exception("Invalid person ID.");
             }
 
-            if ($data["person_id"] && $data["transport_id"] <= 0) {
-                throw new Exception("Invalid person or transport ID.");
+            // transport_id puede ser null para ventas locales
+            if (isset($data['transport_id']) && $data['transport_id'] !== null && (!is_numeric($data['transport_id']) || $data['transport_id'] <= 0)) {
+                throw new Exception("Invalid transport ID.");
             }
 
             $validTaxTypes = ["R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"];
-            if (!isset($data['tax_type']) || !in_array($data['tax_type'], $validTaxTypes)) {
+            if (!in_array($data['tax_type'], $validTaxTypes)) {
                 throw new Exception("Invalid tax type.");
             }
-
 
             $transaction = new Transaction($data);
             $createdTransaction = $this->transactionService->create($transaction);
@@ -87,16 +87,17 @@ class TransactionController{
             $data = $request->getParsedBody();
             
             //validaciones
-            if (!isset($data['date'], $data['amount'], $data['type'], $data['person_id'])) {
-                throw new Exception("Missing required fields.");
+            if (!isset($data['date'], $data['is_sale'], $data['person_id'], $data['tax_type'])) {
+                throw new Exception("Missing required fields: date, is_sale, person_id, tax_type");
             }
 
-            if (!is_numeric($data['amount']) || $data['amount'] <= 0) {
-                throw new Exception("Amount must be a positive number.");
+            if (!is_numeric($data['person_id']) || $data['person_id'] <= 0) {
+                throw new Exception("Invalid person ID.");
             }
 
-            if ($data["person_id"] && $data["transport_id"] <= 0) {
-                throw new Exception("Invalid person or transport ID.");
+            // transport_id puede ser null para ventas locales
+            if (isset($data['transport_id']) && $data['transport_id'] !== null && (!is_numeric($data['transport_id']) || $data['transport_id'] <= 0)) {
+                throw new Exception("Invalid transport ID.");
             }
 
             $validTaxTypes = ["R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"];
