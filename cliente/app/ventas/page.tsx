@@ -816,78 +816,11 @@ export default function VentasPage() {
                 </TableHeader>
                 <TableBody>
                   <TableRow>
-                    <TableCell className="font-medium">#1001</TableCell>
-                    <TableCell>Estancia El Amanecer S.A.</TableCell>
-                    <TableCell>10/05/2023</TableCell>
-                    <TableCell className="text-right">$245,630.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Completada</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">#1002</TableCell>
-                    <TableCell>Juan Pérez</TableCell>
-                    <TableCell>08/05/2023</TableCell>
-                    <TableCell className="text-right">$37,850.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Completada</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">#1003</TableCell>
-                    <TableCell>Cooperativa Agrícola Regional</TableCell>
-                    <TableCell>05/05/2023</TableCell>
-                    <TableCell className="text-right">$156,780.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant="outline"
-                        className="text-yellow-600 border-yellow-600"
-                      >
-                        Pendiente
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">#1004</TableCell>
-                    <TableCell>María González</TableCell>
-                    <TableCell>01/05/2023</TableCell>
-                    <TableCell className="text-right">$12,450.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Completada</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">#1005</TableCell>
-                    <TableCell>Agrícola San Martín</TableCell>
-                    <TableCell>28/04/2023</TableCell>
-                    <TableCell className="text-right">$89,320.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Completada</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
+                    <TableCell 
+                      colSpan={6} 
+                      className="text-center py-8 text-muted-foreground"
+                    >
+                      No hay ventas registradas
                     </TableCell>
                   </TableRow>
                 </TableBody>
