@@ -41,7 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   getPersons,
   getPersonById,
@@ -70,12 +70,23 @@ export default function ClientesPage() {
 
   const { user, token, validateToken } = useAuth();
 
-  if (!token || !user || !validateToken(token)) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    return redirect("/");
-  }
+  const router = useRouter(); // Usar el hook useRouter
 
+  useEffect(() => {
+    // La lógica de validación se mueve aquí dentro
+    if (!token || !user || !validateToken(token)) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      router.push("/"); // Usar router.push para redirección en el cliente
+    }
+  }, [user, token, validateToken, router]); // Dependencias del efecto
+
+  // Opcional: Mostrar un loader mientras se valida
+  if (!token || !user) {
+    return <div>Cargando...</div>;
+  }
   const loadClients = async () => {
     setLoading(true);
     try {

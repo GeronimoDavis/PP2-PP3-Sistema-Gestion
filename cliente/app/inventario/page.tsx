@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Download,
   MoreHorizontal,
@@ -47,16 +47,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function InventarioPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { user, token, validateToken } = useAuth();
 
-  if (!token || !user || !validateToken(token)) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    return redirect("/");
+  const router = useRouter(); // Usar el hook useRouter
+
+  useEffect(() => {
+    // La lógica de validación se mueve aquí dentro
+    if (!token || !user || !validateToken(token)) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      router.push("/"); // Usar router.push para redirección en el cliente
+    }
+  }, [user, token, validateToken, router]); // Dependencias del efecto
+
+  // Opcional: Mostrar un loader mientras se valida
+  if (!token || !user) {
+    return <div>Cargando...</div>;
   }
 
   return (

@@ -1,5 +1,12 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 
 const AuthContext = createContext();
 
@@ -15,7 +22,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null); // Inicializar como null
 
-  const validateToken = (token) => {
+  const validateToken = useCallback((token) => {
     if (!token) return false;
 
     try {
@@ -27,42 +34,57 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return false;
     }
-  };
+  }, []);
 
   // Usar useEffect para acceder a localStorage después del montaje
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user");
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const user =
+      typeof window !== "undefined" ? localStorage.getItem("user") : null;
 
     if (token && user && validateToken(token)) {
       setToken(token);
       setUser(JSON.parse(user));
     } else {
       // Limpiar si el token es inválido
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
       setToken(null);
       setUser(null);
     }
-  }, []);
+  }, [validateToken]);
 
-  const login = (userData, userToken) => {
+  const login = useCallback((userData, userToken) => {
     setUser(userData);
     setToken(userToken);
-    localStorage.setItem("token", userToken);
-    localStorage.setItem("user", userData);
-  };
+    if (typeof window !== "undefined") {
+      localStorage.setItem("token", userToken);
+      localStorage.setItem("user", JSON.stringify(userData));
+    }
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-  };
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, token, login, logout, validateToken }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      login,
+      logout,
+      validateToken,
+    }),
+    [user, token, login, logout, validateToken]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
