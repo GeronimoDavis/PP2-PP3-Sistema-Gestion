@@ -21,6 +21,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null); // Inicializar como null
+  const [loading, setLoading] = useState(true);
 
   const validateToken = useCallback((token) => {
     if (!token) return false;
@@ -55,6 +56,7 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       setUser(null);
     }
+    setLoading(false);
   }, [validateToken]);
 
   const login = useCallback((userData, userToken) => {
@@ -79,11 +81,12 @@ export const AuthProvider = ({ children }) => {
     () => ({
       user,
       token,
+      loading,
       login,
       logout,
       validateToken,
     }),
-    [user, token, login, logout, validateToken]
+    [user, token, loading, login, logout, validateToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

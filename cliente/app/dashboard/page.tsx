@@ -14,35 +14,37 @@ import { Overview } from "@/components/overview";
 import { RecentVentas } from "@/components/recent-ventas";
 import { DatePickerWithRange } from "@/components/date-range-picker";
 import type { DateRange } from "react-day-picker";
-import { addDays } from "date-fns";
+import { addDays, subDays } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const { user, token, validateToken } = useAuth();
-
-  const router = useRouter(); // Usar el hook useRouter
+  const { user, token, validateToken, loading } = useAuth();
+  const router = useRouter();
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 29),
+    to: new Date(),
+  });
 
   useEffect(() => {
-    // La lógica de validación se mueve aquí dentro
-    if (!token || !user || !validateToken(token)) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+    if (!loading) {
+      if (!token || !user || !validateToken(token)) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+        router.push("/"); // Usar router.push para redirección en el cliente
       }
-      router.push("/"); // Usar router.push para redirección en el cliente
     }
-  }, [user, token, validateToken, router]); // Dependencias del efecto
+  }, [user, token, loading, validateToken, router]);
 
-  // Opcional: Mostrar un loader mientras se valida
-  if (!token || !user) {
+  if (loading) {
     return <div>Cargando...</div>;
   }
 
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(2023, 0, 1),
-    to: addDays(new Date(), 0),
-  });
+  if (loading) {
+    return null;
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">

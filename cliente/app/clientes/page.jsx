@@ -54,7 +54,7 @@ import { Textarea } from "@/components/ui/textarea";
 export default function ClientesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingClients, setLoadingClients] = useState(true);
   const [error, setError] = useState(null);
   const [clientData, setClientData] = useState({
     name: "",
@@ -71,30 +71,32 @@ export default function ClientesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const { user, token, validateToken } = useAuth();
+  const { user, token, validateToken, loading } = useAuth();
 
   const router = useRouter(); // Usar el hook useRouter
 
   useEffect(() => {
     // La lógica de validación se mueve aquí dentro
-    if (!token || !user || !validateToken(token)) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+    if (!loading) {
+      if (!token || !user || !validateToken(token)) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+        router.push("/"); // Usar router.push para redirección en el cliente
       }
-      router.push("/"); // Usar router.push para redirección en el cliente
     }
-  }, [user, token, validateToken, router]); // Dependencias del efecto
+  }, [user, token, validateToken, router, loading]); // Dependencias del efecto
 
   // Opcional: Mostrar un loader mientras se valida
-  if (!token || !user) {
+  if (loading) {
     return <div>Cargando...</div>;
   }
 
-//este es el que se encarga de obtener los clientes para paginarlos
+  //este es el que se encarga de obtener los clientes para paginarlos
 
   const loadClients = async () => {
-    setLoading(true);
+    setLoadingClients(true);
     try {
       //obtener los clientes
       const { persons } = await getPersons();
@@ -107,22 +109,25 @@ export default function ClientesPage() {
         // Redirigir al login si el token no es válido
         window.location.href = "/";
       } else {
-        setError("Error al cargar los clientes: " + (error.response?.data?.error || error.message));
+        setError(
+          "Error al cargar los clientes: " +
+            (error.response?.data?.error || error.message)
+        );
       }
       console.error("Error:", error);
     } finally {
-      setLoading(false);
+      setLoadingClients(false);
     }
   };
- //este es el que se encarga de crear un cliente
+  //este es el que se encarga de crear un cliente
   const handleCreateClient = async (clientData) => {
     try {
-      // Validaciones 
+      // Validaciones
       if (!clientData.email || !clientData.tax_id || !clientData.tax_type) {
         setError("Todos los campos son obligatorios");
         return;
       }
-    //validar que el CUIT/CUIL tenga 11 dígitos
+      //validar que el CUIT/CUIL tenga 11 dígitos
       if (clientData.tax_id.length !== 11) {
         setError("El CUIT/CUIL debe tener 11 dígitos");
         return;
@@ -151,7 +156,7 @@ export default function ClientesPage() {
     }
   };
   //este es el que se encarga de actualizar el estado de un cliente
-      const handleUpdatePersonStatus = async (id) => {
+  const handleUpdatePersonStatus = async (id) => {
     try {
       console.log("id", id);
       await updatePersonStatus(id);
@@ -172,30 +177,32 @@ export default function ClientesPage() {
 
   //este es el que se encarga de obtener el total de paginas
   const totalPages = Math.ceil(clients.length / itemsPerPage);
-//este es el que se encarga de obtener las paginas
+  //este es el que se encarga de obtener las paginas
   const Pagination = () => {
     const pages = [];
     const maxVisiblePages = 5;
-    
+
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
+
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
       pages.push(i);
     }
-    
+
     return (
       <div className="flex items-center justify-between px-2 py-4">
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-700">
-            Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, clients.length)} de {clients.length} clientes
+            Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+            {Math.min(currentPage * itemsPerPage, clients.length)} de{" "}
+            {clients.length} clientes
           </span>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -205,7 +212,7 @@ export default function ClientesPage() {
           >
             Primera
           </Button>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -214,7 +221,7 @@ export default function ClientesPage() {
           >
             Anterior
           </Button>
-          
+
           {pages.map((page) => (
             <Button
               key={page}
@@ -225,7 +232,7 @@ export default function ClientesPage() {
               {page}
             </Button>
           ))}
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -234,7 +241,7 @@ export default function ClientesPage() {
           >
             Siguiente
           </Button>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -252,10 +259,13 @@ export default function ClientesPage() {
     return (
       <div className="flex items-center space-x-2">
         <span className="text-sm text-gray-700">Mostrar:</span>
-        <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-          setItemsPerPage(parseInt(value));
-          setCurrentPage(1); // Reset a la primera página
-        }}>
+        <Select
+          value={itemsPerPage.toString()}
+          onValueChange={(value) => {
+            setItemsPerPage(parseInt(value));
+            setCurrentPage(1); // Reset a la primera página
+          }}
+        >
           <SelectTrigger className="w-20">
             <SelectValue />
           </SelectTrigger>
@@ -271,8 +281,10 @@ export default function ClientesPage() {
   };
 
   useEffect(() => {
-    loadClients();
-  }, []);
+    if (!loading && user) {
+      loadClients();
+    }
+  }, [loading, user]);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -463,13 +475,14 @@ export default function ClientesPage() {
             className="h-9 w-[150px] lg:w-[250px]"
             onChange={(e) => {
               const searchTerm = e.target.value.toLowerCase();
-              if (searchTerm === '') {
+              if (searchTerm === "") {
                 setClients(originalClients);
               } else {
-                const filteredClients = originalClients.filter(client => 
-                  client.name.toLowerCase().includes(searchTerm) ||
-                  client.email.toLowerCase().includes(searchTerm) ||
-                  client.tax_id.includes(searchTerm)
+                const filteredClients = originalClients.filter(
+                  (client) =>
+                    client.name.toLowerCase().includes(searchTerm) ||
+                    client.email.toLowerCase().includes(searchTerm) ||
+                    client.tax_id.includes(searchTerm)
                 );
                 setClients(filteredClients);
               }
@@ -478,7 +491,7 @@ export default function ClientesPage() {
           />
         </div>
       </div>
-      {loading ? (
+      {loadingClients ? (
         <Card>
           <CardContent className="p-8">
             <div className="text-center">
@@ -492,8 +505,8 @@ export default function ClientesPage() {
           <CardContent className="p-8">
             <div className="text-center">
               <p className="text-red-600">{error}</p>
-              <Button 
-                onClick={loadClients} 
+              <Button
+                onClick={loadClients}
                 className="mt-4 bg-blue-600 hover:bg-blue-700"
               >
                 Reintentar
@@ -519,57 +532,61 @@ export default function ClientesPage() {
                 </TableHeader>
                 <TableBody>
                   {getPaginatedClients().map((client) => (
-                  <TableRow key={client.person_id}>
-                    <TableCell className="font-medium">{client.name}</TableCell>
-                    <TableCell>{client.tax_type}</TableCell>
-                    <TableCell>{client.tax_id}</TableCell>
-                    <TableCell>{client.phone}</TableCell>
-                    <TableCell>{client.email}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">
-                        {client.provider ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                          <DropdownMenuItem>Editar cliente</DropdownMenuItem>
-                          <DropdownMenuItem>
-                            Historial de compras
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => handleUpdatePersonStatus(client.person_id)}
-                          >
-                            Desactivar cliente
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        
-        {/* Paginación */}
-        {clients.length > 0 && (
-          <div className="flex items-center justify-between">
-            <ItemsPerPageSelector />
-            <Pagination />
-          </div>
-        )}
-      </>
+                    <TableRow key={client.person_id}>
+                      <TableCell className="font-medium">
+                        {client.name}
+                      </TableCell>
+                      <TableCell>{client.tax_type}</TableCell>
+                      <TableCell>{client.tax_id}</TableCell>
+                      <TableCell>{client.phone}</TableCell>
+                      <TableCell>{client.email}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge className="bg-green-500">
+                          {client.provider ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menú</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem>Ver detalles</DropdownMenuItem>
+                            <DropdownMenuItem>Editar cliente</DropdownMenuItem>
+                            <DropdownMenuItem>
+                              Historial de compras
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() =>
+                                handleUpdatePersonStatus(client.person_id)
+                              }
+                            >
+                              Desactivar cliente
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Paginación */}
+          {clients.length > 0 && (
+            <div className="flex items-center justify-between">
+              <ItemsPerPageSelector />
+              <Pagination />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

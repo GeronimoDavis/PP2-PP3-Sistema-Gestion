@@ -11,17 +11,19 @@ function Login() {
   // password es el estado del input de password
   const [password, setPassword] = useState("");
   // login es una funcion que se ejecuta cuando se loguea el usuario
-  const { login, user, token, validateToken } = useAuth();
+  const { login, user, token, validateToken, loading } = useAuth();
   // handleSubmit es una funcion que se ejecuta cuando se envía el formulario
 
   const router = useRouter(); // Usar el hook useRouter
 
   useEffect(() => {
     // La lógica de validación se mueve aquí dentro
-    if (token && user && validateToken(token)) {
-      router.push("/dashboard");
+    if (!loading) {
+      if (token && user && validateToken(token)) {
+        router.push("/dashboard");
+      }
     }
-  }, [token, user, validateToken, router]);
+  }, [token, user, validateToken, router, loading]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

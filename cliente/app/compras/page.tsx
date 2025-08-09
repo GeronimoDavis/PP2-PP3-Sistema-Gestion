@@ -44,26 +44,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function ComprasPage() {
-  const { user, token, validateToken } = useAuth();
-
-  const router = useRouter(); // Usar el hook useRouter
-
-  useEffect(() => {
-    // La lógica de validación se mueve aquí dentro
-    if (!token || !user || !validateToken(token)) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
-      router.push("/"); // Usar router.push para redirección en el cliente
-    }
-  }, [user, token, validateToken, router]); // Dependencias del efecto
-
-  // Opcional: Mostrar un loader mientras se valida
-  if (!token || !user) {
-    return <div>Cargando...</div>;
-  }
-
   const [cartItems, setCartItems] = useState([
     {
       id: 1,
@@ -82,8 +62,29 @@ export default function ComprasPage() {
       total: 195000,
     },
   ]);
-
   const [isProveedorDialogOpen, setIsProveedorDialogOpen] = useState(false);
+
+  const { user, token, validateToken, loading } = useAuth();
+
+  const router = useRouter(); // Usar el hook useRouter
+
+  useEffect(() => {
+    // La lógica de validación se mueve aquí dentro
+    if (!loading) {
+      if (!token || !user || !validateToken(token)) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+        router.push("/"); // Usar router.push para redirección en el cliente
+      }
+    }
+  }, [user, token, validateToken, router, loading]); // Dependencias del efecto
+
+  // Opcional: Mostrar un loader mientras se valida
+  if (loading) {
+    return <div>Cargando...</div>;
+  }
 
   const removeItem = (id: number) => {
     setCartItems(cartItems.filter((item) => item.id !== id));

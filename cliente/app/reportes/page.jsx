@@ -66,23 +66,25 @@ export default function ReportesPage() {
     to: addDays(new Date(), 0),
   });
 
-  const { user, token, validateToken } = useAuth();
+  const { user, token, validateToken, loading } = useAuth();
 
   const router = useRouter(); // Usar el hook useRouter
 
   useEffect(() => {
     // La lógica de validación se mueve aquí dentro
-    if (!token || !user || !validateToken(token)) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+    if (!loading) {
+      if (!token || !user || !validateToken(token)) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+        router.push("/"); // Usar router.push para redirección en el cliente
       }
-      router.push("/"); // Usar router.push para redirección en el cliente
     }
-  }, [user, token, validateToken, router]); // Dependencias del efecto
+  }, [user, token, validateToken, router, loading]); // Dependencias del efecto
 
   // Opcional: Mostrar un loader mientras se valida
-  if (!token || !user) {
+  if (loading) {
     return <div>Cargando...</div>;
   }
   return (
