@@ -134,7 +134,7 @@ class ProductController
             $data = $request->getParsedBody();
 
             //validaciones
-            if (!isset($data['code'], $data['description'], $data['category_id'], $data['stock'], $data['purchase_price'])) {
+            if (!isset($data['code'], $data['name'], $data['category_id'], $data['stock'], $data['purchase_price'])) {
                 throw new Exception("Missing required fields.");
             }
 
@@ -142,12 +142,9 @@ class ProductController
             $product = new Product($data);
             $createdProduct = $this->productService->create($product);
             $response->getBody()->write(json_encode(['product' => $createdProduct->toArray()]));
-            $data = $request->getParsedBody();
-            var_dump($data);
-            die();
             return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
         } catch (Throwable $e) {
-            throw new Exception("Error creating person: " . $e->getMessage());
+            throw new Exception("Error creating product: " . $e->getMessage());
         }
     
    }
@@ -177,6 +174,17 @@ class ProductController
        } catch (Throwable $e) {
            throw new Exception("Error deleting product: " . $e->getMessage());
        }
+   }
+   public function updateProductStatus(Request $request, Response $response, $args)
+   {
+    try {
+        $id = $args['id'];
+        $this->productService->updateStatus($id);
+        $response->getBody()->write(json_encode(['message' => 'Product status updated successfully']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    } catch (Throwable $e) {
+        throw new Exception("Error updating product status: " . $e->getMessage());
+    }
    }
 
 

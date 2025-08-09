@@ -18,7 +18,7 @@ class ProductService{
     {
         try{
        
-         $query = "SELECT * FROM product ORDER BY product_id";
+         $query = "SELECT * FROM product WHERE active = 1 ORDER BY product_id";
         $stmt = $this->pdo->prepare($query);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -53,16 +53,13 @@ class ProductService{
     public function getByCode($code)
     {
         try {
-            $query = "SELECT * FROM product WHERE code = ?";
+            $query = "SELECT * FROM product WHERE code = ? AND active = 1";
             $stmt = $this->pdo->prepare($query);
             $stmt->execute([$code]);
             $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$product) {
-                throw new Exception("Product not found with code: $code");
-            }
-
-            return new Product($product);
+            // Retornar null si no encuentra el producto, no lanzar excepción
+            return $product ? new Product($product) : null;
         } catch (PDOException $e) {
             throw new Exception("Error fetching product by code $code: " . $e->getMessage());
         }
@@ -71,15 +68,12 @@ class ProductService{
     public function getByName($name)
     {
         try {
-            $query = "SELECT * FROM product WHERE name LIKE ?";
+            $query = "SELECT * FROM product WHERE (name LIKE ? OR code LIKE ?) AND active = 1";
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute(['%' . $name . '%']);
+            $stmt->execute(['%' . $name . '%', '%' . $name . '%']);
             $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            if (!$products) {
-                throw new Exception("No products found with name: $name");
-            }
-
+            // Retornar array vacío si no hay productos, no lanzar excepción
             return array_map(fn($p) => new Product($p), $products);
         } catch (PDOException $e) {
             throw new Exception("Error fetching products by name: " . $e->getMessage());
@@ -88,15 +82,12 @@ class ProductService{
     public function getByCategory($category_id)
     {
         try {
-            $query = "SELECT * FROM product WHERE category_id = ?";
+            $query = "SELECT * FROM product WHERE category_id = ? AND active = 1";
             $stmt = $this->pdo->prepare($query);
             $stmt->execute([$category_id]);
             $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            if (!$products) {
-                throw new Exception("No products found for category ID: $category_id");
-            }
-
+            // Retornar array vacío si no hay productos, no lanzar excepción
             return array_map(fn($p) => new Product($p), $products);
         } catch (PDOException $e) {
             throw new Exception("Error fetching products by category ID: " . $e->getMessage());
@@ -181,16 +172,18 @@ class ProductService{
 
     public function create(Product $product){
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO product (name, code, stock, purchase_price, category_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO product (name, code, stock, purchase_price, category_id, active) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $product->name,
                 $product->code,
                 $product->stock,
                 $product->purchase_price,
-                $product->category_id
+                $product->category_id,
+                1 // active por defecto para que se muestre en el frontend cuando se crea un producto
 
             ]);
             $product->product_id = $this->pdo->lastInsertId();
+            $product->active = 1;
             return $product;
         } catch (\Throwable $e) {
             throw new Exception("Error creating product: " . $e->getMessage());
@@ -228,6 +221,16 @@ class ProductService{
         } catch (PDOException $e) {
             throw new Exception("Error deleting product: " . $e->getMessage());
         }
+    }
+    public function updateStatus($id)
+    {
+        try {
+            $stmt = $this->pdo->prepare("UPDATE product SET active = 0 WHERE product_id = ? AND active = 1");
+            $stmt->execute([$id]);
+        } catch (PDOException $e) {
+            throw new Exception("Error updating product status: " . $e->getMessage());
+        }
+
     }
   
 

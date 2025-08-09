@@ -2,7 +2,7 @@ import api from "./api.js";
 
 const getPersons = async () => {
   try {
-    const response = await api.get("/person/show");
+    const response = await api.get("/person/show"); 
     return response.data;
   } catch (error) {
     throw error;
@@ -36,13 +36,13 @@ const updatePerson = async (id, personData) => {
   }
 };
 
-const deletePerson = async (id) => {
-  try {
-    const response = await api.delete(`/person/delete/${id}`);
+const updatePersonStatus = async (id) => {
+  try { 
+    const response = await api.put(`/person/updateStatus/${id}`); //no se elimina, se desactiva
     return response.data;
   } catch (error) {
     throw error;
   }
 };
 
-export { getPersons, getPersonById, createPerson, updatePerson, deletePerson };
+export { getPersons, getPersonById, createPerson, updatePerson, updatePersonStatus };

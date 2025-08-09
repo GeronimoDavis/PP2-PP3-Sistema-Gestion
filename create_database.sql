@@ -18,6 +18,7 @@ create table if not EXISTS person (
 	"Monotributo",
 	"Consumidor Final"
 	),
+	active BOOLEAN DEFAULT TRUE,
 	primary key(person_id)
 );
 
@@ -25,21 +26,24 @@ create TABLE users (
 	user_id int primary key auto_increment unique,
 	username varchar(20) not null unique,
 	password varchar(255) not null,
-	role enum("Administrador", "Contador") not null
+	role enum("Administrador", "Contador") not null,
+	active BOOLEAN DEFAULT TRUE
 	);
 
 create table if not EXISTS category(
 	category_id int primary key auto_increment unique,
-	name varchar(30)
+	name varchar(30),
+	active BOOLEAN DEFAULT TRUE
 );
 
 create table if not EXISTS product(
 	product_id int primary key auto_increment unique,
 	name varchar(50),
-	code varchar(20) not null,
+	code varchar(20) not null unique,
 	stock mediumint,
 	purchase_price float,
 	category_id int,
+	active BOOLEAN DEFAULT TRUE,
 	foreign key(category_id) references category(category_id)
 );
 
@@ -47,7 +51,8 @@ create table if not EXISTS product(
 create table transport_companies(
 	company_id int primary key auto_increment unique,
 	name varchar(30),
-	url varchar(40)
+	url varchar(40),
+	active BOOLEAN DEFAULT TRUE
 );
 
 create table transaction(
@@ -55,7 +60,7 @@ create table transaction(
 	date date,
 	is_sale bool,
 	person_id int,
-	transport_id int, 
+	transport_id int NULL,	 
 	tracking_number varchar(20),
 	tax_type enum("R.I",
 	"Exento",

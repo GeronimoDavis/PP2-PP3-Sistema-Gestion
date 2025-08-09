@@ -13,6 +13,7 @@ function Login() {
   // login es una funcion que se ejecuta cuando se loguea el usuario
   const { login, user, token, validateToken } = useAuth();
   // handleSubmit es una funcion que se ejecuta cuando se envía el formulario
+
   const router = useRouter(); // Usar el hook useRouter
 
   useEffect(() => {
