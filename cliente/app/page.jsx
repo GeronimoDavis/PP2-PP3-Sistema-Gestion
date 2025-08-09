@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { loginUser } from "@/api/loginApi";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 function Login() {
   // username y password son los estados del input de username y password
@@ -11,11 +11,17 @@ function Login() {
   // password es el estado del input de password
   const [password, setPassword] = useState("");
   // login es una funcion que se ejecuta cuando se loguea el usuario
-  const { login, user, token } = useAuth();
+  const { login, user, token, validateToken } = useAuth();
   // handleSubmit es una funcion que se ejecuta cuando se envía el formulario
-  if (token && user) {
-    redirect("/dashboard");
-  }
+
+  const router = useRouter(); // Usar el hook useRouter
+
+  useEffect(() => {
+    // La lógica de validación se mueve aquí dentro
+    if (token && user && validateToken(token)) {
+      router.push("/dashboard");
+    }
+  }, [token, user, validateToken, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BarChart3, Download, LineChart, PieChart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DatePickerWithRange } from "@/components/date-range-picker";
-import type { DateRange } from "react-day-picker";
+import { DateRange } from "react-day-picker";
 import { addDays } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -58,20 +58,33 @@ const lineData = [
 ];
 
 import { useAuth } from "@/context/AuthContext";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function ReportesPage() {
-  const [date, setDate] = useState<DateRange | undefined>({
+  const [date, setDate] = useState({
     from: new Date(2023, 0, 1),
     to: addDays(new Date(), 0),
   });
 
-  const { user, token } = useAuth();
+  const { user, token, validateToken } = useAuth();
 
+  const router = useRouter(); // Usar el hook useRouter
+
+  useEffect(() => {
+    // La lógica de validación se mueve aquí dentro
+    if (!token || !user || !validateToken(token)) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      router.push("/"); // Usar router.push para redirección en el cliente
+    }
+  }, [user, token, validateToken, router]); // Dependencias del efecto
+
+  // Opcional: Mostrar un loader mientras se valida
   if (!token || !user) {
-    return redirect("/");
+    return <div>Cargando...</div>;
   }
-
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">

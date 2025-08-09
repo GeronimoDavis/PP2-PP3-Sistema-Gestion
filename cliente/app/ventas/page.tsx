@@ -1,7 +1,8 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { Download, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { getProductByCode, getProductByName } from "@/api/productsApi";
 import { Loader2 } from "lucide-react";
@@ -41,11 +42,20 @@ import { getPersons } from "@/api/personsApi";
 import { createItem } from "@/api/itemsApi";
 
 export default function VentasPage() {
-  const { user, token } = useAuth();
+  const { user, token, validateToken } = useAuth();
 
-  if (!token || !user) {
-    return redirect("/");
-  }
+  const router = useRouter(); // Usar el hook useRouter
+
+  useEffect(() => {
+    // La lógica de validación se mueve aquí dentro
+    if (!token || !user || !validateToken(token)) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      router.push("/"); // Usar router.push para redirección en el cliente
+    }
+  }, [user, token, validateToken, router]); // Dependencias del efecto
 
   // Definir el tipo de item del carrito
   const [cartItems, setCartItems] = useState<Array<{

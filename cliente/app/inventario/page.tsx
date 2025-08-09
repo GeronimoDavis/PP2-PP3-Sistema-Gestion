@@ -49,14 +49,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getProducts, updateProductStatus, getProductByCategory, createProduct, updateProduct } from "@/api/productsApi";
 import { getCategories } from "@/api/categoriesApi";
 
-
-
 export default function InventarioPage() {  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const { user, token, validateToken } = useAuth();
+
+  const router = useRouter(); // Usar el hook useRouter
+
+  useEffect(() => {
+    // La lógica de validación se mueve aquí dentro
+    if (!token || !user || !validateToken(token)) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      router.push("/"); // Usar router.push para redirección en el cliente
+    }
+  }, [user, token, validateToken, router]); // Dependencias del efecto
+
+  // Opcional: Mostrar un loader mientras se valida
+
   const { user, token } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -472,11 +488,6 @@ const handleClearFilters = async () => {
   };
   
   const totalPages = Math.ceil(products.length / itemsPerPage);
-
-  //si no hay token o usuario, se redirige a la pagina de login
-  if (!token || !user) {
-    return redirect("/");
-  }
 
   //este es el que se encarga de obtener los productos y las categorias
   useEffect(() => {

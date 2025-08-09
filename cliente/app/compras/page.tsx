@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Plus, ShoppingBag, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,13 +41,27 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function ComprasPage() {
-  const { user, token } = useAuth();
+  const { user, token, validateToken } = useAuth();
 
+  const router = useRouter(); // Usar el hook useRouter
+
+  useEffect(() => {
+    // La lógica de validación se mueve aquí dentro
+    if (!token || !user || !validateToken(token)) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      router.push("/"); // Usar router.push para redirección en el cliente
+    }
+  }, [user, token, validateToken, router]); // Dependencias del efecto
+
+  // Opcional: Mostrar un loader mientras se valida
   if (!token || !user) {
-    return redirect("/");
+    return <div>Cargando...</div>;
   }
 
   const [cartItems, setCartItems] = useState([
