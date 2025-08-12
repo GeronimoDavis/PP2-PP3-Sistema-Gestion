@@ -226,13 +226,15 @@ export default function VentasPage() {
   const [salesHistory, setSalesHistory] = useState<SalesHistoryItem[]>([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
   const [salesError, setSalesError] = useState("");
+  const [totalSales, setTotalSales] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Filtros del historial
   const [salesFilters, setSalesFilters] = useState({
     start_date: "",
     end_date: "",
     client_name: "",
-    limit: 25
+    limit: 10 as number | undefined
   });
 
   // Detalles de venta - Corregido el tipo
@@ -419,10 +421,12 @@ export default function VentasPage() {
     try {
       const response = await getSalesHistory(salesFilters);
       setSalesHistory(response.sales || []);
+      setTotalSales(response.total || 0);
     } catch (error: any) {
       console.error("Error al cargar historial de ventas:", error.message);
       setSalesError("Error al cargar el historial de ventas");
       setSalesHistory([]);
+      setTotalSales(0);
     } finally {
       setIsLoadingSales(false);
     }
@@ -444,10 +448,36 @@ export default function VentasPage() {
       start_date: "",
       end_date: "",
       client_name: "",
-      limit: 25
+      limit: 10
     });
+    setCurrentPage(1);
     loadSalesHistory();
   };
+
+
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const limit = salesFilters.limit || 10;
+    const offset = (page - 1) * limit;
+    setSalesFilters(prev => ({
+      ...prev,
+      offset: offset
+    }));
+    loadSalesHistory();
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setCurrentPage(1);
+    setSalesFilters(prev => ({
+      ...prev,
+      limit: newLimit,
+      offset: 0
+    }));
+    loadSalesHistory();
+  };
+
+  const totalPages = Math.ceil(totalSales / (salesFilters.limit || 10));
 
   const handleViewSaleDetails = async (transactionId: number) => {
     setIsLoadingSaleDetails(true);
@@ -538,6 +568,9 @@ export default function VentasPage() {
       setClientSearchTerm("");
       setPaymentAmount(0);
       setPaymentNote("");
+
+      // 5. Recargar el historial de ventas
+      loadSalesHistory();
 
       alert("Venta finalizada exitosamente!");
     } catch (error: any) {
@@ -1010,76 +1043,152 @@ export default function VentasPage() {
              
               
               {isLoadingSales ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span className="ml-2">Cargando historial...</span>
-                </div>
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                      <p className="mt-2 text-gray-600">Cargando historial de ventas...</p>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : salesError ? (
-                <div className="text-red-600 text-center py-8">
-                  {salesError}
-                </div>
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <p className="text-red-600">{salesError}</p>
+                      <Button
+                        onClick={loadSalesHistory}
+                        className="mt-4 bg-blue-600 hover:bg-blue-700"
+                      >
+                        Reintentar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : salesHistory.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No se encontraron ventas
-                </div>
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <p className="text-gray-600">No se encontraron ventas</p>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Nº Venta</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Pagado</TableHead>
-                      <TableHead className="text-right">Estado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {salesHistory.map((sale) => {
-                      const paymentStatus = getPaymentStatus(sale.total_transaction, sale.total_paid);
-                      return (
-                        <TableRow key={sale.transaction_id}>
-                          <TableCell className="font-medium">
-                            #{sale.transaction_id}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{sale.client_name}</div>
-                              {sale.client_company && (
-                                <div className="text-sm text-muted-foreground">
-                                  {sale.client_company}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>{formatDate(sale.date)}</TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(sale.total_transaction)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(sale.total_paid)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge className={paymentStatus.color}>
-                              {paymentStatus.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
+                <div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">Nº Venta</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">Pagado</TableHead>
+                        <TableHead className="text-right">Estado</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {salesHistory.map((sale) => {
+                        const paymentStatus = getPaymentStatus(sale.total_transaction, sale.total_paid);
+                        return (
+                          <TableRow key={sale.transaction_id}>
+                            <TableCell className="font-medium">
+                              #{sale.transaction_id}
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{sale.client_name}</div>
+                                {sale.client_company && (
+                                  <div className="text-sm text-muted-foreground">
+                                    {sale.client_company}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>{formatDate(sale.date)}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(sale.total_transaction)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(sale.total_paid)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge className={paymentStatus.color}>
+                                {paymentStatus.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewSaleDetails(sale.transaction_id)}
+                                disabled={isLoadingSaleDetails}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Controles de paginación */}
+                  {totalSales > 0 && (
+                    <div className="flex items-center justify-between mt-4">
+                                            <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Mostrar:</span>
+                          <Select 
+                            value={salesFilters.limit?.toString() || "10"} 
+                            onValueChange={(value) => handleLimitChange(parseInt(value))}
+                          >
+                            <SelectTrigger className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="5">5</SelectItem>
+                              <SelectItem value="10">10</SelectItem>
+                              <SelectItem value="25">25</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="text-sm text-muted-foreground">
+                          {totalSales} ventas
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {totalPages > 1 && (
+                          <div className="flex items-center gap-1">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleViewSaleDetails(sale.transaction_id)}
-                              disabled={isLoadingSaleDetails}
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage === 1}
                             >
-                              <Eye className="h-4 w-4" />
+                              ←
                             </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                            
+                            <span className="px-3 py-1 text-sm">
+                              Página {currentPage} de {totalPages}
+                            </span>
+                            
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              disabled={currentPage === totalPages}
+                            >
+                              →
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
