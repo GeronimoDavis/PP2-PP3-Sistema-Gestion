@@ -127,7 +127,34 @@ class TransactionController{
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+
+    public function getSalesHistory(Request $request, Response $response, $args){
+        try{
+            $filters = $request->getQueryParams();
+            
+            $sales = $this->transactionService->getSalesWithDetails($filters);
+            
+            $response->getBody()->write(json_encode(['sales' => $sales]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }catch(Throwable $e){
+            $response->getBody()->write(json_encode([
+                'error' => 'Error fetching sales history: ' . $e->getMessage()
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+
+    public function getSaleDetails(Request $request, Response $response, $args){
+        try {
+            $id = $args['id'];
+            $saleDetails = $this->transactionService->getSaleDetailsById($id);
+            $response->getBody()->write(json_encode($saleDetails));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Throwable $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error fetching sale details: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
     
 }
-
 ?>

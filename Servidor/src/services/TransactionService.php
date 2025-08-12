@@ -142,5 +142,184 @@ class TransactionService{
 
     }
 
+    public function getSalesWithDetails(array $filters = []) {
+        try {
+            
+            $query = "
+                SELECT 
+                    t.transaction_id,
+                    t.date,
+                    t.is_sale,
+                    t.tax_type,
+                    t.tracking_number,
+                    p.person_id,
+                    p.name as client_name,
+                    p.company_name as client_company,
+                    p.email as client_email,
+                    p.phone as client_phone,
+                    tc.name as transport_company,
+                    tc.url as transport_url,
+                    COALESCE(SUM(i.quantity * i.price), 0) as total_items,
+                    COALESCE(SUM(e.price), 0) as total_extras,
+                    COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0) as total_transaction,
+                    COALESCE(SUM(pa.amount), 0) as total_paid,
+                    COUNT(DISTINCT i.item_id) as items_count,
+                    COUNT(DISTINCT e.extra_id) as extras_count,
+                    COUNT(DISTINCT pa.payment_id) as payments_count
+                FROM transaction t
+                LEFT JOIN person p ON t.person_id = p.person_id
+                LEFT JOIN transport_companies tc ON t.transport_id = tc.company_id
+                LEFT JOIN items i ON t.transaction_id = i.transaction_id
+                LEFT JOIN extras e ON t.transaction_id = e.transaction_id
+                LEFT JOIN payments pa ON t.transaction_id = pa.transaction_id
+                WHERE t.is_sale = 1
+            ";
+            
+            $params = [];
+
+            // Aplicar filtros
+            if (isset($filters['start_date'])) {
+                $query .= " AND t.date >= ?";
+                $params[] = $filters['start_date'];
+            }
+
+            if (isset($filters['end_date'])) {
+                $query .= " AND t.date <= ?";
+                $params[] = $filters['end_date'];
+            }
+
+            if (isset($filters['client_name'])) {
+                $query .= " AND (p.name LIKE ? OR p.company_name LIKE ?)";
+                $searchTerm = '%' . $filters['client_name'] . '%';
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+            }
+
+            if (isset($filters['transaction_id'])) {
+                $query .= " AND t.transaction_id = ?";
+                $params[] = $filters['transaction_id'];
+            }
+
+            $query .= " GROUP BY t.transaction_id, t.date, t.is_sale, t.tax_type, t.tracking_number, p.person_id, p.name, p.company_name, p.email, p.phone, tc.name, tc.url, t.transport_id";
+            $query .= " ORDER BY t.date DESC";
+
+            // Aplicar limite y offset para paginacion 
+            if (isset($filters['limit'])) {
+                $query .= " LIMIT ?";
+                $params[] = (int)$filters['limit'];
+                
+                if (isset($filters['offset'])) {
+                    $query .= " OFFSET ?";
+                    $params[] = (int)$filters['offset'];
+                }
+            }
+
+            $stmt = $this->pdo->prepare($query);
+            
+            // Bind parameters con tipos correctos
+            foreach ($params as $index => $param) {
+                $paramType = is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($index + 1, $param, $paramType);
+            }
+            
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return $rows;
+        } catch (PDOException $e) {
+            throw new Exception("Error al obtener ventas con detalles: " . $e->getMessage());
+        }
+    }
+
+    public function getSaleDetailsById(int $transactionId) {
+        try {
+            // Obtener informacion basica de la transaccion
+            $transactionQuery = "
+                SELECT 
+                    t.*,
+                    p.name as client_name,
+                    p.company_name as client_company,
+                    p.email as client_email,
+                    p.phone as client_phone,
+                    p.tax_id as client_tax_id,
+                    tc.name as transport_company,
+                    tc.url as transport_url
+                FROM transaction t
+                LEFT JOIN person p ON t.person_id = p.person_id
+                LEFT JOIN transport_companies tc ON t.transport_id = tc.company_id
+                WHERE t.transaction_id = ? AND t.is_sale = 1
+            ";
+            
+            $stmt = $this->pdo->prepare($transactionQuery);
+            $stmt->execute([$transactionId]);
+            $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$transaction) {
+                throw new Exception("Venta no encontrada con ID: $transactionId");
+            }
+
+            // Obtener items de la transaccion
+            $itemsQuery = "
+                SELECT 
+                    i.*,
+                    p.name as product_name,
+                    p.code as product_code,
+                    p.purchase_price as product_cost
+                FROM items i
+                LEFT JOIN product p ON i.product_id = p.product_id
+                WHERE i.transaction_id = ?
+                ORDER BY i.item_id
+            ";
+            
+            $stmt = $this->pdo->prepare($itemsQuery);
+            $stmt->execute([$transactionId]);
+            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Obtener extras de la transaccion
+            $extrasQuery = "
+                SELECT * FROM extras 
+                WHERE transaction_id = ?
+                ORDER BY extra_id
+            ";
+            
+            $stmt = $this->pdo->prepare($extrasQuery);
+            $stmt->execute([$transactionId]);
+            $extras = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                // Obtener pagos de la transaccion
+            $paymentsQuery = "
+                SELECT * FROM payments 
+                WHERE transaction_id = ?
+                ORDER BY date
+            ";
+            
+            $stmt = $this->pdo->prepare($paymentsQuery);
+            $stmt->execute([$transactionId]);
+            $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Calcular totales
+            $totalItems = array_sum(array_map(fn($item) => $item['quantity'] * $item['price'], $items));
+            $totalExtras = array_sum(array_map(fn($extra) => $extra['price'], $extras));
+            $totalTransaction = $totalItems + $totalExtras;
+            $totalPaid = array_sum(array_map(fn($payment) => $payment['amount'], $payments));
+
+            return [
+                'transaction' => $transaction,
+                'items' => $items,
+                'extras' => $extras,
+                'payments' => $payments,
+                'totals' => [
+                    'items' => $totalItems,
+                    'extras' => $totalExtras,
+                    'transaction' => $totalTransaction,
+                    'paid' => $totalPaid,
+                    'pending' => $totalTransaction - $totalPaid
+                ]
+            ];
+        } catch (PDOException $e) {
+            throw new Exception("Error al obtener detalles de la venta: " . $e->getMessage());
+        }
+    }
+
 }
 ?>

@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 
 import { useEffect, useState } from "react";
-import { Download, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Download, Plus, ShoppingCart, Trash2, Search, Eye, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,6 +46,83 @@ import { createTransaction } from "@/api/transactionsApi";
 import { createPayment } from "@/api/paymentsApi";
 import { getPersons } from "@/api/personsApi";
 import { createItem } from "@/api/itemsApi";
+import { getSalesHistory, getSaleDetails } from "@/api/transactionsApi";
+
+// Interfaces TypeScript para los tipos de datos
+interface SaleItem {
+  item_id: number;
+  transaction_id: number;
+  product_id: number;
+  quantity: number;
+  price: number;
+  product_name: string;
+  product_code: string;
+  product_cost: number;
+}
+
+interface SaleExtra {
+  extra_id: number;
+  transaction_id: number;
+  type: string;
+  price: number;
+  note: string;
+}
+
+interface SalePayment {
+  payment_id: number;
+  transaction_id: number;
+  date: string;
+  type: string;
+  amount: number;
+  note: string;
+}
+
+interface SaleTransaction {
+  transaction_id: number;
+  date: string;
+  is_sale: boolean;
+  person_id: number;
+  transport_id: number | null;
+  tax_type: string;
+  tracking_number: string | null;
+  client_name: string;
+  client_company: string;
+  client_email: string;
+  client_phone: string;
+  client_tax_id: string;
+  transport_company: string | null;
+  transport_url: string | null;
+}
+
+interface SaleTotals {
+  items: number;
+  extras: number;
+  transaction: number;
+  paid: number;
+  pending: number;
+}
+
+interface SaleDetails {
+  transaction: SaleTransaction;
+  items: SaleItem[];
+  extras: SaleExtra[];
+  payments: SalePayment[];
+  totals: SaleTotals;
+}
+
+interface SalesHistoryItem {
+  transaction_id: number;
+  date: string;
+  client_name: string;
+  client_company: string;
+  total_transaction: number;
+  total_paid: number;
+  total_items: number;
+  total_extras: number;
+  items_count: number;
+  extras_count: number;
+  payments_count: number;
+}
 
 export default function VentasPage() {
   const { user, token, validateToken, loading } = useAuth();
@@ -145,6 +222,24 @@ export default function VentasPage() {
   //mostrar resultados de búsqueda de clientes
   const [showClientResults, setShowClientResults] = useState(false);
 
+  // HISTORIAL DE VENTAS
+  const [salesHistory, setSalesHistory] = useState<SalesHistoryItem[]>([]);
+  const [isLoadingSales, setIsLoadingSales] = useState(false);
+  const [salesError, setSalesError] = useState("");
+  
+  // Filtros del historial
+  const [salesFilters, setSalesFilters] = useState({
+    start_date: "",
+    end_date: "",
+    client_name: "",
+    limit: 25
+  });
+
+  // Detalles de venta - Corregido el tipo
+  const [selectedSale, setSelectedSale] = useState<SaleDetails | null>(null);
+  const [showSaleDetails, setShowSaleDetails] = useState(false);
+  const [isLoadingSaleDetails, setIsLoadingSaleDetails] = useState(false);
+
   // calculo de IVA
   const calculateTax = () => {
     const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
@@ -190,7 +285,7 @@ export default function VentasPage() {
         } catch (codeError) {}
       }
 
-      console.log("Resultados finales:", results);
+
 
       setSearchResults(results);
 
@@ -316,6 +411,69 @@ export default function VentasPage() {
     }
   };
 
+  // HISTORIAL DE VENTAS
+  const loadSalesHistory = async () => {
+    setIsLoadingSales(true);
+    setSalesError("");
+    
+    try {
+      const response = await getSalesHistory(salesFilters);
+      setSalesHistory(response.sales || []);
+    } catch (error: any) {
+      console.error("Error al cargar historial de ventas:", error.message);
+      setSalesError("Error al cargar el historial de ventas");
+      setSalesHistory([]);
+    } finally {
+      setIsLoadingSales(false);
+    }
+  };
+
+  const handleSalesFilterChange = (key: string, value: string) => {
+    setSalesFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleSalesSearch = () => {
+    loadSalesHistory();
+  };
+
+  const handleViewSaleDetails = async (transactionId: number) => {
+    setIsLoadingSaleDetails(true);
+    try {
+      const response = await getSaleDetails(transactionId);
+      setSelectedSale(response);
+      setShowSaleDetails(true);
+    } catch (error: any) {
+      console.error("Error al cargar detalles de la venta:", error);
+      alert("Error al cargar los detalles de la venta");
+    } finally {
+      setIsLoadingSaleDetails(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-AR');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS'
+    }).format(amount);
+  };
+
+  const getPaymentStatus = (totalTransaction: number, totalPaid: number) => {
+    if (totalPaid >= totalTransaction) {
+      return { status: 'Pagado', color: 'bg-green-100 text-green-800' };
+    } else if (totalPaid > 0) {
+      return { status: 'Parcial', color: 'bg-yellow-100 text-yellow-800' };
+    } else {
+      return { status: 'Pendiente', color: 'bg-red-100 text-red-800' };
+    }
+  };
+
   //finalizar venta
   const handleFinalizeSale = async () => {
     if (cartItems.length === 0) {
@@ -346,19 +504,11 @@ export default function VentasPage() {
         tracking_number: null,
       };
 
-      console.log("Creando transacción:", transactionData);
       const transaction = await createTransaction(transactionData);
-      console.log("Transacción creada:", transaction);
-      console.log(
-        "Transaction ID:",
-        transaction.transaction?.transaction_id || transaction.transaction_id
-      );
 
       // 2. Crear los items de la transacción
-      console.log("Creando items de la transacción...");
       const transactionId =
         transaction.transaction?.transaction_id || transaction.transaction_id;
-      console.log("Transaction ID para items:", transactionId);
 
       for (const item of cartItems) {
         const itemData = {
@@ -368,9 +518,7 @@ export default function VentasPage() {
           price: item.precio,
         };
 
-        console.log("Creando item:", itemData);
-        const itemResponse = await createItem(itemData);
-        console.log("Item creado:", itemResponse);
+        await createItem(itemData);
       }
 
       // 4. Limpiar el formulario
@@ -434,6 +582,15 @@ export default function VentasPage() {
       })
     );
   };
+
+  // Cargar historial cuando se cambia de tab
+  useEffect(() => {
+    if (salesHistory.length === 0 && !loading && token) {
+      loadSalesHistory();
+    }
+  }, [loading, token, user]);
+
+
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -794,41 +951,263 @@ export default function VentasPage() {
               <CardDescription>
                 Registro de todas las ventas realizadas
               </CardDescription>
-              <div className="flex items-center space-x-2 mt-2">
-                <Input placeholder="Buscar ventas..." className="w-[250px]" />
-                <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
+              
+              {/* Filtros */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Fecha Desde</Label>
+                  <Input
+                    type="date"
+                    value={salesFilters.start_date}
+                    onChange={(e) => handleSalesFilterChange('start_date', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha Hasta</Label>
+                  <Input
+                    type="date"
+                    value={salesFilters.end_date}
+                    onChange={(e) => handleSalesFilterChange('end_date', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cliente</Label>
+                  <Input
+                    placeholder="Buscar por cliente..."
+                    value={salesFilters.client_name}
+                    onChange={(e) => handleSalesFilterChange('client_name', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>&nbsp;</Label>
+                  <Button onClick={handleSalesSearch} className="w-full">
+                    <Search className="mr-2 h-4 w-4" />
+                    Buscar
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Nº Venta</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell 
-                      colSpan={6} 
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      No hay ventas registradas
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+             
+              
+              {isLoadingSales ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Cargando historial...</span>
+                </div>
+              ) : salesError ? (
+                <div className="text-red-600 text-center py-8">
+                  {salesError}
+                </div>
+              ) : salesHistory.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No se encontraron ventas
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">Nº Venta</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Pagado</TableHead>
+                      <TableHead className="text-right">Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {salesHistory.map((sale) => {
+                      const paymentStatus = getPaymentStatus(sale.total_transaction, sale.total_paid);
+                      return (
+                        <TableRow key={sale.transaction_id}>
+                          <TableCell className="font-medium">
+                            #{sale.transaction_id}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{sale.client_name}</div>
+                              {sale.client_company && (
+                                <div className="text-sm text-muted-foreground">
+                                  {sale.client_company}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDate(sale.date)}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(sale.total_transaction)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(sale.total_paid)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge className={paymentStatus.color}>
+                              {paymentStatus.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewSaleDetails(sale.transaction_id)}
+                              disabled={isLoadingSaleDetails}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Detalles de Venta */}
+      <Dialog open={showSaleDetails} onOpenChange={setShowSaleDetails}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Detalles de Venta #{selectedSale?.transaction?.transaction_id}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {isLoadingSaleDetails ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="ml-2">Cargando detalles...</span>
+            </div>
+          ) : selectedSale ? (
+            <div className="space-y-6">
+              {/* Información del Cliente */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <h3 className="font-semibold mb-2">Información del Cliente</h3>
+                  <p><strong>Nombre:</strong> {selectedSale.transaction.client_name}</p>
+                  <p><strong>Empresa:</strong> {selectedSale.transaction.client_company}</p>
+                  <p><strong>Email:</strong> {selectedSale.transaction.client_email}</p>
+                  <p><strong>Teléfono:</strong> {selectedSale.transaction.client_phone}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Información de la Venta</h3>
+                  <p><strong>Fecha:</strong> {formatDate(selectedSale.transaction.date)}</p>
+                  <p><strong>Tipo de Impuesto:</strong> {selectedSale.transaction.tax_type}</p>
+                  {selectedSale.transaction.tracking_number && (
+                    <p><strong>Número de Seguimiento:</strong> {selectedSale.transaction.tracking_number}</p>
+                  )}
+                  {selectedSale.transaction.transport_company && (
+                    <p><strong>Transporte:</strong> {selectedSale.transaction.transport_company}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Items */}
+              <div>
+                <h3 className="font-semibold mb-3">Productos</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Producto</TableHead>
+                      <TableHead className="text-right">Cantidad</TableHead>
+                      <TableHead className="text-right">Precio Unit.</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedSale.items.map((item: any) => (
+                      <TableRow key={item.item_id}>
+                        <TableCell className="font-medium">{item.product_code}</TableCell>
+                        <TableCell>{item.product_name}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Extras */}
+              {selectedSale.extras.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedSale.extras.map((extra: any) => (
+                        <TableRow key={extra.extra_id}>
+                          <TableCell className="font-medium">{extra.type}</TableCell>
+                          <TableCell>{extra.note}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(extra.price)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Pagos */}
+              <div>
+                <h3 className="font-semibold mb-3">Pagos</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedSale.payments.map((payment: any) => (
+                      <TableRow key={payment.payment_id}>
+                        <TableCell>{formatDate(payment.date)}</TableCell>
+                        <TableCell className="font-medium">{payment.type}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(payment.amount)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Resumen */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold mb-3">Resumen</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p><strong>Subtotal Productos:</strong> {formatCurrency(selectedSale.totals.items)}</p>
+                    <p><strong>Cargos Adicionales:</strong> {formatCurrency(selectedSale.totals.extras)}</p>
+                    <p className="text-lg font-bold">Total: {formatCurrency(selectedSale.totals.transaction)}</p>
+                  </div>
+                  <div>
+                    <p><strong>Total Pagado:</strong> {formatCurrency(selectedSale.totals.paid)}</p>
+                    <p><strong>Pendiente:</strong> {formatCurrency(selectedSale.totals.pending)}</p>
+                    <Badge className={getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).color}>
+                      {getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaleDetails(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -18,6 +18,33 @@ const getTransactionById = async (id) => {
   }
 };
 
+const getSalesHistory = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+        params.append(key, filters[key]);
+      }
+    });
+    
+    const url = `/transaction/sales?${params.toString()}`;
+    
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const getSaleDetails = async (id) => {
+  try {
+    const response = await api.get(`/transaction/sales/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 const createTransaction = async (transactionData) => {
   try {
     const response = await api.post("/transaction/create", transactionData);
@@ -51,6 +78,8 @@ const deleteTransaction = async (id) => {
 export {
   getTransactions,
   getTransactionById,
+  getSalesHistory,
+  getSaleDetails,
   createTransaction,
   updateTransaction,
   deleteTransaction,
