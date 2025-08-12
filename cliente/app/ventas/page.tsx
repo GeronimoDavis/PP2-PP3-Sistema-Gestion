@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 
 import { useEffect, useState } from "react";
-import { Download, Plus, ShoppingCart, Trash2, Search, Eye, Calendar, User } from "lucide-react";
+import { Download, Plus, ShoppingCart, Trash2, Search, Eye, Calendar, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -436,6 +436,16 @@ export default function VentasPage() {
   };
 
   const handleSalesSearch = () => {
+    loadSalesHistory();
+  };
+
+  const handleClearSalesFilters = () => {
+    setSalesFilters({
+      start_date: "",
+      end_date: "",
+      client_name: "",
+      limit: 25
+    });
     loadSalesHistory();
   };
 
@@ -980,10 +990,19 @@ export default function VentasPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>&nbsp;</Label>
-                  <Button onClick={handleSalesSearch} className="w-full">
-                    <Search className="mr-2 h-4 w-4" />
-                    Buscar
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSalesSearch} className="flex-1">
+                      <Search className="mr-2 h-4 w-4" />
+                      Buscar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleClearSalesFilters}
+                      className="px-3"
+                    >
+                      Limpiar filtros
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardHeader>
