@@ -231,6 +231,57 @@ class TransactionService{
         }
     }
 
+    public function getSalesCount(array $filters = []) {
+        try {
+            $query = "
+                SELECT COUNT(DISTINCT t.transaction_id) as total
+                FROM transaction t
+                LEFT JOIN person p ON t.person_id = p.person_id
+                WHERE t.is_sale = 1
+            ";
+            
+            $params = [];
+
+            // Aplicar filtros 
+            if (isset($filters['start_date'])) {
+                $query .= " AND t.date >= ?";
+                $params[] = $filters['start_date'];
+            }
+
+            if (isset($filters['end_date'])) {
+                $query .= " AND t.date <= ?";
+                $params[] = $filters['end_date'];
+            }
+
+            if (isset($filters['client_name'])) {
+                $query .= " AND (p.name LIKE ? OR p.company_name LIKE ?)";
+                $searchTerm = '%' . $filters['client_name'] . '%';
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+            }
+
+            if (isset($filters['transaction_id'])) {
+                $query .= " AND t.transaction_id = ?";
+                $params[] = $filters['transaction_id'];
+            }
+
+            $stmt = $this->pdo->prepare($query);
+            
+            // Bind parameters con tipos correctos
+            foreach ($params as $index => $param) {
+                $paramType = is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($index + 1, $param, $paramType);
+            }
+            
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return (int)$result['total'];
+        } catch (PDOException $e) {
+            throw new Exception("Error al contar ventas: " . $e->getMessage());
+        }
+    }
+
     public function getSaleDetailsById(int $transactionId) {
         try {
             // Obtener informacion basica de la transaccion

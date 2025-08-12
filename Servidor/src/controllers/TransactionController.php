@@ -133,8 +133,12 @@ class TransactionController{
             $filters = $request->getQueryParams();
             
             $sales = $this->transactionService->getSalesWithDetails($filters);
+            $total = $this->transactionService->getSalesCount($filters);
             
-            $response->getBody()->write(json_encode(['sales' => $sales]));
+            $response->getBody()->write(json_encode([
+                'sales' => $sales,
+                'total' => $total
+            ]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         }catch(Throwable $e){
             $response->getBody()->write(json_encode([
