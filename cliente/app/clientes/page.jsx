@@ -88,6 +88,12 @@ export default function ClientesPage() {
     }
   }, [user, token, validateToken, router, loading]); // Dependencias del efecto
 
+  useEffect(() => {
+    if (!loading && user) {
+      loadClients();
+    }
+  }, [loading, user]);
+
   // Opcional: Mostrar un loader mientras se valida
   if (loading) {
     return <div>Cargando...</div>;
@@ -279,12 +285,6 @@ export default function ClientesPage() {
       </div>
     );
   };
-
-  useEffect(() => {
-    if (!loading && user) {
-      loadClients();
-    }
-  }, [loading, user]);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
