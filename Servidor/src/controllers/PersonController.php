@@ -113,6 +113,7 @@ class PersonController {
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+
     public function clientPerson(Request $request, Response $response, $args)
     {
         try {
@@ -124,6 +125,7 @@ class PersonController {
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+
     public function providerPerson(Request $request, Response $response, $args)
     {
         try {
@@ -135,5 +137,18 @@ class PersonController {
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }   
+
+    public function getAllActiveClients(Request $request, Response $response, $args)
+    {
+        try {
+            $clients = $this->personService->getAllActiveClients();
+            $response->getBody()->write(json_encode(['clients' => $clients]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        catch (Throwable $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error fetching all active clients: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
 }
 ?>

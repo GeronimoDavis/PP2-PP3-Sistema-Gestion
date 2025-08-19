@@ -17,14 +17,24 @@ import type { DateRange } from "react-day-picker";
 import { addDays, subDays } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { getAllActiveClients } from "@/api/personsApi";
 
 export default function DashboardPage() {
+  const [clients, setClients] = useState({ clients: [] });
   const { user, token, validateToken, loading } = useAuth();
   const router = useRouter();
   const [date, setDate] = useState<DateRange | undefined>({
     from: subDays(new Date(), 29),
     to: new Date(),
   });
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      const clients = await getAllActiveClients();
+      setClients(clients);
+    };
+    fetchClients();
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -91,7 +101,7 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">573</div>
+            <div className="text-2xl font-bold">{clients.clients.length}</div>
             <p className="text-xs text-muted-foreground">+24 nuevos este mes</p>
           </CardContent>
         </Card>

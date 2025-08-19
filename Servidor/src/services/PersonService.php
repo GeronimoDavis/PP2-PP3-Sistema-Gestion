@@ -176,5 +176,16 @@ class PersonService {
             throw new Exception("Error fetching client person: " . $e->getMessage());
         }
     }
+
+    public function getAllActiveClients() {
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM person WHERE provider = 0 AND active = 1");
+            $stmt->execute();
+            $persons = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $persons;
+        } catch (PDOException $e) {
+            throw new Exception("Error fetching all active clients: " . $e->getMessage());
+        }
+    }
 }
 ?>
