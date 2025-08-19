@@ -191,6 +191,8 @@ export default function VentasPage() {
   const [paymentNote, setPaymentNote] = useState("");
   //estado de procesamiento de pago
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  //excluir IVA
+  const [excludeTax, setExcludeTax] = useState(false);
 
   //CLIENTES
   //lista de clientes disponibles
@@ -224,10 +226,12 @@ export default function VentasPage() {
 
   // HISTORIAL DE VENTAS
   const [salesHistory, setSalesHistory] = useState<SalesHistoryItem[]>([]);
+  const [originalSalesHistory, setOriginalSalesHistory] = useState<SalesHistoryItem[]>([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
   const [salesError, setSalesError] = useState("");
   const [totalSales, setTotalSales] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Filtros del historial
   const [salesFilters, setSalesFilters] = useState({
@@ -245,12 +249,12 @@ export default function VentasPage() {
   // calculo de IVA
   const calculateTax = () => {
     const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-    return subtotal * 0.21;
+    return excludeTax ? 0 : subtotal * 0.21;
   };
   // calculo de total con IVA
   const calculateTotalWithTax = () => {
     const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-    const tax = subtotal * 0.21; // 21% IVA
+    const tax = excludeTax ? 0 : subtotal * 0.21; // 21% IVA
     return subtotal + tax;
   };
 
@@ -420,12 +424,15 @@ export default function VentasPage() {
     
     try {
       const response = await getSalesHistory(salesFilters);
-      setSalesHistory(response.sales || []);
+      const salesData = response.sales || [];
+      setSalesHistory(salesData);
+      setOriginalSalesHistory(salesData);
       setTotalSales(response.total || 0);
     } catch (error: any) {
       console.error("Error al cargar historial de ventas:", error.message);
       setSalesError("Error al cargar el historial de ventas");
       setSalesHistory([]);
+      setOriginalSalesHistory([]);
       setTotalSales(0);
     } finally {
       setIsLoadingSales(false);
@@ -477,7 +484,14 @@ export default function VentasPage() {
     loadSalesHistory();
   };
 
-  const totalPages = Math.ceil(totalSales / (salesFilters.limit || 10));
+  // Funciones de paginacion
+  const getPaginatedSales = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return salesHistory.slice(startIndex, endIndex);
+  };
+
+  const totalPages = Math.ceil(salesHistory.length / itemsPerPage);
 
   const handleViewSaleDetails = async (transactionId: number) => {
     setIsLoadingSaleDetails(true);
@@ -954,7 +968,19 @@ export default function VentasPage() {
                     <span>${total.toLocaleString("es-AR")}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
-                    <span>IVA (21%)</span>
+                    <div className="flex items-center space-x-2">
+                      <span>IVA (21%)</span>
+                      <input
+                        type="checkbox"
+                        id="excludeTax"
+                        checked={excludeTax}
+                        onChange={(e) => setExcludeTax(e.target.checked)}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="excludeTax" className="text-sm text-gray-500">
+                        Excluir
+                      </label>
+                    </div>
                     <span>${calculateTax().toLocaleString("es-AR")}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg mt-4">
@@ -1017,8 +1043,21 @@ export default function VentasPage() {
                   <Label>Cliente</Label>
                   <Input
                     placeholder="Buscar por cliente..."
-                    value={salesFilters.client_name}
-                    onChange={(e) => handleSalesFilterChange('client_name', e.target.value)}
+                    onChange={(e) => {
+                      const searchTerm = e.target.value.toLowerCase();
+                      if (searchTerm === "") {
+                        setSalesHistory(originalSalesHistory);
+                      } else {
+                        const filteredSales = originalSalesHistory.filter(
+                          (sale) =>
+                            sale.client_name.toLowerCase().includes(searchTerm) ||
+                            sale.client_company?.toLowerCase().includes(searchTerm) ||
+                            sale.transaction_id.toString().includes(searchTerm)
+                        );
+                        setSalesHistory(filteredSales);
+                      }
+                      setCurrentPage(1); // Reset a la primera página
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1088,7 +1127,7 @@ export default function VentasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {salesHistory.map((sale) => {
+                      {getPaginatedSales().map((sale) => {
                         const paymentStatus = getPaymentStatus(sale.total_transaction, sale.total_paid);
                         return (
                           <TableRow key={sale.transaction_id}>
@@ -1133,58 +1172,84 @@ export default function VentasPage() {
                     </TableBody>
                   </Table>
                   
-                  {/* Controles de paginación */}
-                  {totalSales > 0 && (
-                    <div className="flex items-center justify-between mt-4">
-                                            <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">Mostrar:</span>
-                          <Select 
-                            value={salesFilters.limit?.toString() || "10"} 
-                            onValueChange={(value) => handleLimitChange(parseInt(value))}
-                          >
-                            <SelectTrigger className="w-20">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="5">5</SelectItem>
-                              <SelectItem value="10">10</SelectItem>
-                              <SelectItem value="25">25</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="text-sm text-muted-foreground">
-                          {totalSales} ventas
-                        </div>
+                  {/* Paginación local */}
+                  {salesHistory.length > 0 && (
+                    <div className="flex items-center justify-between px-2 py-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-700">Mostrar:</span>
+                        <Select
+                          value={itemsPerPage.toString()}
+                          onValueChange={(value) => {
+                            setItemsPerPage(parseInt(value));
+                            setCurrentPage(1); // Reset a la primera página
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-gray-700">
+                          Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+                          {Math.min(currentPage * itemsPerPage, salesHistory.length)} de{" "}
+                          {salesHistory.length} ventas
+                        </span>
                       </div>
-                      
-                      <div className="flex items-center gap-2">
-                        {totalPages > 1 && (
-                          <div className="flex items-center gap-1">
+
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1}
+                        >
+                          Primera
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          Anterior
+                        </Button>
+
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          const page = i + 1;
+                          return (
                             <Button
-                              variant="outline"
+                              key={page}
+                              variant={currentPage === page ? "default" : "outline"}
                               size="sm"
-                              onClick={() => handlePageChange(currentPage - 1)}
-                              disabled={currentPage === 1}
+                              onClick={() => setCurrentPage(page)}
                             >
-                              ←
+                              {page}
                             </Button>
-                            
-                            <span className="px-3 py-1 text-sm">
-                              Página {currentPage} de {totalPages}
-                            </span>
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePageChange(currentPage + 1)}
-                              disabled={currentPage === totalPages}
-                            >
-                              →
-                            </Button>
-                          </div>
-                        )}
+                          );
+                        })}
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                        >
+                          Siguiente
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(totalPages)}
+                          disabled={currentPage === totalPages}
+                        >
+                          Última
+                        </Button>
                       </div>
                     </div>
                   )}
