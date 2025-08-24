@@ -43,7 +43,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getProducts, getProductByCode, getProductByName } from "@/api/productsApi";
-import { getPersons } from "@/api/personsApi";
+import { getAllActiveProviders } from "@/api/personsApi";
 
 // Interfaces TypeScript para los tipos de datos
 interface CartItem {
@@ -288,15 +288,13 @@ export default function ComprasPage() {
   // cargar lista de proveedores desde la API
   const loadProviders = async () => {
     try {
-      const response = await getPersons();
+      const response = await getAllActiveProviders();
 
-      // Filtrar solo proveedores activos y ordenar por nombre
-      const activeProviders =
-        response.persons
-          ?.filter((provider: any) => provider.active === true)
-          ?.sort((a: any, b: any) => a.name.localeCompare(b.name)) || [];
+      // Ordenar proveedores por nombre
+      const sortedProviders = response.providers
+        ?.sort((a: any, b: any) => a.name.localeCompare(b.name)) || [];
 
-      setProviders(activeProviders);
+      setProviders(sortedProviders);
     } catch (error: any) {
       console.error("Error al cargar proveedores:", error);
       // Si hay error, mantener array vacío

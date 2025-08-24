@@ -54,6 +54,15 @@ const getAllActiveClients = async () => {
   }
 };
 
+const getAllActiveProviders = async () => {
+  try {
+    const response = await api.get("/person/activeproviders");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export {
   getPersons,
   getPersonById,
@@ -61,4 +70,5 @@ export {
   updatePerson,
   updatePersonStatus,
   getAllActiveClients,
+  getAllActiveProviders,
 };
