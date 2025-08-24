@@ -159,6 +159,38 @@ class TransactionController{
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+
+    public function getPurchasesHistory(Request $request, Response $response, $args){
+        try{
+            $filters = $request->getQueryParams();
+            
+            $purchases = $this->transactionService->getPurchasesWithDetails($filters);
+            $total = $this->transactionService->getPurchasesCount($filters);
+            
+            $response->getBody()->write(json_encode([
+                'purchases' => $purchases,
+                'total' => $total
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }catch(Throwable $e){
+            $response->getBody()->write(json_encode([
+                'error' => 'Error fetching purchases history: ' . $e->getMessage()
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+
+    public function getPurchaseDetails(Request $request, Response $response, $args){
+        try {
+            $id = $args['id'];
+            $purchaseDetails = $this->transactionService->getPurchaseDetailsById($id);
+            $response->getBody()->write(json_encode($purchaseDetails));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Throwable $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error fetching purchase details: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
     
 }
 ?>

@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 
 import { useEffect, useState } from "react";
-import { Download, Plus, ShoppingBag, Trash2, UserPlus, Search, X } from "lucide-react";
+import { Download, Plus, ShoppingBag, Trash2, UserPlus, Search, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,7 +42,10 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { getProducts, getProductByCode, getProductByName } from "@/api/productsApi";
+import { getProducts, getProductByCode, getProductByName, updateProductStockForPurchase } from "@/api/productsApi";
+import { getAllActiveProviders } from "@/api/personsApi";
+import { createPurchase, getPurchasesHistory, getPurchaseDetails } from "@/api/transactionsApi";
+import { createItem } from "@/api/itemsApi";
 
 // Interfaces TypeScript para los tipos de datos
 interface CartItem {
@@ -71,16 +74,76 @@ export default function ComprasPage() {
   // COMPRA
   // items del carrito
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  // agregar proveedor
-  const [isProveedorDialogOpen, setIsProveedorDialogOpen] = useState(false);
-  // proveedor seleccionado
-  const [selectedProvider, setSelectedProvider] = useState("");
+  // PROVEEDORES
+  // lista de proveedores disponibles
+  const [providers, setProviders] = useState<
+    Array<{
+      person_id: number;
+      name: string;
+      email: string;
+      phone: string;
+      company_name: string;
+      active: boolean;
+    }>
+  >([]);
+  // proveedor seleccionado para la compra
+  const [selectedProvider, setSelectedProvider] = useState<string>("");
+  // búsqueda de proveedores
+  const [providerSearchTerm, setProviderSearchTerm] = useState("");
+  // resultados de búsqueda de proveedores
+  const [providerSearchResults, setProviderSearchResults] = useState<
+    Array<{
+      person_id: number;
+      name: string;
+      email: string;
+      phone: string;
+      company_name: string;
+      active: boolean;
+    }>
+  >([]);
+  // mostrar resultados de búsqueda de proveedores
+  const [showProviderResults, setShowProviderResults] = useState(false);
   // metodo de pago
   const [paymentMethod, setPaymentMethod] = useState("");
-  // fecha de entrega
-  const [deliveryDate, setDeliveryDate] = useState("");
+  // fecha de compra
+  const [purchaseDate, setPurchaseDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
   // notas
   const [notes, setNotes] = useState("");
+  // IVA
+  const [excludeTax, setExcludeTax] = useState(false);
+  // Estado de procesamiento de compra
+  const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
+
+  // HISTORIAL DE COMPRAS
+  const [purchasesHistory, setPurchasesHistory] = useState<any[]>([]);
+  // historial de compras original
+  const [originalPurchasesHistory, setOriginalPurchasesHistory] = useState<any[]>([]);
+  // estado de carga de historial de compras
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
+  // error de historial de compras
+  const [purchasesError, setPurchasesError] = useState("");
+  // total de compras
+  const [totalPurchases, setTotalPurchases] = useState(0);
+  // página actual de historial de compras
+  const [currentPurchasesPage, setCurrentPurchasesPage] = useState(1);
+  // items por página de historial de compras
+  const [purchasesItemsPerPage, setPurchasesItemsPerPage] = useState(10);
+  
+  // Filtros del historial de compras
+  const [purchasesFilters, setPurchasesFilters] = useState({
+    start_date: "",
+    end_date: "",
+    provider_name: "",
+    limit: 10 as number | undefined
+  });
+
+  // Detalles de compra
+  const [selectedPurchase, setSelectedPurchase] = useState<any | null>(null);
+  const [showPurchaseDetails, setShowPurchaseDetails] = useState(false);
+  const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] = useState(false);
 
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
@@ -107,6 +170,67 @@ export default function ComprasPage() {
 
   // Definir el tipo de item del carrito
   const total = cartItems.reduce((sum, item) => sum + item.total, 0);
+  
+  // Cálculos de IVA
+  const calculateTax = () => {
+    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
+    return excludeTax ? 0 : subtotal * 0.21;
+  };
+  
+  const calculateTotalWithTax = () => {
+    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
+    const tax = excludeTax ? 0 : subtotal * 0.21; // 21% IVA
+    return subtotal + tax;
+  };
+
+  // funcion para validar la compra
+  const validatePurchase = () => {
+    const errors: string[] = [];
+
+    // Validar que haya productos en el carrito
+    if (cartItems.length === 0) {
+      errors.push("El carrito está vacío");
+    }
+
+    // Validar proveedor seleccionado
+    if (!selectedProvider) {
+      errors.push("Debe seleccionar un proveedor");
+    }
+
+    // Validar método de pago
+    if (!paymentMethod) {
+      errors.push("Debe seleccionar un método de pago");
+    }
+
+    // Validar fecha de compra
+    if (!purchaseDate) {
+      errors.push("Debe seleccionar una fecha de compra");
+    } else {
+      const selectedDate = new Date(purchaseDate);
+      const today = new Date();
+      const maxFutureDate = new Date();
+      maxFutureDate.setFullYear(today.getFullYear() + 1); // Máximo 1 año en el futuro
+
+      if (selectedDate > maxFutureDate) {
+        errors.push("La fecha de compra no puede ser más de 1 año en el futuro");
+      }
+    }
+
+    // Validar productos individuales
+    cartItems.forEach((item, index) => {
+      if (item.precioCompra <= 0) {
+        errors.push(`El producto "${item.nombre}" tiene un precio inválido`);
+      }
+      if (item.cantidad <= 0) {
+        errors.push(`El producto "${item.nombre}" tiene una cantidad inválida`);
+      }
+      if (item.total <= 0) {
+        errors.push(`El producto "${item.nombre}" tiene un total inválido`);
+      }
+    });
+
+    return errors;
+  };
 
   // COMPRA
   // eliminar item del carrito
@@ -116,6 +240,16 @@ export default function ComprasPage() {
 
   // actualizar cantidad del item
   const updateQuantity = (id: number, cantidad: number) => {
+    // Validar cantidad
+    if (cantidad <= 0) {
+      alert("La cantidad debe ser mayor a 0");
+      return;
+    }
+    if (cantidad > 999999999) {
+      alert("La cantidad no puede ser mayor a 999,999,999");
+      return;
+    }
+
     setCartItems(
       cartItems.map((item) => {
         if (item.id === id) {
@@ -128,6 +262,16 @@ export default function ComprasPage() {
 
   // actualizar precio del item
   const updatePrice = (id: number, precioCompra: number) => {
+    // Validar precio
+    if (precioCompra <= 0) {
+      alert("El precio debe ser mayor a 0");
+      return;
+    }
+    if (precioCompra > 999999999.99) {
+      alert("El precio no puede ser mayor a $999,999,999.99");
+      return;
+    }
+
     setCartItems(
       cartItems.map((item) => {
         if (item.id === id) {
@@ -205,13 +349,19 @@ export default function ComprasPage() {
 
   // agregar producto al carrito
   const addProductToCart = (product: Product) => {
+    // Validar que el producto tenga un precio válido
+    if (!product.purchase_price || product.purchase_price <= 0) {
+      alert("El producto no tiene un precio de compra válido");
+      return;
+    }
+
     const newItem: CartItem = {
       id: product.product_id,
       codigo: product.code,
       nombre: product.name,
-      precioCompra: product.purchase_price || 0,
+      precioCompra: product.purchase_price,
       cantidad: 1,
-      total: product.purchase_price || 0,
+      total: product.purchase_price,
     };
 
     setCartItems([...cartItems, newItem]);
@@ -247,16 +397,218 @@ export default function ComprasPage() {
     }
   };
 
-  const confirmPurchase = () => {
-    // confirmar la compra
-    console.log("Confirmar compra", {
-      items: cartItems,
-      provider: selectedProvider,
-      paymentMethod,
-      deliveryDate,
-      notes
-    });
+  const confirmPurchase = async () => {
+    // Validar antes de confirmar
+    const errors = validatePurchase();
+    
+    if (errors.length > 0) {
+      alert("Errores de validación:\n" + errors.join("\n"));
+      return;
+    }
+
+    // Estado de procesamiento de compra
+    setIsProcessingPurchase(true);
+
+    try {
+      // Crear la transacción de compra
+      const transactionData = {
+        date: purchaseDate,
+        is_sale: false, // false = compra
+        person_id: parseInt(selectedProvider),
+        transport_id: null, // Por ahora sin transporte
+        tracking_number: null,
+        tax_type: excludeTax ? "Exento" : "R.I" // Responsable Inscripto o Exento
+      };
+
+      const transactionResponse = await createPurchase(transactionData);
+      const transactionId = transactionResponse.transaction.transaction_id;
+
+      // Crear los items de la compra y actualizar stock
+      for (const item of cartItems) {
+        const itemData = {
+          transaction_id: transactionId,
+          product_id: item.id,
+          quantity: item.cantidad,
+          price: item.precioCompra
+        };
+
+        await createItem(itemData);
+        
+        // Actualizar el stock del producto (incrementar)
+        await updateProductStockForPurchase(item.id, item.cantidad);
+      }
+
+      // Limpiar el carrito y mostrar mensaje de éxito
+      setCartItems([]);
+      setSelectedProvider("");
+      setProviderSearchTerm("");
+      setProviderSearchResults([]);
+      setShowProviderResults(false);
+      setPaymentMethod("");
+      setNotes("");
+      setSearchTerm("");
+      setSearchResults([]);
+      setShowSearchResults(false);
+
+      alert("¡Compra confirmada exitosamente!");
+      
+     
+
+    } catch (error: any) {
+      console.error("Error al confirmar la compra:", error);
+      alert("Error al confirmar la compra: " + (error.response?.data?.error || error.message || "Error desconocido"));
+    } finally {
+      setIsProcessingPurchase(false);
+    }
   };
+
+  // PROVEEDORES
+  // cargar lista de proveedores desde la API
+  const loadProviders = async () => {
+    try {
+      const response = await getAllActiveProviders();
+
+      // Ordenar proveedores por nombre
+      const sortedProviders = response.providers
+        ?.sort((a: any, b: any) => a.name.localeCompare(b.name)) || [];
+
+      setProviders(sortedProviders);
+    } catch (error: any) {
+      console.error("Error al cargar proveedores:", error);
+      // Si hay error, mantener array vacío
+      setProviders([]);
+    }
+  };
+
+  // Búsqueda de proveedores mientras escribes
+  const handleProviderSearch = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setProviderSearchResults([]);
+      setShowProviderResults(false);
+      return;
+    }
+
+    const filteredProviders = providers.filter(
+      (provider) =>
+        provider.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    setProviderSearchResults(filteredProviders);
+    setShowProviderResults(true);
+  };
+
+  // Cargar proveedores cuando se carga el componente
+  useEffect(() => {
+    loadProviders();
+  }, []);
+
+  // Cargar historial de compras cuando se carga el componente
+  useEffect(() => {
+    loadPurchasesHistory();
+  }, []);
+
+  // HISTORIAL DE COMPRAS
+  const loadPurchasesHistory = async () => {
+    setIsLoadingPurchases(true);
+    setPurchasesError("");
+    
+    try {
+      const response = await getPurchasesHistory(purchasesFilters);
+      const purchasesData = response.purchases || [];
+      setPurchasesHistory(purchasesData);
+      setOriginalPurchasesHistory(purchasesData);
+      setTotalPurchases(response.total || 0);
+    } catch (error: any) {
+      console.error("Error al cargar historial de compras:", error.message);
+      setPurchasesError("Error al cargar el historial de compras");
+      setPurchasesHistory([]);
+      setOriginalPurchasesHistory([]);
+      setTotalPurchases(0);
+    } finally {
+      setIsLoadingPurchases(false);
+    }
+  };
+
+  const handlePurchasesFilterChange = (key: string, value: string) => {
+    setPurchasesFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handlePurchasesSearch = () => {
+    loadPurchasesHistory();
+  };
+
+  const handleClearPurchasesFilters = () => {
+    setPurchasesFilters({
+      start_date: "",
+      end_date: "",
+      provider_name: "",
+      limit: 10
+    });
+    setCurrentPurchasesPage(1);
+    loadPurchasesHistory();
+  };
+
+  const handleViewPurchaseDetails = async (transactionId: number) => {
+    setIsLoadingPurchaseDetails(true);
+    try {
+      const response = await getPurchaseDetails(transactionId);
+      setSelectedPurchase(response);
+      setShowPurchaseDetails(true);
+    } catch (error: any) {
+      console.error("Error al cargar detalles de la compra:", error);
+      alert("Error al cargar los detalles de la compra");
+    } finally {
+      setIsLoadingPurchaseDetails(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-AR');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS'
+    }).format(amount);
+  };
+
+  // Funciones de paginación para compras
+  const getPaginatedPurchases = () => {
+    const startIndex = (currentPurchasesPage - 1) * purchasesItemsPerPage;
+    const endIndex = startIndex + purchasesItemsPerPage;
+    return purchasesHistory.slice(startIndex, endIndex);
+  };
+
+  const totalPurchasesPages = Math.ceil(purchasesHistory.length / purchasesItemsPerPage);
+
+  // Cerrar dropdown de proveedores al hacer click fuera o presionar Escape
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest(".provider-search-container")) {
+        setShowProviderResults(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowProviderResults(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
  
   // renderizar el componente
   return (
@@ -308,7 +660,7 @@ export default function ComprasPage() {
                    </div>
                  </div>
 
-                                                  {/* Resultados de búsqueda */}
+                   {/* Resultados de búsqueda */}
                  {isSearching && (
                    <div className="mb-4 text-center py-4">
                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto"></div>
@@ -447,81 +799,58 @@ export default function ComprasPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Proveedor</Label>
-                  <div className="flex space-x-2">
-                    {/* seleccionar proveedor */}
-                    <Select value={selectedProvider} onValueChange={setSelectedProvider}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Seleccionar proveedor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="loading">Cargando proveedores...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Dialog
-                      open={isProveedorDialogOpen}
-                      onOpenChange={setIsProveedorDialogOpen}
-                    >
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="icon">
-                          <UserPlus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                          <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
-                          <DialogDescription>
-                            Complete los datos del proveedor.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="nombre-prov" className="text-right">
-                              Nombre
-                            </Label>
-                            <Input id="nombre-prov" className="col-span-3" />
+                  <div className="relative provider-search-container">
+                    <Input
+                      placeholder="Buscar proveedor por nombre o empresa..."
+                      value={providerSearchTerm}
+                      onChange={(e) => {
+                        setProviderSearchTerm(e.target.value);
+                        handleProviderSearch(e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (providerSearchTerm.trim()) {
+                          setShowProviderResults(true);
+                        }
+                      }}
+                    />
+
+                    {/* Resultados de búsqueda de proveedores */}
+                    {showProviderResults && providerSearchResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {providerSearchResults.map((provider) => (
+                          <div
+                            key={provider.person_id}
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            onClick={() => {
+                              setSelectedProvider(provider.person_id.toString());
+                              setProviderSearchTerm(provider.name);
+                              setShowProviderResults(false);
+                            }}
+                          >
+                            <div className="font-medium">{provider.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {provider.company_name}
                           </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="cuit-prov" className="text-right">
-                              CUIT
-                            </Label>
-                            <Input id="cuit-prov" className="col-span-3" />
                           </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label
-                              htmlFor="telefono-prov"
-                              className="text-right"
-                            >
-                              Teléfono
-                            </Label>
-                            <Input id="telefono-prov" className="col-span-3" />
+                        ))}
                           </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="email-prov" className="text-right">
-                              Email
-                            </Label>
-                            <Input
-                              id="email-prov"
-                              type="email"
-                              className="col-span-3"
-                            />
+                    )}
+
+                    {/* Proveedor seleccionado */}
+                    {selectedProvider && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                        <div className="text-sm text-green-800">
+                          Proveedor seleccionado:{" "}
+                          {
+                            providers.find(
+                              (p) => p.person_id.toString() === selectedProvider
+                            )?.name
+                          }
                           </div>
                         </div>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => setIsProveedorDialogOpen(false)}
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => setIsProveedorDialogOpen(false)}
-                          >
-                            Guardar
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                    )}
+
+
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -544,11 +873,28 @@ export default function ComprasPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Fecha de Entrega Esperada</Label>
+                  <Label>Fecha de Compra</Label>
                   <Input 
                     type="date" 
-                    value={deliveryDate}
-                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    value={purchaseDate}
+                    onChange={(e) => {
+                      const selectedDate = new Date(e.target.value);
+                      const today = new Date();
+                      const maxFutureDate = new Date();
+                      maxFutureDate.setFullYear(today.getFullYear() + 1);
+                      
+                      if (selectedDate > maxFutureDate) {
+                        alert("La fecha de compra no puede ser más de 1 año en el futuro");
+                        return;
+                      }
+                      setPurchaseDate(e.target.value);
+                    }}
+                    max={(() => {
+                      const maxDate = new Date();
+                      maxDate.setFullYear(maxDate.getFullYear() + 1);
+                      return maxDate.toISOString().split('T')[0];
+                    })()}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -565,12 +911,26 @@ export default function ComprasPage() {
                     <span>${total.toLocaleString("es-AR")}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
+                    <div className="flex items-center space-x-2">
                     <span>IVA (21%)</span>
-                    <span>${(total * 0.21).toLocaleString("es-AR")}</span>
+                      <input
+                        type="checkbox"
+                        id="excludeTax"
+                        checked={excludeTax}
+                        onChange={(e) => setExcludeTax(e.target.checked)}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="excludeTax" className="text-sm text-gray-500">
+                        Excluir
+                      </label>
+                    </div>
+                    <span>${calculateTax().toLocaleString("es-AR")}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg mt-4">
                     <span>Total</span>
-                    <span>${(total * 1.21).toLocaleString("es-AR")}</span>
+                    <span>
+                      ${calculateTotalWithTax().toLocaleString("es-AR")}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -578,10 +938,19 @@ export default function ComprasPage() {
                 <Button 
                   className="w-full bg-green-600 hover:bg-green-700"
                   onClick={confirmPurchase}
-                  disabled={cartItems.length === 0 || !selectedProvider || !paymentMethod}
+                  disabled={isProcessingPurchase || cartItems.length === 0 || !selectedProvider || !paymentMethod || !purchaseDate}
                 >
+                  {isProcessingPurchase ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
                   <ShoppingBag className="mr-2 h-4 w-4" />
                   Confirmar Compra
+                    </>
+                  )}
                 </Button>
               </CardFooter>
             </Card>
@@ -595,38 +964,208 @@ export default function ComprasPage() {
               <CardDescription>
                 Registro de todas las compras realizadas a proveedores
               </CardDescription>
-              <div className="flex items-center space-x-2 mt-2">
-                <Input placeholder="Buscar compras..." className="w-[250px]" />
-                <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
+              
+              {/* Filtros */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Fecha Desde</Label>
+                  <Input
+                    type="date"
+                    value={purchasesFilters.start_date}
+                    onChange={(e) => handlePurchasesFilterChange('start_date', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha Hasta</Label>
+                  <Input
+                    type="date"
+                    value={purchasesFilters.end_date}
+                    onChange={(e) => handlePurchasesFilterChange('end_date', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Proveedor</Label>
+                  <Input
+                    placeholder="Buscar por proveedor..."
+                    value={purchasesFilters.provider_name}
+                    onChange={(e) => handlePurchasesFilterChange('provider_name', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>&nbsp;</Label>
+                  <div className="flex gap-2">
+                    <Button onClick={handlePurchasesSearch} className="flex-1">
+                      <Search className="mr-2 h-4 w-4" />
+                      Buscar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleClearPurchasesFilters}
+                      className="px-3"
+                    >
+                      Limpiar
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Nº Orden</TableHead>
-                    <TableHead>Proveedor</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Fecha Entrega</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="text-center py-4 text-muted-foreground"
-                    >
-                      No hay compras registradas
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              
+              {isLoadingPurchases ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                      <p className="mt-2 text-gray-600">Cargando historial de compras...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : purchasesError ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <p className="text-red-600">{purchasesError}</p>
+                      <Button
+                        onClick={loadPurchasesHistory}
+                        className="mt-4 bg-blue-600 hover:bg-blue-700"
+                      >
+                        Reintentar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : purchasesHistory.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <p className="text-gray-600">No se encontraron compras</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">Nº Compra</TableHead>
+                        <TableHead>Proveedor</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">Items</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getPaginatedPurchases().map((purchase) => (
+                        <TableRow key={purchase.transaction_id}>
+                          <TableCell className="font-medium">
+                            #{purchase.transaction_id}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{purchase.provider_name}</div>
+                              {purchase.provider_company && (
+                                <div className="text-sm text-muted-foreground">
+                                  {purchase.provider_company}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDate(purchase.date)}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(purchase.total_transaction)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {purchase.items_count || 0}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewPurchaseDetails(purchase.transaction_id)}
+                              disabled={isLoadingPurchaseDetails}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Paginación local */}
+                  {purchasesHistory.length > 0 && (
+                    <div className="flex items-center justify-between px-2 py-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-700">Mostrar:</span>
+                        <Select
+                          value={purchasesItemsPerPage.toString()}
+                          onValueChange={(value) => {
+                            setPurchasesItemsPerPage(parseInt(value));
+                            setCurrentPurchasesPage(1); // Reset a la primera página
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-gray-700">
+                          Mostrando {(currentPurchasesPage - 1) * purchasesItemsPerPage + 1} a{" "}
+                          {Math.min(currentPurchasesPage * purchasesItemsPerPage, purchasesHistory.length)} de{" "}
+                          {purchasesHistory.length} compras
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPurchasesPage(1)}
+                          disabled={currentPurchasesPage === 1}
+                        >
+                          Primera
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPurchasesPage(currentPurchasesPage - 1)}
+                          disabled={currentPurchasesPage === 1}
+                        >
+                          Anterior
+                        </Button>
+
+                        <span className="text-sm text-gray-700">
+                          Página {currentPurchasesPage} de {totalPurchasesPages}
+                        </span>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPurchasesPage(currentPurchasesPage + 1)}
+                          disabled={currentPurchasesPage === totalPurchasesPages}
+                        >
+                          Siguiente
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPurchasesPage(totalPurchasesPages)}
+                          disabled={currentPurchasesPage === totalPurchasesPages}
+                        >
+                          Última
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -643,75 +1182,7 @@ export default function ComprasPage() {
                   placeholder="Buscar proveedores..."
                   className="w-[250px]"
                 />
-                <Dialog
-                  open={isProveedorDialogOpen}
-                  onOpenChange={setIsProveedorDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button className="bg-green-600 hover:bg-green-700">
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Nuevo Proveedor
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
-                      <DialogDescription>
-                        Complete los datos del proveedor.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="nombre-prov" className="text-right">
-                          Nombre
-                        </Label>
-                        <Input id="nombre-prov" className="col-span-3" />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="cuit-prov" className="text-right">
-                          CUIT
-                        </Label>
-                        <Input id="cuit-prov" className="col-span-3" />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="telefono-prov" className="text-right">
-                          Teléfono
-                        </Label>
-                        <Input id="telefono-prov" className="col-span-3" />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="email-prov" className="text-right">
-                          Email
-                        </Label>
-                        <Input
-                          id="email-prov"
-                          type="email"
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="direccion-prov" className="text-right">
-                          Dirección
-                        </Label>
-                        <Input id="direccion-prov" className="col-span-3" />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsProveedorDialogOpen(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => setIsProveedorDialogOpen(false)}
-                      >
-                        Guardar
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+
                 <Button variant="outline">
                   <Download className="mr-2 h-4 w-4" />
                   Exportar

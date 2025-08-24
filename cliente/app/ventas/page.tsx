@@ -40,7 +40,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { getProductByCode, getProductByName } from "@/api/productsApi";
+import { getProductByCode, getProductByName, updateProductStock } from "@/api/productsApi";
 import { Loader2 } from "lucide-react";
 import { createTransaction } from "@/api/transactionsApi";
 import { createPayment } from "@/api/paymentsApi";
@@ -169,10 +169,12 @@ export default function VentasPage() {
       stock: number;
     }>
   >([]);
-  //estado de carga
-  const [isLoading, setIsLoading] = useState(false);
-  //error de la busqueda
-  const [error, setError] = useState("");
+     //estado de carga
+   const [isLoading, setIsLoading] = useState(false);
+   //error de la busqueda
+   const [error, setError] = useState("");
+   //cantidades seleccionadas para cada producto
+   const [productQuantities, setProductQuantities] = useState<{[key: number]: number}>({});
   //debounce para búsqueda automática
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
     null
@@ -573,15 +575,22 @@ export default function VentasPage() {
         };
 
         await createItem(itemData);
+        
+        // Actualizar el stock del producto
+        await updateProductStock(item.id, item.cantidad);
       }
 
-      // 4. Limpiar el formulario
-      setCartItems([]);
-      setSelectedPaymentMethod("");
-      setSelectedClient("");
-      setClientSearchTerm("");
-      setPaymentAmount(0);
-      setPaymentNote("");
+             // 4. Limpiar el formulario
+       setCartItems([]);
+       setSelectedPaymentMethod("");
+       setSelectedClient("");
+       setClientSearchTerm("");
+       setPaymentAmount(0);
+       setPaymentNote("");
+       setSearchResults([]);
+       setSearchTerm("");
+       setError("");
+       setProductQuantities({});
 
       // 5. Recargar el historial de ventas
       loadSalesHistory();
@@ -639,6 +648,68 @@ export default function VentasPage() {
       })
     );
   };
+
+  // Función para recargar los resultados de búsqueda
+  const reloadSearchResults = async () => {
+    if (searchTerm.trim()) {
+      await handleSearch(searchTerm);
+    }
+  };
+
+  // Función para verificar si un producto ya está en el carrito
+  const isProductInCart = (productId: number) => {
+    return cartItems.some(item => item.id === productId);
+  };
+
+  // Función para obtener la cantidad total de un producto en el carrito
+  const getProductQuantityInCart = (productId: number) => {
+    return cartItems.reduce((total, item) => {
+      return item.id === productId ? total + item.cantidad : total;
+    }, 0);
+  };
+
+  // Función para verificar si hay stock disponible
+  const hasAvailableStock = (product: any, requestedQuantity: number = 1) => {
+    const quantityInCart = getProductQuantityInCart(product.product_id);
+    return product.stock > quantityInCart + requestedQuantity - 1;
+  };
+
+     // Función para manejar el cambio de cantidad de un producto
+   const handleQuantityChange = (productId: number, quantity: number) => {
+     setProductQuantities(prev => ({
+       ...prev,
+       [productId]: quantity
+     }));
+   };
+
+   // Función para agregar o actualizar producto en el carrito
+   const addOrUpdateProductInCart = (product: any, quantity: number) => {
+     const existingItemIndex = cartItems.findIndex(item => item.id === product.product_id);
+     
+     if (existingItemIndex !== -1) {
+       // Si el producto ya existe, actualizar la cantidad
+       const updatedItems = [...cartItems];
+       const existingItem = updatedItems[existingItemIndex];
+       const newQuantity = existingItem.cantidad + quantity;
+       updatedItems[existingItemIndex] = {
+         ...existingItem,
+         cantidad: newQuantity,
+         total: existingItem.precio * newQuantity
+       };
+       setCartItems(updatedItems);
+     } else {
+       // Si el producto no existe, agregarlo como nuevo item
+       const newItem = {
+         id: product.product_id,
+         codigo: product.code,
+         nombre: product.name,
+         precio: product.sell_price,
+         cantidad: quantity,
+         total: product.sell_price * quantity,
+       };
+       setCartItems([...cartItems, newItem]);
+     }
+   };
 
   // Cargar historial cuando se cambia de tab
   useEffect(() => {
@@ -730,8 +801,15 @@ export default function VentasPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {searchResults.map((product) => (
-                          <TableRow key={product.product_id}>
+                        {searchResults.map((product) => {
+                          const availableStock = Math.max(0, product.stock - getProductQuantityInCart(product.product_id));
+                          const hasStock = hasAvailableStock(product);
+                          
+                          return (
+                            <TableRow 
+                              key={product.product_id}
+                              className={!hasStock ? "opacity-50 bg-gray-50" : ""}
+                            >
                             <TableCell className="font-medium">
                               {product.code}
                             </TableCell>
@@ -743,55 +821,59 @@ export default function VentasPage() {
                               ) || "0"}
                             </TableCell>
                             <TableCell className="text-right">
-                              {product.stock || 0}
+                              <span className={!hasStock ? "text-red-600 font-medium" : ""}>
+                                {Math.max(0, product.stock - getProductQuantityInCart(product.product_id))}
+                              </span>
+                              {!hasStock && (
+                                <div className="text-xs text-red-500 mt-1">
+                                  Sin stock disponible
+                                </div>
+                              )}
                             </TableCell>
+                                                         <TableCell className="text-right">
+                               <Input
+                                 type="number"
+                                 min="1"
+                                 max={Math.max(0, product.stock - getProductQuantityInCart(product.product_id))}
+                                 className="w-16 text-right"
+                                 disabled={!hasAvailableStock(product)}
+                                 placeholder="1"
+                                 value={productQuantities[product.product_id] || 1}
+                                 onChange={(e) => {
+                                   const qty = Number(e.target.value);
+                                   if (qty > 0) {
+                                     handleQuantityChange(product.product_id, qty);
+                                   }
+                                 }}
+                               />
+                             </TableCell>
                             <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                min="1"
-                                max={product.stock}
-                                className="w-16 text-right"
-                                onChange={(e) => {
-                                  const qty = Number(e.target.value);
-                                  if (qty > 0 && qty <= product.stock) {
-                                    const newItem = {
-                                      id: product.product_id,
-                                      codigo: product.code,
-                                      nombre: product.name,
-                                      precio: product.sell_price,
-                                      cantidad: qty,
-                                      total: product.sell_price * qty,
-                                    };
-                                    setCartItems([...cartItems, newItem]);
-                                    setSearchResults([]);
-                                    setSearchTerm("");
-                                  }
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const newItem = {
-                                    id: product.product_id,
-                                    codigo: product.code,
-                                    nombre: product.name,
-                                    precio: product.sell_price,
-                                    cantidad: 1,
-                                    total: product.sell_price,
-                                  };
-                                  setCartItems([...cartItems, newItem]);
-                                  setSearchResults([]);
-                                  setSearchTerm("");
-                                }}
-                              >
-                                Agregar
-                              </Button>
+                                                             <Button
+                                 variant="outline"
+                                 size="sm"
+                                 disabled={!hasAvailableStock(product)}
+                                 onClick={async () => {
+                                   const quantity = productQuantities[product.product_id] || 1;
+                                   const availableStock = Math.max(0, product.stock - getProductQuantityInCart(product.product_id));
+                                   
+                                   if (quantity > 0 && quantity <= availableStock) {
+                                     addOrUpdateProductInCart(product, quantity);
+                                     
+                                     // Limpiar después de agregar
+                                     setTimeout(() => {
+                                       setSearchResults([]);
+                                       setSearchTerm("");
+                                       setProductQuantities({});
+                                     }, 50);
+                                   }
+                                 }}
+                               >
+                                 Agregar
+                               </Button>
                             </TableCell>
                           </TableRow>
-                        ))}
+                        );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -939,7 +1021,9 @@ export default function VentasPage() {
                         Tarjeta de Crédito/Débito
                       </SelectItem>
                       <SelectItem value="Cheque">Cheque</SelectItem>
-                      <SelectItem value="Credito">Crédito (30 días)</SelectItem>
+                      <SelectItem value="Credito30">Crédito (30 días)</SelectItem>
+                      <SelectItem value="Credito60">Crédito (60 días)</SelectItem>
+                      <SelectItem value="Credito90">Crédito (90 días)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
