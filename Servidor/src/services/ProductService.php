@@ -172,12 +172,13 @@ class ProductService{
 
     public function create(Product $product){
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO product (name, code, stock, purchase_price, category_id, active) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO product (name, code, stock, purchase_price, sell_price, category_id, active) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $product->name,
                 $product->code,
                 $product->stock,
                 $product->purchase_price,
+                $product->sell_price,
                 $product->category_id,
                 1 // active por defecto para que se muestre en el frontend cuando se crea un producto
 
@@ -194,12 +195,13 @@ class ProductService{
     public function update(Product $product)
     {
         try {
-            $stmt = $this->pdo->prepare("UPDATE product SET name = ?, code = ?, stock = ?, purchase_price = ?, category_id = ? WHERE product_id = ?");
+            $stmt = $this->pdo->prepare("UPDATE product SET name = ?, code = ?, stock = ?, purchase_price = ?, sell_price = ?, category_id = ? WHERE product_id = ?");
             $stmt->execute([
                 $product->name,
                 $product->code,
                 $product->stock,
                 $product->purchase_price,
+                $product->sell_price,
                 $product->category_id,
                 $product->product_id
             ]);

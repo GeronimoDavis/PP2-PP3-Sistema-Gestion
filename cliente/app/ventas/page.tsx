@@ -165,7 +165,7 @@ export default function VentasPage() {
       product_id: number;
       code: string;
       name: string;
-      purchase_price: number;
+      sell_price: number;
       stock: number;
     }>
   >([]);
@@ -738,7 +738,7 @@ export default function VentasPage() {
                             <TableCell>{product.name}</TableCell>
                             <TableCell className="text-right">
                               $
-                              {product.purchase_price?.toLocaleString(
+                              {product.sell_price?.toLocaleString(
                                 "es-AR"
                               ) || "0"}
                             </TableCell>
@@ -758,9 +758,9 @@ export default function VentasPage() {
                                       id: product.product_id,
                                       codigo: product.code,
                                       nombre: product.name,
-                                      precio: product.purchase_price,
+                                      precio: product.sell_price,
                                       cantidad: qty,
-                                      total: product.purchase_price * qty,
+                                      total: product.sell_price * qty,
                                     };
                                     setCartItems([...cartItems, newItem]);
                                     setSearchResults([]);
@@ -778,9 +778,9 @@ export default function VentasPage() {
                                     id: product.product_id,
                                     codigo: product.code,
                                     nombre: product.name,
-                                    precio: product.purchase_price,
+                                    precio: product.sell_price,
                                     cantidad: 1,
-                                    total: product.purchase_price,
+                                    total: product.sell_price,
                                   };
                                   setCartItems([...cartItems, newItem]);
                                   setSearchResults([]);
