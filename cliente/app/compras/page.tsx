@@ -508,13 +508,25 @@ export default function ComprasPage() {
     loadPurchasesHistory();
   }, []);
 
+  // Recargar cuando cambien los filtros o la página
+  useEffect(() => {
+    loadPurchasesHistory();
+  }, [purchasesFilters, currentPurchasesPage, purchasesItemsPerPage]);
+
   // HISTORIAL DE COMPRAS
   const loadPurchasesHistory = async () => {
     setIsLoadingPurchases(true);
     setPurchasesError("");
     
     try {
-      const response = await getPurchasesHistory(purchasesFilters);
+      const offset = (currentPurchasesPage - 1) * purchasesItemsPerPage;
+      const filtersWithPagination = {
+        ...purchasesFilters,
+        limit: purchasesItemsPerPage,
+        offset: offset
+      };
+      
+      const response = await getPurchasesHistory(filtersWithPagination);
       const purchasesData = response.purchases || [];
       setPurchasesHistory(purchasesData);
       setOriginalPurchasesHistory(purchasesData);
@@ -538,6 +550,7 @@ export default function ComprasPage() {
   };
 
   const handlePurchasesSearch = () => {
+    setCurrentPurchasesPage(1); // Reset a la primera página
     loadPurchasesHistory();
   };
 
@@ -578,13 +591,7 @@ export default function ComprasPage() {
   };
 
   // Funciones de paginación para compras
-  const getPaginatedPurchases = () => {
-    const startIndex = (currentPurchasesPage - 1) * purchasesItemsPerPage;
-    const endIndex = startIndex + purchasesItemsPerPage;
-    return purchasesHistory.slice(startIndex, endIndex);
-  };
-
-  const totalPurchasesPages = Math.ceil(purchasesHistory.length / purchasesItemsPerPage);
+  const totalPurchasesPages = Math.ceil(totalPurchases / purchasesItemsPerPage);
 
   // Cerrar dropdown de proveedores al hacer click fuera o presionar Escape
   useEffect(() => {
@@ -1056,7 +1063,7 @@ export default function ComprasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {getPaginatedPurchases().map((purchase) => (
+                      {purchasesHistory.map((purchase) => (
                         <TableRow key={purchase.transaction_id}>
                           <TableCell className="font-medium">
                             #{purchase.transaction_id}
@@ -1093,8 +1100,8 @@ export default function ComprasPage() {
                     </TableBody>
                   </Table>
                   
-                  {/* Paginación local */}
-                  {purchasesHistory.length > 0 && (
+                  {/* Paginación */}
+                  {totalPurchases > 0 && (
                     <div className="flex items-center justify-between px-2 py-4">
                       <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-700">Mostrar:</span>
@@ -1103,6 +1110,7 @@ export default function ComprasPage() {
                           onValueChange={(value) => {
                             setPurchasesItemsPerPage(parseInt(value));
                             setCurrentPurchasesPage(1); // Reset a la primera página
+                            // No necesitamos llamar loadPurchasesHistory() aquí porque el useEffect se encarga
                           }}
                         >
                           <SelectTrigger className="w-20">
@@ -1116,8 +1124,8 @@ export default function ComprasPage() {
                         </Select>
                         <span className="text-sm text-gray-700">
                           Mostrando {(currentPurchasesPage - 1) * purchasesItemsPerPage + 1} a{" "}
-                          {Math.min(currentPurchasesPage * purchasesItemsPerPage, purchasesHistory.length)} de{" "}
-                          {purchasesHistory.length} compras
+                          {Math.min(currentPurchasesPage * purchasesItemsPerPage, totalPurchases)} de{" "}
+                          {totalPurchases} compras
                         </span>
                       </div>
 
