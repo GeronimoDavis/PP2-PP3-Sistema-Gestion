@@ -589,5 +589,18 @@ class TransactionService{
         }
     }
 
+
+    public function getAllSales() {
+        try {
+            $query = "SELECT * FROM view_ventas_detalladas";
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $rows;
+        } catch (PDOException $e) {
+            throw new Exception("Error al obtener todas las ventas: " . $e->getMessage());
+        }
+    }
+
 }
 ?>

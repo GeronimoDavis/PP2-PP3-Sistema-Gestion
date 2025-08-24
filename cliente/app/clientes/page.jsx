@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Download, MoreHorizontal, UserPlus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -70,10 +70,49 @@ export default function ClientesPage() {
   const [originalClients, setOriginalClients] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: "ascending",
+  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const { user, token, validateToken, loading } = useAuth();
 
   const router = useRouter(); // Usar el hook useRouter
+
+  const requestSort = (key) => {
+    let direction = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIndicator = (columnKey) => {
+    if (sortConfig.key !== columnKey) {
+      return null;
+    }
+    return sortConfig.direction === "ascending" ? " ▲" : " ▼";
+  };
+
+  const sortedClients = useMemo(() => {
+    let sortableItems = [...clients];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const valA = a[sortConfig.key] || "";
+        const valB = b[sortConfig.key] || "";
+        if (valA < valB) {
+          return sortConfig.direction === "ascending" ? -1 : 1;
+        }
+        if (valA > valB) {
+          return sortConfig.direction === "ascending" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [clients, sortConfig]);
 
   useEffect(() => {
     // La lógica de validación se mueve aquí dentro
@@ -93,6 +132,33 @@ export default function ClientesPage() {
       loadClients();
     }
   }, [loading, user]);
+
+  useEffect(() => {
+    let filteredClients = [...originalClients];
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      const isProvider = statusFilter === "true";
+      filteredClients = filteredClients.filter(
+        (c) => c.provider === isProvider
+      );
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const lowercasedTerm = searchTerm.toLowerCase();
+      filteredClients = filteredClients.filter(
+        (client) =>
+          (client.name && client.name.toLowerCase().includes(lowercasedTerm)) ||
+          (client.email &&
+            client.email.toLowerCase().includes(lowercasedTerm)) ||
+          (client.tax_id && client.tax_id.includes(lowercasedTerm))
+      );
+    }
+
+    setClients(filteredClients);
+    setCurrentPage(1); // Reset page on filter change
+  }, [searchTerm, statusFilter, originalClients]);
 
   // Opcional: Mostrar un loader mientras se valida
   if (loading) {
@@ -178,7 +244,7 @@ export default function ClientesPage() {
   const getPaginatedClients = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return clients.slice(startIndex, endIndex);
+    return sortedClients.slice(startIndex, endIndex);
   };
 
   //este es el que se encarga de obtener el total de paginas
@@ -473,22 +539,19 @@ export default function ClientesPage() {
           <Input
             placeholder="Buscar clientes..."
             className="h-9 w-[150px] lg:w-[250px]"
-            onChange={(e) => {
-              const searchTerm = e.target.value.toLowerCase();
-              if (searchTerm === "") {
-                setClients(originalClients);
-              } else {
-                const filteredClients = originalClients.filter(
-                  (client) =>
-                    client.name.toLowerCase().includes(searchTerm) ||
-                    client.email.toLowerCase().includes(searchTerm) ||
-                    client.tax_id.includes(searchTerm)
-                );
-                setClients(filteredClients);
-              }
-              setCurrentPage(1); // Reset a la primera página
-            }}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtrar por estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="true">Activos</SelectItem>
+              <SelectItem value="false">Inactivos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       {loadingClients ? (
@@ -521,12 +584,54 @@ export default function ClientesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>CUIT/CUIL</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead className="text-right">Estado</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort("name")}
+                      >
+                        Nombre{getSortIndicator("name")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort("tax_type")}
+                      >
+                        Tipo{getSortIndicator("tax_type")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort("tax_id")}
+                      >
+                        CUIT/CUIL{getSortIndicator("tax_id")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort("phone")}
+                      >
+                        Teléfono{getSortIndicator("phone")}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort("email")}
+                      >
+                        Email{getSortIndicator("email")}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort("provider")}
+                      >
+                        Estado{getSortIndicator("provider")}
+                      </Button>
+                    </TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -541,7 +646,11 @@ export default function ClientesPage() {
                       <TableCell>{client.phone}</TableCell>
                       <TableCell>{client.email}</TableCell>
                       <TableCell className="text-right">
-                        <Badge className="bg-green-500">
+                        <Badge
+                          className={`${
+                            client.provider ? "bg-green-500" : "bg-red-500"
+                          }`}
+                        >
                           {client.provider ? "Activo" : "Inactivo"}
                         </Badge>
                       </TableCell>
