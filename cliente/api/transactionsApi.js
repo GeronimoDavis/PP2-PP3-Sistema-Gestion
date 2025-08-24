@@ -54,6 +54,15 @@ const createTransaction = async (transactionData) => {
   }
 };
 
+const createPurchase = async (purchaseData) => {
+  try {
+    const response = await api.post("/transaction/create", purchaseData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 const updateTransaction = async (id, transactionData) => {
   try {
     const response = await api.put(
@@ -81,6 +90,7 @@ export {
   getSalesHistory,
   getSaleDetails,
   createTransaction,
+  createPurchase,
   updateTransaction,
   deleteTransaction,
 };

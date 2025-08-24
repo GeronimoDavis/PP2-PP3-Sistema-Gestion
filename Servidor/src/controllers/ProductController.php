@@ -206,6 +206,25 @@ class ProductController
         }
     }
 
+    public function updateProductStockForPurchase(Request $request, Response $response, $args)
+    {
+        try {
+            $data = $request->getParsedBody();
+            $productId = $args['id'];
+            $quantity = $data['quantity'] ?? 0;
+
+            if ($quantity <= 0) {
+                throw new Exception("La cantidad debe ser mayor a 0");
+            }
+
+            $this->productService->updateStockForPurchase($productId, $quantity);
+            $response->getBody()->write(json_encode(['message' => 'Product stock updated for purchase successfully']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Throwable $e) {
+            throw new Exception("Error updating product stock for purchase: " . $e->getMessage());
+        }
+    }
+
 
  
    

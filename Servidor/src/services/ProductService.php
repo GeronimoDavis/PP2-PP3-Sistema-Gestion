@@ -250,6 +250,22 @@ class ProductService{
             throw new Exception("Error updating product stock: " . $e->getMessage());
         }
     }
+
+    public function updateStockForPurchase($productId, $quantity)
+    {
+        try {
+            $stmt = $this->pdo->prepare("UPDATE product SET stock = stock + ? WHERE product_id = ?");
+            $stmt->execute([$quantity, $productId]);
+            
+            if ($stmt->rowCount() === 0) {
+                throw new Exception("No se pudo actualizar el stock del producto ID: $productId");
+            }
+            
+            return true;
+        } catch (PDOException $e) {
+            throw new Exception("Error updating product stock for purchase: " . $e->getMessage());
+        }
+    }
   
 
 

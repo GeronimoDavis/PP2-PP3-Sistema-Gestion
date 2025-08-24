@@ -126,6 +126,15 @@ const updateProductStock = async (id, quantity) => {
     throw error;
   }
 };
+
+const updateProductStockForPurchase = async (id, quantity) => {
+  try {
+    const response = await api.put(`/product/updateStockForPurchase/${id}`, { quantity });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 //este es el que se encarga de obtener un producto por su estado
 const getProductByStatus = async (status) => {
   try {
@@ -152,6 +161,7 @@ export {
   getProductByStockRange,
   updateProductStatus,
   updateProductStock,
+  updateProductStockForPurchase,
   getProductByStatus
   
 };

@@ -42,8 +42,10 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { getProducts, getProductByCode, getProductByName } from "@/api/productsApi";
+import { getProducts, getProductByCode, getProductByName, updateProductStockForPurchase } from "@/api/productsApi";
 import { getAllActiveProviders } from "@/api/personsApi";
+import { createPurchase } from "@/api/transactionsApi";
+import { createItem } from "@/api/itemsApi";
 
 // Interfaces TypeScript para los tipos de datos
 interface CartItem {
@@ -112,6 +114,8 @@ export default function ComprasPage() {
   const [notes, setNotes] = useState("");
   // IVA
   const [excludeTax, setExcludeTax] = useState(false);
+  // Estado de procesamiento de compra
+  const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
 
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
@@ -365,7 +369,7 @@ export default function ComprasPage() {
     }
   };
 
-  const confirmPurchase = () => {
+  const confirmPurchase = async () => {
     // Validar antes de confirmar
     const errors = validatePurchase();
     
@@ -374,19 +378,60 @@ export default function ComprasPage() {
       return;
     }
 
-    // confirmar la compra
-    console.log("Confirmar compra", {
-      items: cartItems,
-      provider: selectedProvider,
-      paymentMethod,
-      purchaseDate,
-      notes,
-      iva: {
-        excludeTax,
-        tax: calculateTax(),
-        total: calculateTotalWithTax()
+    // Estado de procesamiento de compra
+    setIsProcessingPurchase(true);
+
+    try {
+      // Crear la transacción de compra
+      const transactionData = {
+        date: purchaseDate,
+        is_sale: false, // false = compra
+        person_id: parseInt(selectedProvider),
+        transport_id: null, // Por ahora sin transporte
+        tracking_number: null,
+        tax_type: excludeTax ? "Exento" : "R.I" // Responsable Inscripto o Exento
+      };
+
+      const transactionResponse = await createPurchase(transactionData);
+      const transactionId = transactionResponse.transaction.transaction_id;
+
+      // Crear los items de la compra y actualizar stock
+      for (const item of cartItems) {
+        const itemData = {
+          transaction_id: transactionId,
+          product_id: item.id,
+          quantity: item.cantidad,
+          price: item.precioCompra
+        };
+
+        await createItem(itemData);
+        
+        // Actualizar el stock del producto (incrementar)
+        await updateProductStockForPurchase(item.id, item.cantidad);
       }
-    });
+
+      // Limpiar el carrito y mostrar mensaje de éxito
+      setCartItems([]);
+      setSelectedProvider("");
+      setProviderSearchTerm("");
+      setProviderSearchResults([]);
+      setShowProviderResults(false);
+      setPaymentMethod("");
+      setNotes("");
+      setSearchTerm("");
+      setSearchResults([]);
+      setShowSearchResults(false);
+
+      alert("¡Compra confirmada exitosamente!");
+      
+     
+
+    } catch (error: any) {
+      console.error("Error al confirmar la compra:", error);
+      alert("Error al confirmar la compra: " + (error.response?.data?.error || error.message || "Error desconocido"));
+    } finally {
+      setIsProcessingPurchase(false);
+    }
   };
 
   // PROVEEDORES
@@ -782,10 +827,19 @@ export default function ComprasPage() {
                 <Button 
                   className="w-full bg-green-600 hover:bg-green-700"
                   onClick={confirmPurchase}
-                  disabled={cartItems.length === 0 || !selectedProvider || !paymentMethod || !purchaseDate}
+                  disabled={isProcessingPurchase || cartItems.length === 0 || !selectedProvider || !paymentMethod || !purchaseDate}
                 >
-                  <ShoppingBag className="mr-2 h-4 w-4" />
-                  Confirmar Compra
+                  {isProcessingPurchase ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      Confirmar Compra
+                    </>
+                  )}
                 </Button>
               </CardFooter>
             </Card>
