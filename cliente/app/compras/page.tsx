@@ -43,6 +43,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getProducts, getProductByCode, getProductByName } from "@/api/productsApi";
+import { getPersons } from "@/api/personsApi";
 
 // Interfaces TypeScript para los tipos de datos
 interface CartItem {
@@ -71,10 +72,35 @@ export default function ComprasPage() {
   // COMPRA
   // items del carrito
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  // agregar proveedor
-  const [isProveedorDialogOpen, setIsProveedorDialogOpen] = useState(false);
-  // proveedor seleccionado
-  const [selectedProvider, setSelectedProvider] = useState("");
+  // PROVEEDORES
+  // lista de proveedores disponibles
+  const [providers, setProviders] = useState<
+    Array<{
+      person_id: number;
+      name: string;
+      email: string;
+      phone: string;
+      company_name: string;
+      active: boolean;
+    }>
+  >([]);
+  // proveedor seleccionado para la compra
+  const [selectedProvider, setSelectedProvider] = useState<string>("");
+  // búsqueda de proveedores
+  const [providerSearchTerm, setProviderSearchTerm] = useState("");
+  // resultados de búsqueda de proveedores
+  const [providerSearchResults, setProviderSearchResults] = useState<
+    Array<{
+      person_id: number;
+      name: string;
+      email: string;
+      phone: string;
+      company_name: string;
+      active: boolean;
+    }>
+  >([]);
+  // mostrar resultados de búsqueda de proveedores
+  const [showProviderResults, setShowProviderResults] = useState(false);
   // metodo de pago
   const [paymentMethod, setPaymentMethod] = useState("");
   // fecha de entrega
@@ -257,6 +283,73 @@ export default function ComprasPage() {
       notes
     });
   };
+
+  // PROVEEDORES
+  // cargar lista de proveedores desde la API
+  const loadProviders = async () => {
+    try {
+      const response = await getPersons();
+
+      // Filtrar solo proveedores activos y ordenar por nombre
+      const activeProviders =
+        response.persons
+          ?.filter((provider: any) => provider.active === true)
+          ?.sort((a: any, b: any) => a.name.localeCompare(b.name)) || [];
+
+      setProviders(activeProviders);
+    } catch (error: any) {
+      console.error("Error al cargar proveedores:", error);
+      // Si hay error, mantener array vacío
+      setProviders([]);
+    }
+  };
+
+  // Búsqueda de proveedores mientras escribes
+  const handleProviderSearch = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      setProviderSearchResults([]);
+      setShowProviderResults(false);
+      return;
+    }
+
+    const filteredProviders = providers.filter(
+      (provider) =>
+        provider.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    setProviderSearchResults(filteredProviders);
+    setShowProviderResults(true);
+  };
+
+  // Cargar proveedores cuando se carga el componente
+  useEffect(() => {
+    loadProviders();
+  }, []);
+
+  // Cerrar dropdown de proveedores al hacer click fuera o presionar Escape
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest(".provider-search-container")) {
+        setShowProviderResults(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowProviderResults(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
  
   // renderizar el componente
   return (
@@ -447,81 +540,58 @@ export default function ComprasPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Proveedor</Label>
-                  <div className="flex space-x-2">
-                    {/* seleccionar proveedor */}
-                    <Select value={selectedProvider} onValueChange={setSelectedProvider}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Seleccionar proveedor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="loading">Cargando proveedores...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Dialog
-                      open={isProveedorDialogOpen}
-                      onOpenChange={setIsProveedorDialogOpen}
-                    >
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="icon">
-                          <UserPlus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                          <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
-                          <DialogDescription>
-                            Complete los datos del proveedor.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="nombre-prov" className="text-right">
-                              Nombre
-                            </Label>
-                            <Input id="nombre-prov" className="col-span-3" />
+                  <div className="relative provider-search-container">
+                    <Input
+                      placeholder="Buscar proveedor por nombre o empresa..."
+                      value={providerSearchTerm}
+                      onChange={(e) => {
+                        setProviderSearchTerm(e.target.value);
+                        handleProviderSearch(e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (providerSearchTerm.trim()) {
+                          setShowProviderResults(true);
+                        }
+                      }}
+                    />
+
+                    {/* Resultados de búsqueda de proveedores */}
+                    {showProviderResults && providerSearchResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {providerSearchResults.map((provider) => (
+                          <div
+                            key={provider.person_id}
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            onClick={() => {
+                              setSelectedProvider(provider.person_id.toString());
+                              setProviderSearchTerm(provider.name);
+                              setShowProviderResults(false);
+                            }}
+                          >
+                            <div className="font-medium">{provider.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {provider.company_name}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="cuit-prov" className="text-right">
-                              CUIT
-                            </Label>
-                            <Input id="cuit-prov" className="col-span-3" />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label
-                              htmlFor="telefono-prov"
-                              className="text-right"
-                            >
-                              Teléfono
-                            </Label>
-                            <Input id="telefono-prov" className="col-span-3" />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="email-prov" className="text-right">
-                              Email
-                            </Label>
-                            <Input
-                              id="email-prov"
-                              type="email"
-                              className="col-span-3"
-                            />
-                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Proveedor seleccionado */}
+                    {selectedProvider && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                        <div className="text-sm text-green-800">
+                          Proveedor seleccionado:{" "}
+                          {
+                            providers.find(
+                              (p) => p.person_id.toString() === selectedProvider
+                            )?.name
+                          }
                         </div>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => setIsProveedorDialogOpen(false)}
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => setIsProveedorDialogOpen(false)}
-                          >
-                            Guardar
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                      </div>
+                    )}
+
+
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -643,75 +713,7 @@ export default function ComprasPage() {
                   placeholder="Buscar proveedores..."
                   className="w-[250px]"
                 />
-                <Dialog
-                  open={isProveedorDialogOpen}
-                  onOpenChange={setIsProveedorDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button className="bg-green-600 hover:bg-green-700">
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Nuevo Proveedor
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
-                      <DialogDescription>
-                        Complete los datos del proveedor.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="nombre-prov" className="text-right">
-                          Nombre
-                        </Label>
-                        <Input id="nombre-prov" className="col-span-3" />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="cuit-prov" className="text-right">
-                          CUIT
-                        </Label>
-                        <Input id="cuit-prov" className="col-span-3" />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="telefono-prov" className="text-right">
-                          Teléfono
-                        </Label>
-                        <Input id="telefono-prov" className="col-span-3" />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="email-prov" className="text-right">
-                          Email
-                        </Label>
-                        <Input
-                          id="email-prov"
-                          type="email"
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="direccion-prov" className="text-right">
-                          Dirección
-                        </Label>
-                        <Input id="direccion-prov" className="col-span-3" />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsProveedorDialogOpen(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => setIsProveedorDialogOpen(false)}
-                      >
-                        Guardar
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+
                 <Button variant="outline">
                   <Download className="mr-2 h-4 w-4" />
                   Exportar
