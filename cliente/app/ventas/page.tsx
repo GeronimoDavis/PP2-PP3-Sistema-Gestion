@@ -1021,7 +1021,9 @@ export default function VentasPage() {
                         Tarjeta de Crédito/Débito
                       </SelectItem>
                       <SelectItem value="Cheque">Cheque</SelectItem>
-                      <SelectItem value="Credito">Crédito (30 días)</SelectItem>
+                      <SelectItem value="Credito30">Crédito (30 días)</SelectItem>
+                      <SelectItem value="Credito60">Crédito (60 días)</SelectItem>
+                      <SelectItem value="Credito90">Crédito (90 días)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

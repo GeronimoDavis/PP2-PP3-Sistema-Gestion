@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 
 import { useEffect, useState } from "react";
-import { Download, Plus, ShoppingBag, Trash2, UserPlus, Search, X } from "lucide-react";
+import { Download, Plus, ShoppingBag, Trash2, UserPlus, Search, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { getProducts, getProductByCode, getProductByName, updateProductStockForPurchase } from "@/api/productsApi";
 import { getAllActiveProviders } from "@/api/personsApi";
-import { createPurchase } from "@/api/transactionsApi";
+import { createPurchase, getPurchasesHistory, getPurchaseDetails } from "@/api/transactionsApi";
 import { createItem } from "@/api/itemsApi";
 
 // Interfaces TypeScript para los tipos de datos
@@ -116,6 +116,34 @@ export default function ComprasPage() {
   const [excludeTax, setExcludeTax] = useState(false);
   // Estado de procesamiento de compra
   const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
+
+  // HISTORIAL DE COMPRAS
+  const [purchasesHistory, setPurchasesHistory] = useState<any[]>([]);
+  // historial de compras original
+  const [originalPurchasesHistory, setOriginalPurchasesHistory] = useState<any[]>([]);
+  // estado de carga de historial de compras
+  const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
+  // error de historial de compras
+  const [purchasesError, setPurchasesError] = useState("");
+  // total de compras
+  const [totalPurchases, setTotalPurchases] = useState(0);
+  // página actual de historial de compras
+  const [currentPurchasesPage, setCurrentPurchasesPage] = useState(1);
+  // items por página de historial de compras
+  const [purchasesItemsPerPage, setPurchasesItemsPerPage] = useState(10);
+  
+  // Filtros del historial de compras
+  const [purchasesFilters, setPurchasesFilters] = useState({
+    start_date: "",
+    end_date: "",
+    provider_name: "",
+    limit: 10 as number | undefined
+  });
+
+  // Detalles de compra
+  const [selectedPurchase, setSelectedPurchase] = useState<any | null>(null);
+  const [showPurchaseDetails, setShowPurchaseDetails] = useState(false);
+  const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] = useState(false);
 
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
@@ -475,6 +503,89 @@ export default function ComprasPage() {
     loadProviders();
   }, []);
 
+  // Cargar historial de compras cuando se carga el componente
+  useEffect(() => {
+    loadPurchasesHistory();
+  }, []);
+
+  // HISTORIAL DE COMPRAS
+  const loadPurchasesHistory = async () => {
+    setIsLoadingPurchases(true);
+    setPurchasesError("");
+    
+    try {
+      const response = await getPurchasesHistory(purchasesFilters);
+      const purchasesData = response.purchases || [];
+      setPurchasesHistory(purchasesData);
+      setOriginalPurchasesHistory(purchasesData);
+      setTotalPurchases(response.total || 0);
+    } catch (error: any) {
+      console.error("Error al cargar historial de compras:", error.message);
+      setPurchasesError("Error al cargar el historial de compras");
+      setPurchasesHistory([]);
+      setOriginalPurchasesHistory([]);
+      setTotalPurchases(0);
+    } finally {
+      setIsLoadingPurchases(false);
+    }
+  };
+
+  const handlePurchasesFilterChange = (key: string, value: string) => {
+    setPurchasesFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handlePurchasesSearch = () => {
+    loadPurchasesHistory();
+  };
+
+  const handleClearPurchasesFilters = () => {
+    setPurchasesFilters({
+      start_date: "",
+      end_date: "",
+      provider_name: "",
+      limit: 10
+    });
+    setCurrentPurchasesPage(1);
+    loadPurchasesHistory();
+  };
+
+  const handleViewPurchaseDetails = async (transactionId: number) => {
+    setIsLoadingPurchaseDetails(true);
+    try {
+      const response = await getPurchaseDetails(transactionId);
+      setSelectedPurchase(response);
+      setShowPurchaseDetails(true);
+    } catch (error: any) {
+      console.error("Error al cargar detalles de la compra:", error);
+      alert("Error al cargar los detalles de la compra");
+    } finally {
+      setIsLoadingPurchaseDetails(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-AR');
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS'
+    }).format(amount);
+  };
+
+  // Funciones de paginación para compras
+  const getPaginatedPurchases = () => {
+    const startIndex = (currentPurchasesPage - 1) * purchasesItemsPerPage;
+    const endIndex = startIndex + purchasesItemsPerPage;
+    return purchasesHistory.slice(startIndex, endIndex);
+  };
+
+  const totalPurchasesPages = Math.ceil(purchasesHistory.length / purchasesItemsPerPage);
+
   // Cerrar dropdown de proveedores al hacer click fuera o presionar Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -549,7 +660,7 @@ export default function ComprasPage() {
                    </div>
                  </div>
 
-                                                  {/* Resultados de búsqueda */}
+                   {/* Resultados de búsqueda */}
                  {isSearching && (
                    <div className="mb-4 text-center py-4">
                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto"></div>
@@ -719,10 +830,10 @@ export default function ComprasPage() {
                             <div className="font-medium">{provider.name}</div>
                             <div className="text-sm text-gray-500">
                               {provider.company_name}
-                            </div>
+                          </div>
                           </div>
                         ))}
-                      </div>
+                          </div>
                     )}
 
                     {/* Proveedor seleccionado */}
@@ -735,8 +846,8 @@ export default function ComprasPage() {
                               (p) => p.person_id.toString() === selectedProvider
                             )?.name
                           }
+                          </div>
                         </div>
-                      </div>
                     )}
 
 
@@ -801,7 +912,7 @@ export default function ComprasPage() {
                   </div>
                   <div className="flex justify-between text-sm mt-2">
                     <div className="flex items-center space-x-2">
-                      <span>IVA (21%)</span>
+                    <span>IVA (21%)</span>
                       <input
                         type="checkbox"
                         id="excludeTax"
@@ -836,8 +947,8 @@ export default function ComprasPage() {
                     </>
                   ) : (
                     <>
-                      <ShoppingBag className="mr-2 h-4 w-4" />
-                      Confirmar Compra
+                  <ShoppingBag className="mr-2 h-4 w-4" />
+                  Confirmar Compra
                     </>
                   )}
                 </Button>
@@ -853,38 +964,208 @@ export default function ComprasPage() {
               <CardDescription>
                 Registro de todas las compras realizadas a proveedores
               </CardDescription>
-              <div className="flex items-center space-x-2 mt-2">
-                <Input placeholder="Buscar compras..." className="w-[250px]" />
-                <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
+              
+              {/* Filtros */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Fecha Desde</Label>
+                  <Input
+                    type="date"
+                    value={purchasesFilters.start_date}
+                    onChange={(e) => handlePurchasesFilterChange('start_date', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha Hasta</Label>
+                  <Input
+                    type="date"
+                    value={purchasesFilters.end_date}
+                    onChange={(e) => handlePurchasesFilterChange('end_date', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Proveedor</Label>
+                  <Input
+                    placeholder="Buscar por proveedor..."
+                    value={purchasesFilters.provider_name}
+                    onChange={(e) => handlePurchasesFilterChange('provider_name', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>&nbsp;</Label>
+                  <div className="flex gap-2">
+                    <Button onClick={handlePurchasesSearch} className="flex-1">
+                      <Search className="mr-2 h-4 w-4" />
+                      Buscar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleClearPurchasesFilters}
+                      className="px-3"
+                    >
+                      Limpiar
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Nº Orden</TableHead>
-                    <TableHead>Proveedor</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Fecha Entrega</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="text-center py-4 text-muted-foreground"
-                    >
-                      No hay compras registradas
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+              
+              {isLoadingPurchases ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                      <p className="mt-2 text-gray-600">Cargando historial de compras...</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : purchasesError ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <p className="text-red-600">{purchasesError}</p>
+                      <Button
+                        onClick={loadPurchasesHistory}
+                        className="mt-4 bg-blue-600 hover:bg-blue-700"
+                      >
+                        Reintentar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : purchasesHistory.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center">
+                      <p className="text-gray-600">No se encontraron compras</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">Nº Compra</TableHead>
+                        <TableHead>Proveedor</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">Items</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getPaginatedPurchases().map((purchase) => (
+                        <TableRow key={purchase.transaction_id}>
+                          <TableCell className="font-medium">
+                            #{purchase.transaction_id}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{purchase.provider_name}</div>
+                              {purchase.provider_company && (
+                                <div className="text-sm text-muted-foreground">
+                                  {purchase.provider_company}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{formatDate(purchase.date)}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(purchase.total_transaction)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {purchase.items_count || 0}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewPurchaseDetails(purchase.transaction_id)}
+                              disabled={isLoadingPurchaseDetails}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Paginación local */}
+                  {purchasesHistory.length > 0 && (
+                    <div className="flex items-center justify-between px-2 py-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-700">Mostrar:</span>
+                        <Select
+                          value={purchasesItemsPerPage.toString()}
+                          onValueChange={(value) => {
+                            setPurchasesItemsPerPage(parseInt(value));
+                            setCurrentPurchasesPage(1); // Reset a la primera página
+                          }}
+                        >
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span className="text-sm text-gray-700">
+                          Mostrando {(currentPurchasesPage - 1) * purchasesItemsPerPage + 1} a{" "}
+                          {Math.min(currentPurchasesPage * purchasesItemsPerPage, purchasesHistory.length)} de{" "}
+                          {purchasesHistory.length} compras
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPurchasesPage(1)}
+                          disabled={currentPurchasesPage === 1}
+                        >
+                          Primera
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPurchasesPage(currentPurchasesPage - 1)}
+                          disabled={currentPurchasesPage === 1}
+                        >
+                          Anterior
+                        </Button>
+
+                        <span className="text-sm text-gray-700">
+                          Página {currentPurchasesPage} de {totalPurchasesPages}
+                        </span>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPurchasesPage(currentPurchasesPage + 1)}
+                          disabled={currentPurchasesPage === totalPurchasesPages}
+                        >
+                          Siguiente
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPurchasesPage(totalPurchasesPages)}
+                          disabled={currentPurchasesPage === totalPurchasesPages}
+                        >
+                          Última
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
