@@ -103,10 +103,15 @@ export default function ComprasPage() {
   const [showProviderResults, setShowProviderResults] = useState(false);
   // metodo de pago
   const [paymentMethod, setPaymentMethod] = useState("");
-  // fecha de entrega
-  const [deliveryDate, setDeliveryDate] = useState("");
+  // fecha de compra
+  const [purchaseDate, setPurchaseDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
   // notas
   const [notes, setNotes] = useState("");
+  // IVA
+  const [excludeTax, setExcludeTax] = useState(false);
 
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
@@ -133,6 +138,18 @@ export default function ComprasPage() {
 
   // Definir el tipo de item del carrito
   const total = cartItems.reduce((sum, item) => sum + item.total, 0);
+  
+  // Cálculos de IVA
+  const calculateTax = () => {
+    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
+    return excludeTax ? 0 : subtotal * 0.21;
+  };
+  
+  const calculateTotalWithTax = () => {
+    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
+    const tax = excludeTax ? 0 : subtotal * 0.21; // 21% IVA
+    return subtotal + tax;
+  };
 
   // COMPRA
   // eliminar item del carrito
@@ -279,8 +296,13 @@ export default function ComprasPage() {
       items: cartItems,
       provider: selectedProvider,
       paymentMethod,
-      deliveryDate,
-      notes
+      purchaseDate,
+      notes,
+      iva: {
+        excludeTax,
+        tax: calculateTax(),
+        total: calculateTotalWithTax()
+      }
     });
   };
 
@@ -612,11 +634,12 @@ export default function ComprasPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Fecha de Entrega Esperada</Label>
+                  <Label>Fecha de Compra</Label>
                   <Input 
                     type="date" 
-                    value={deliveryDate}
-                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    value={purchaseDate}
+                    onChange={(e) => setPurchaseDate(e.target.value)}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -633,12 +656,26 @@ export default function ComprasPage() {
                     <span>${total.toLocaleString("es-AR")}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
-                    <span>IVA (21%)</span>
-                    <span>${(total * 0.21).toLocaleString("es-AR")}</span>
+                    <div className="flex items-center space-x-2">
+                      <span>IVA (21%)</span>
+                      <input
+                        type="checkbox"
+                        id="excludeTax"
+                        checked={excludeTax}
+                        onChange={(e) => setExcludeTax(e.target.checked)}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="excludeTax" className="text-sm text-gray-500">
+                        Excluir
+                      </label>
+                    </div>
+                    <span>${calculateTax().toLocaleString("es-AR")}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg mt-4">
                     <span>Total</span>
-                    <span>${(total * 1.21).toLocaleString("es-AR")}</span>
+                    <span>
+                      ${calculateTotalWithTax().toLocaleString("es-AR")}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -646,7 +683,7 @@ export default function ComprasPage() {
                 <Button 
                   className="w-full bg-green-600 hover:bg-green-700"
                   onClick={confirmPurchase}
-                  disabled={cartItems.length === 0 || !selectedProvider || !paymentMethod}
+                  disabled={cartItems.length === 0 || !selectedProvider || !paymentMethod || !purchaseDate}
                 >
                   <ShoppingBag className="mr-2 h-4 w-4" />
                   Confirmar Compra
