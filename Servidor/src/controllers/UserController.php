@@ -27,10 +27,12 @@ class UserController
 
             // validacion de username y password
             if (!isset($data['username']) || empty(trim($data['username']))) {
-                throw new Exception('Nombre de usuario invalido o faltante');
+                $response->getBody()->write(json_encode(['error' => 'Nombre de usuario invalido o faltante']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
             }
             if (!isset($data['password']) || empty(trim($data['password']))) {
-                throw new Exception('Contrasena invalido o faltante');
+                $response->getBody()->write(json_encode(['error' => 'Contraseña invalida o faltante']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
             }
 
             $user = new User($data);
@@ -51,16 +53,19 @@ class UserController
 
             // validacion de username y password
             if (!isset($data['username']) || empty(trim($data['username']))) {
-                throw new Exception('Nombre de usuario invalido o faltante');
+                $response->getBody()->write(json_encode(['error' => 'Nombre de usuario invalido o faltante']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
             }
             if (!isset($data['password']) || empty(trim($data['password']))) {
-                throw new Exception('Contrasena invalido o faltante');
+                $response->getBody()->write(json_encode(['error' => 'Contraseña invalida o faltante']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
             }
 
             $user = $this->userService->findByUsername($data['username']);
 
             if (!$user || !password_verify($data['password'], $user->password)) {
-                throw new Exception('Credenciales invalidas');
+                $response->getBody()->write(json_encode(['error' => 'Credenciales invalidas']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
             }
 
             $payload = [

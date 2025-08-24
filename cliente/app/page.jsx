@@ -10,6 +10,7 @@ function Login() {
   const [username, setUsername] = useState("");
   // password es el estado del input de password
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
   // login es una funcion que se ejecuta cuando se loguea el usuario
   const { login, user, token, validateToken, loading } = useAuth();
   // handleSubmit es una funcion que se ejecuta cuando se envía el formulario
@@ -27,6 +28,7 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
 
     try {
       console.log("Intentando login con:", { username, password });
@@ -40,10 +42,11 @@ function Login() {
 
       console.log("Usuario logueado en el contexto");
     } catch (error) {
-      console.error(
-        "Error al intentar logearse:",
-        error.response?.data || error.message
-      );
+      const errorMessage =
+        error.response?.data?.error ||
+        "Error al iniciar sesión. Intente nuevamente.";
+      setError(errorMessage);
+      //console.error(error); // Mantenemos el log para depuración
     }
   };
 
@@ -73,6 +76,14 @@ function Login() {
         >
           Sistema de Gestión
         </h2>
+
+        {error && (
+          <p
+            style={{ color: "red", textAlign: "center", marginBottom: "1rem" }}
+          >
+            {error}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "1rem" }}>
