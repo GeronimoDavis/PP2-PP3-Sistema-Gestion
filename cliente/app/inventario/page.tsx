@@ -88,6 +88,7 @@ export default function InventarioPage() {
     code: "",
     stock: "",
     purchase_price: "",
+    sell_price: "",
     category_id: "",
   });
 
@@ -238,6 +239,7 @@ export default function InventarioPage() {
         !productData.code ||
         !productData.stock ||
         !productData.purchase_price ||
+        !productData.sell_price ||
         !productData.category_id
       ) {
         alert("Todos los campos son obligatorios");
@@ -250,7 +252,12 @@ export default function InventarioPage() {
       }
 
       if (parseFloat(productData.purchase_price) <= 0) {
-        alert("El precio debe ser mayor a 0");
+        alert("El precio de compra debe ser mayor a 0");
+        return;
+      }
+
+      if (parseFloat(productData.sell_price) <= 0) {
+        alert("El precio de venta debe ser mayor a 0");
         return;
       }
 
@@ -274,6 +281,7 @@ export default function InventarioPage() {
         code: "",
         stock: "",
         purchase_price: "",
+        sell_price: "",
         category_id: "",
       });
     } catch (error: any) {
@@ -292,6 +300,7 @@ export default function InventarioPage() {
       code: product.code,
       stock: product.stock.toString(),
       purchase_price: product.purchase_price.toString(),
+      sell_price: product.sell_price?.toString() || "",
       category_id: product.category_id,
     });
     setIsEditDialogOpen(true);
@@ -320,7 +329,12 @@ export default function InventarioPage() {
       }
 
       if (parseFloat(productData.purchase_price) <= 0) {
-        alert("El precio debe ser mayor a 0");
+        alert("El precio de compra debe ser mayor a 0");
+        return;
+      }
+
+      if (parseFloat(productData.sell_price) <= 0) {
+        alert("El precio de venta debe ser mayor a 0");
         return;
       }
 
@@ -349,6 +363,7 @@ export default function InventarioPage() {
         code: "",
         stock: "",
         purchase_price: "",
+        sell_price: "",
         category_id: "",
       });
 
@@ -671,11 +686,11 @@ export default function InventarioPage() {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="precio" className="text-right">
-                    Precio
+                  <Label htmlFor="precio-compra" className="text-right">
+                    Precio Compra
                   </Label>
                   <Input
-                    id="precio"
+                    id="precio-compra"
                     type="number"
                     step="0.01"
                     className="col-span-3"
@@ -684,6 +699,24 @@ export default function InventarioPage() {
                       setProductData({
                         ...productData,
                         purchase_price: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="precio-venta" className="text-right">
+                    Precio Venta
+                  </Label>
+                  <Input
+                    id="precio-venta"
+                    type="number"
+                    step="0.01"
+                    className="col-span-3"
+                    value={productData.sell_price}
+                    onChange={(e) =>
+                      setProductData({
+                        ...productData,
+                        sell_price: e.target.value,
                       })
                     }
                   />
@@ -787,11 +820,11 @@ export default function InventarioPage() {
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="edit-precio" className="text-right">
-                    Precio
+                  <Label htmlFor="edit-precio-compra" className="text-right">
+                    Precio Compra
                   </Label>
                   <Input
-                    id="edit-precio"
+                    id="edit-precio-compra"
                     type="number"
                     step="0.01"
                     className="col-span-3"
@@ -800,6 +833,24 @@ export default function InventarioPage() {
                       setProductData({
                         ...productData,
                         purchase_price: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-precio-venta" className="text-right">
+                    Precio Venta
+                  </Label>
+                  <Input
+                    id="edit-precio-venta"
+                    type="number"
+                    step="0.01"
+                    className="col-span-3"
+                    value={productData.sell_price}
+                    onChange={(e) =>
+                      setProductData({
+                        ...productData,
+                        sell_price: e.target.value,
                       })
                     }
                   />
@@ -816,6 +867,7 @@ export default function InventarioPage() {
                       code: "",
                       stock: "",
                       purchase_price: "",
+                      sell_price: "",
                       category_id: "",
                     });
                   }}
@@ -925,7 +977,8 @@ export default function InventarioPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Categoría</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
-                  <TableHead className="text-right">Precio</TableHead>
+                  <TableHead className="text-right">Precio Compra</TableHead>
+                  <TableHead className="text-right">Precio Venta</TableHead>
                   <TableHead className="text-right">Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -938,6 +991,7 @@ export default function InventarioPage() {
                     <TableCell>{product.category_name}</TableCell>
                     <TableCell>{product.stock}</TableCell>
                     <TableCell>{product.purchase_price}</TableCell>
+                    <TableCell>{product.sell_price || "N/A"}</TableCell>
                     <TableCell>
                       {product.active ? "Activo" : "Inactivo"}
                     </TableCell>
