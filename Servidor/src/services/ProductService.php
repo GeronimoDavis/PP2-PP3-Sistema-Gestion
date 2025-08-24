@@ -234,6 +234,22 @@ class ProductService{
         }
 
     }
+
+    public function updateStock($productId, $quantity)
+    {
+        try {
+            $stmt = $this->pdo->prepare("UPDATE product SET stock = stock - ? WHERE product_id = ? AND stock >= ?");
+            $stmt->execute([$quantity, $productId, $quantity]);
+            
+            if ($stmt->rowCount() === 0) {
+                throw new Exception("No hay suficiente stock disponible para el producto ID: $productId");
+            }
+            
+            return true;
+        } catch (PDOException $e) {
+            throw new Exception("Error updating product stock: " . $e->getMessage());
+        }
+    }
   
 
 
