@@ -41,6 +41,7 @@ create table if not EXISTS product(
 	name varchar(50),
 	code varchar(20) not null unique,
 	stock mediumint,
+	sell_price float,
 	purchase_price float,
 	category_id int,
 	active BOOLEAN DEFAULT TRUE,

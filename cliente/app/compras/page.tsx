@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Download, Plus, ShoppingBag, Trash2, UserPlus } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
+import { useEffect, useState } from "react";
+import { Download, Plus, ShoppingBag, Trash2, UserPlus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -31,42 +31,66 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { getProducts, getProductByCode, getProductByName } from "@/api/productsApi";
+
+// Interfaces TypeScript para los tipos de datos
+interface CartItem {
+  id: number;
+  codigo: string;
+  nombre: string;
+  precioCompra: number;
+  cantidad: number;
+  total: number;
+}
+
+interface Product {
+  product_id: number;
+  name: string;
+  code: string;
+  stock: number;
+  purchase_price: number;
+  category_id: number;
+  active: number;
+}
 
 export default function ComprasPage() {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      codigo: "SEM001",
-      nombre: "Semilla de Maíz Premium",
-      precioCompra: 12000,
-      cantidad: 50,
-      total: 600000,
-    },
-    {
-      id: 2,
-      codigo: "FER002",
-      nombre: "Fertilizante NPK 20-20-20",
-      precioCompra: 6500,
-      cantidad: 30,
-      total: 195000,
-    },
-  ]);
-  const [isProveedorDialogOpen, setIsProveedorDialogOpen] = useState(false);
-
   const { user, token, validateToken, loading } = useAuth();
+  const router = useRouter();
 
-  const router = useRouter(); // Usar el hook useRouter
+  // COMPRA
+  // items del carrito
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  // agregar proveedor
+  const [isProveedorDialogOpen, setIsProveedorDialogOpen] = useState(false);
+  // proveedor seleccionado
+  const [selectedProvider, setSelectedProvider] = useState("");
+  // metodo de pago
+  const [paymentMethod, setPaymentMethod] = useState("");
+  // fecha de entrega
+  const [deliveryDate, setDeliveryDate] = useState("");
+  // notas
+  const [notes, setNotes] = useState("");
+
+  // BÚSQUEDA DE PRODUCTOS
+  // termino de búsqueda
+  const [searchTerm, setSearchTerm] = useState("");
+  // lista de productos encontrados
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  // estado de carga
+  const [isSearching, setIsSearching] = useState(false);
+  // mostrar resultados de búsqueda
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   useEffect(() => {
     // La lógica de validación se mueve aquí dentro
@@ -81,15 +105,16 @@ export default function ComprasPage() {
     }
   }, [user, token, validateToken, router, loading]); // Dependencias del efecto
 
-  // Opcional: Mostrar un loader mientras se valida
-  if (loading) {
-    return <div>Cargando...</div>;
-  }
+  // Definir el tipo de item del carrito
+  const total = cartItems.reduce((sum, item) => sum + item.total, 0);
 
+  // COMPRA
+  // eliminar item del carrito
   const removeItem = (id: number) => {
     setCartItems(cartItems.filter((item) => item.id !== id));
   };
 
+  // actualizar cantidad del item
   const updateQuantity = (id: number, cantidad: number) => {
     setCartItems(
       cartItems.map((item) => {
@@ -101,6 +126,7 @@ export default function ComprasPage() {
     );
   };
 
+  // actualizar precio del item
   const updatePrice = (id: number, precioCompra: number) => {
     setCartItems(
       cartItems.map((item) => {
@@ -112,8 +138,127 @@ export default function ComprasPage() {
     );
   };
 
-  const total = cartItems.reduce((sum, item) => sum + item.total, 0);
+  // BÚSQUEDA DE PRODUCTOS
+  // buscar productos
+  const searchProducts = async () => {
+    const currentSearchTerm = searchTerm.trim();
+    if (!currentSearchTerm) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
 
+    setIsSearching(true);
+    setShowSearchResults(true);
+
+    try {
+      let results: Product[] = [];
+
+      // Buscar por código (búsqueda exacta)
+      if (currentSearchTerm.length >= 3) {
+        try {
+          const codeResult = await getProductByCode(currentSearchTerm);
+          if (codeResult.product) {
+            results.push(codeResult.product);
+          }
+        } catch (error) {
+          // Si no encuentra por código, continuar con búsqueda por nombre
+        }
+      }
+
+      // Buscar por nombre (búsqueda parcial)
+      try {
+        const nameResult = await getProductByName(currentSearchTerm);
+        if (nameResult.products && nameResult.products.length > 0) {
+          // Filtrar duplicados si ya encontramos por código
+          const existingIds = results.map((p: Product) => p.product_id);
+          const newProducts = nameResult.products.filter((p: Product) => !existingIds.includes(p.product_id));
+          results = [...results, ...newProducts];
+        }
+      } catch (error) {
+        console.error("Error buscando por nombre:", error);
+      }
+
+      // Si no encontramos nada específico, buscar en todos los productos
+      if (results.length === 0) {
+        try {
+          const allProducts = await getProducts();
+          if (allProducts.products) {
+            results = allProducts.products.filter((product: Product) => 
+              product.name.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+              product.code.toLowerCase().includes(currentSearchTerm.toLowerCase())
+            );
+          }
+        } catch (error) {
+          console.error("Error buscando en todos los productos:", error);
+        }
+      }
+
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Error en búsqueda:", error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // agregar producto al carrito
+  const addProductToCart = (product: Product) => {
+    const newItem: CartItem = {
+      id: product.product_id,
+      codigo: product.code,
+      nombre: product.name,
+      precioCompra: product.purchase_price || 0,
+      cantidad: 1,
+      total: product.purchase_price || 0,
+    };
+
+    setCartItems([...cartItems, newItem]);
+    setShowSearchResults(false);
+    setSearchTerm("");
+  };
+
+  // limpiar búsqueda
+  const clearSearch = () => {
+    setSearchTerm("");
+    setSearchResults([]);
+    setShowSearchResults(false);
+  };
+
+  // búsqueda en tiempo real con debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm.trim()) {
+        searchProducts();
+      } else {
+        setSearchResults([]);
+        setShowSearchResults(false);
+      }
+    }, 300); // 300ms de delay para evitar demasiadas llamadas
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // buscar productos al presionar Enter (mantener para compatibilidad)
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      searchProducts();
+    }
+  };
+
+  const confirmPurchase = () => {
+    // confirmar la compra
+    console.log("Confirmar compra", {
+      items: cartItems,
+      provider: selectedProvider,
+      paymentMethod,
+      deliveryDate,
+      notes
+    });
+  };
+ 
+  // renderizar el componente
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -137,16 +282,85 @@ export default function ComprasPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center space-x-2 mb-4">
-                  <Input
-                    placeholder="Buscar productos por código o nombre..."
-                    className="flex-1"
-                  />
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Agregar
-                  </Button>
-                </div>
+                                 <div className="flex items-center space-x-2 mb-4 relative">
+                   <div className="flex-1 relative">
+                     <Input
+                       placeholder="Buscar productos por código o nombre..."
+                       className="flex-1 pr-10"
+                       value={searchTerm}
+                       onChange={(e) => setSearchTerm(e.target.value)}
+                     />
+                     {searchTerm && (
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                         onClick={clearSearch}
+                       >
+                         <X className="h-4 w-4" />
+                       </Button>
+                     )}
+                     {isSearching && (
+                       <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+
+                                                  {/* Resultados de búsqueda */}
+                 {isSearching && (
+                   <div className="mb-4 text-center py-4">
+                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto"></div>
+                     <p className="mt-2 text-sm text-gray-600">Buscando productos...</p>
+                   </div>
+                 )}
+
+                 {searchResults.length > 0 && (
+                   <div className="mb-4">
+                     <h3 className="font-semibold mb-2">
+                       Productos encontrados:
+                     </h3>
+                     <Table>
+                       <TableHeader>
+                         <TableRow>
+                           <TableHead>Código</TableHead>
+                           <TableHead>Producto</TableHead>
+                           <TableHead className="text-right">Precio Compra</TableHead>
+                           <TableHead className="text-right">Stock</TableHead>
+                           <TableHead className="text-right">Acciones</TableHead>
+                         </TableRow>
+                       </TableHeader>
+                       <TableBody>
+                         {searchResults.map((product) => (
+                           <TableRow key={product.product_id}>
+                             <TableCell className="font-medium">
+                               {product.code}
+                             </TableCell>
+                             <TableCell>{product.name}</TableCell>
+                             <TableCell className="text-right">
+                               ${product.purchase_price?.toLocaleString("es-AR") || "0"}
+                             </TableCell>
+                             <TableCell className="text-right">
+                               {product.stock || 0}
+                             </TableCell>
+                             <TableCell className="text-right">
+                               <Button 
+                                 variant="outline"
+                                 size="sm" 
+                                 onClick={() => addProductToCart(product)}
+                               >
+                                 <Plus className="h-3 w-3 mr-1" />
+                                 Agregar
+                               </Button>
+                             </TableCell>
+                           </TableRow>
+                         ))}
+                       </TableBody>
+                     </Table>
+                   </div>
+                 )}
+
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -168,6 +382,7 @@ export default function ComprasPage() {
                         </TableCell>
                         <TableCell>{item.nombre}</TableCell>
                         <TableCell className="text-right">
+                          {/* precio de compra */}
                           <Input
                             type="number"
                             value={item.precioCompra}
@@ -233,22 +448,13 @@ export default function ComprasPage() {
                 <div className="space-y-2">
                   <Label>Proveedor</Label>
                   <div className="flex space-x-2">
-                    <Select>
+                    {/* seleccionar proveedor */}
+                    <Select value={selectedProvider} onValueChange={setSelectedProvider}>
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Seleccionar proveedor" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">
-                          Semillas del Campo S.A.
-                        </SelectItem>
-                        <SelectItem value="2">
-                          Fertilizantes Argentinos
-                        </SelectItem>
-                        <SelectItem value="3">Agroquímicos del Sur</SelectItem>
-                        <SelectItem value="4">Maquinarias Rurales</SelectItem>
-                        <SelectItem value="5">
-                          Distribuidora Agropecuaria
-                        </SelectItem>
+                        <SelectItem value="loading">Cargando proveedores...</SelectItem>
                       </SelectContent>
                     </Select>
                     <Dialog
@@ -320,7 +526,8 @@ export default function ComprasPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Método de Pago</Label>
-                  <Select>
+                  {/* seleccionar metodo de pago */}
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar método" />
                     </SelectTrigger>
@@ -338,11 +545,19 @@ export default function ComprasPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Fecha de Entrega Esperada</Label>
-                  <Input type="date" />
+                  <Input 
+                    type="date" 
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Notas</Label>
-                  <Input placeholder="Agregar notas a la compra..." />
+                  <Input 
+                    placeholder="Agregar notas a la compra..." 
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
                 </div>
                 <div className="pt-4 border-t">
                   <div className="flex justify-between text-sm">
@@ -360,7 +575,11 @@ export default function ComprasPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full bg-green-600 hover:bg-green-700">
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={confirmPurchase}
+                  disabled={cartItems.length === 0 || !selectedProvider || !paymentMethod}
+                >
                   <ShoppingBag className="mr-2 h-4 w-4" />
                   Confirmar Compra
                 </Button>
@@ -399,88 +618,11 @@ export default function ComprasPage() {
                 </TableHeader>
                 <TableBody>
                   <TableRow>
-                    <TableCell className="font-medium">#OC001</TableCell>
-                    <TableCell>Semillas del Campo S.A.</TableCell>
-                    <TableCell>15/05/2023</TableCell>
-                    <TableCell>20/05/2023</TableCell>
-                    <TableCell className="text-right">$1,450,000.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Entregada</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">#OC002</TableCell>
-                    <TableCell>Fertilizantes Argentinos</TableCell>
-                    <TableCell>12/05/2023</TableCell>
-                    <TableCell>18/05/2023</TableCell>
-                    <TableCell className="text-right">$890,500.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant="outline"
-                        className="text-blue-600 border-blue-600"
-                      >
-                        En Tránsito
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">#OC003</TableCell>
-                    <TableCell>Agroquímicos del Sur</TableCell>
-                    <TableCell>08/05/2023</TableCell>
-                    <TableCell>15/05/2023</TableCell>
-                    <TableCell className="text-right">$567,800.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant="outline"
-                        className="text-yellow-600 border-yellow-600"
-                      >
-                        Pendiente
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">#OC004</TableCell>
-                    <TableCell>Maquinarias Rurales</TableCell>
-                    <TableCell>03/05/2023</TableCell>
-                    <TableCell>10/05/2023</TableCell>
-                    <TableCell className="text-right">$2,340,000.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Entregada</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">#OC005</TableCell>
-                    <TableCell>Distribuidora Agropecuaria</TableCell>
-                    <TableCell>28/04/2023</TableCell>
-                    <TableCell>05/05/2023</TableCell>
-                    <TableCell className="text-right">$1,120,300.00</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Entregada</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center py-4 text-muted-foreground"
+                    >
+                      No hay compras registradas
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -591,93 +733,11 @@ export default function ComprasPage() {
                 </TableHeader>
                 <TableBody>
                   <TableRow>
-                    <TableCell className="font-medium">
-                      Semillas del Campo S.A.
-                    </TableCell>
-                    <TableCell>30-12345678-9</TableCell>
-                    <TableCell>11-4567-8901</TableCell>
-                    <TableCell>ventas@semillasdelcampo.com.ar</TableCell>
-                    <TableCell>15/05/2023</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Activo</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      Fertilizantes Argentinos
-                    </TableCell>
-                    <TableCell>30-98765432-1</TableCell>
-                    <TableCell>11-2345-6789</TableCell>
-                    <TableCell>contacto@fertilizantesarg.com.ar</TableCell>
-                    <TableCell>12/05/2023</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Activo</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      Agroquímicos del Sur
-                    </TableCell>
-                    <TableCell>30-54321678-9</TableCell>
-                    <TableCell>11-8765-4321</TableCell>
-                    <TableCell>info@agroquimicossur.com.ar</TableCell>
-                    <TableCell>08/05/2023</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Activo</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      Maquinarias Rurales
-                    </TableCell>
-                    <TableCell>30-11223344-5</TableCell>
-                    <TableCell>11-5555-6666</TableCell>
-                    <TableCell>ventas@maquinariasrurales.com.ar</TableCell>
-                    <TableCell>03/05/2023</TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-green-500">Activo</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      Distribuidora Agropecuaria
-                    </TableCell>
-                    <TableCell>30-99887766-3</TableCell>
-                    <TableCell>11-7777-8888</TableCell>
-                    <TableCell>compras@distribuidoraagro.com.ar</TableCell>
-                    <TableCell>28/04/2023</TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant="outline"
-                        className="text-yellow-600 border-yellow-600"
-                      >
-                        Inactivo
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Ver detalles
-                      </Button>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center py-4 text-muted-foreground"
+                    >
+                      No hay proveedores registrados
                     </TableCell>
                   </TableRow>
                 </TableBody>
