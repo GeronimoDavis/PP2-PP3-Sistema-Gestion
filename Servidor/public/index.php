@@ -24,6 +24,7 @@ require __DIR__ . '/../src/routes/transactionRoutes.php';
 require __DIR__ . '/../src/routes/extrasRoute.php';
 require __DIR__ . '/../src/routes/paymentsRoute.php';
 require __DIR__ . '/../src/routes/userRoutes.php';
+require __DIR__ . '/../src/routes/DashboardRoutes.php';
 
 $app->run();
 ?>

@@ -18,15 +18,26 @@ import { addDays, subDays } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getAllActiveClients } from "@/api/personsApi";
+import { getTotalSales } from "@/api/dashboardApi";
 
 export default function DashboardPage() {
   const [clients, setClients] = useState({ clients: [] });
+  const [totalSales, setTotalSales] = useState({ total_sales: 0 });
   const { user, token, validateToken, loading } = useAuth();
   const router = useRouter();
   const [date, setDate] = useState<DateRange | undefined>({
     from: subDays(new Date(), 29),
     to: new Date(),
   });
+
+  useEffect(() => {
+    const fetchTotalSales = async () => {
+      const sales = await getTotalSales();
+      setTotalSales(sales);
+      console.log(sales);
+    };
+    fetchTotalSales();
+  }, []);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -73,9 +84,9 @@ export default function DashboardPage() {
             <ShoppingCart className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$4,231,589.32</div>
+            <div className="text-2xl font-bold">{totalSales.total_sales}</div>
             <p className="text-xs text-muted-foreground">
-              +20.1% respecto al mes anterior
+              {/* +20.1% respecto al mes anterior */}
             </p>
           </CardContent>
         </Card>
