@@ -151,6 +151,55 @@ export default function ComprasPage() {
     return subtotal + tax;
   };
 
+  // funcion para validar la compra
+  const validatePurchase = () => {
+    const errors: string[] = [];
+
+    // Validar que haya productos en el carrito
+    if (cartItems.length === 0) {
+      errors.push("El carrito está vacío");
+    }
+
+    // Validar proveedor seleccionado
+    if (!selectedProvider) {
+      errors.push("Debe seleccionar un proveedor");
+    }
+
+    // Validar método de pago
+    if (!paymentMethod) {
+      errors.push("Debe seleccionar un método de pago");
+    }
+
+    // Validar fecha de compra
+    if (!purchaseDate) {
+      errors.push("Debe seleccionar una fecha de compra");
+    } else {
+      const selectedDate = new Date(purchaseDate);
+      const today = new Date();
+      const maxFutureDate = new Date();
+      maxFutureDate.setFullYear(today.getFullYear() + 1); // Máximo 1 año en el futuro
+
+      if (selectedDate > maxFutureDate) {
+        errors.push("La fecha de compra no puede ser más de 1 año en el futuro");
+      }
+    }
+
+    // Validar productos individuales
+    cartItems.forEach((item, index) => {
+      if (item.precioCompra <= 0) {
+        errors.push(`El producto "${item.nombre}" tiene un precio inválido`);
+      }
+      if (item.cantidad <= 0) {
+        errors.push(`El producto "${item.nombre}" tiene una cantidad inválida`);
+      }
+      if (item.total <= 0) {
+        errors.push(`El producto "${item.nombre}" tiene un total inválido`);
+      }
+    });
+
+    return errors;
+  };
+
   // COMPRA
   // eliminar item del carrito
   const removeItem = (id: number) => {
@@ -159,6 +208,16 @@ export default function ComprasPage() {
 
   // actualizar cantidad del item
   const updateQuantity = (id: number, cantidad: number) => {
+    // Validar cantidad
+    if (cantidad <= 0) {
+      alert("La cantidad debe ser mayor a 0");
+      return;
+    }
+    if (cantidad > 999999999) {
+      alert("La cantidad no puede ser mayor a 999,999,999");
+      return;
+    }
+
     setCartItems(
       cartItems.map((item) => {
         if (item.id === id) {
@@ -171,6 +230,16 @@ export default function ComprasPage() {
 
   // actualizar precio del item
   const updatePrice = (id: number, precioCompra: number) => {
+    // Validar precio
+    if (precioCompra <= 0) {
+      alert("El precio debe ser mayor a 0");
+      return;
+    }
+    if (precioCompra > 999999999.99) {
+      alert("El precio no puede ser mayor a $999,999,999.99");
+      return;
+    }
+
     setCartItems(
       cartItems.map((item) => {
         if (item.id === id) {
@@ -248,13 +317,19 @@ export default function ComprasPage() {
 
   // agregar producto al carrito
   const addProductToCart = (product: Product) => {
+    // Validar que el producto tenga un precio válido
+    if (!product.purchase_price || product.purchase_price <= 0) {
+      alert("El producto no tiene un precio de compra válido");
+      return;
+    }
+
     const newItem: CartItem = {
       id: product.product_id,
       codigo: product.code,
       nombre: product.name,
-      precioCompra: product.purchase_price || 0,
+      precioCompra: product.purchase_price,
       cantidad: 1,
-      total: product.purchase_price || 0,
+      total: product.purchase_price,
     };
 
     setCartItems([...cartItems, newItem]);
@@ -291,6 +366,14 @@ export default function ComprasPage() {
   };
 
   const confirmPurchase = () => {
+    // Validar antes de confirmar
+    const errors = validatePurchase();
+    
+    if (errors.length > 0) {
+      alert("Errores de validación:\n" + errors.join("\n"));
+      return;
+    }
+
     // confirmar la compra
     console.log("Confirmar compra", {
       items: cartItems,
@@ -638,7 +721,23 @@ export default function ComprasPage() {
                   <Input 
                     type="date" 
                     value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
+                    onChange={(e) => {
+                      const selectedDate = new Date(e.target.value);
+                      const today = new Date();
+                      const maxFutureDate = new Date();
+                      maxFutureDate.setFullYear(today.getFullYear() + 1);
+                      
+                      if (selectedDate > maxFutureDate) {
+                        alert("La fecha de compra no puede ser más de 1 año en el futuro");
+                        return;
+                      }
+                      setPurchaseDate(e.target.value);
+                    }}
+                    max={(() => {
+                      const maxDate = new Date();
+                      maxDate.setFullYear(maxDate.getFullYear() + 1);
+                      return maxDate.toISOString().split('T')[0];
+                    })()}
                     required
                   />
                 </div>
