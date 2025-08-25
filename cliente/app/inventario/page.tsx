@@ -90,6 +90,7 @@ export default function InventarioPage() {
     purchase_price: "",
     sell_price: "",
     category_id: "",
+    category_name: "",
   });
 
   const [originalProducts, setOriginalProducts] = useState<any[]>([]);
@@ -112,7 +113,6 @@ export default function InventarioPage() {
       //mapear los productos con las categorias
       const productsWithCategories = response.products.map((product: any) => ({
         ...product,
-        category_name: getCategoryName(product.category_id),
       }));
       //actualizar el estado de los productos
       setProducts(productsWithCategories);
@@ -134,13 +134,13 @@ export default function InventarioPage() {
   };
 
   //este es el que se encarga de obtener el nombre de la categoria
-  const getCategoryName = (categoryId: string) => {
-    //busca la categoria en el array de categorias
-    const category = categories.find(
-      (cat) => cat.category_id.toString() === categoryId
-    );
-    return category ? category.name : categoryId;
-  };
+  // const getCategoryName = (categoryId: string) => {
+  //   //busca la categoria en el array de categorias
+  //   const category = categories.find(
+  //     (cat) => cat.category_id.toString() === categoryId
+  //   );
+  //   return category ? category.name : categoryId;
+  // };
 
   //este es el que se encarga de obtener los productos por categoria
   const handleGetProductByCategory = async (categoryId: string) => {
@@ -151,7 +151,6 @@ export default function InventarioPage() {
       //mapear los productos con las categorias
       const productsWithCategories = response.products.map((product: any) => ({
         ...product,
-        category_name: getCategoryName(product.category_id),
       }));
       setCurrentPage(1);
       //actualizar el estado de los productos
@@ -177,7 +176,6 @@ export default function InventarioPage() {
       //mapear los productos con las categorias
       const productsWithCategories = response.products.map((product: any) => ({
         ...product,
-        category_name: getCategoryName(product.category_id),
       }));
       //actualizar el estado de los productos
       setProducts(productsWithCategories);
@@ -205,7 +203,6 @@ export default function InventarioPage() {
       //mapear los productos con las categorias
       const productsWithCategories = response.products.map((product: any) => ({
         ...product,
-        category_name: getCategoryName(product.category_id),
       }));
       //actualizar la pagina actual a la primera
       setCurrentPage(1);
@@ -283,6 +280,7 @@ export default function InventarioPage() {
         purchase_price: "",
         sell_price: "",
         category_id: "",
+        category_name: "",
       });
     } catch (error: any) {
       console.error("Error al crear el producto:", error);
@@ -302,6 +300,7 @@ export default function InventarioPage() {
       purchase_price: product.purchase_price.toString(),
       sell_price: product.sell_price?.toString() || "",
       category_id: product.category_id,
+      category_name: product.category_name,
     });
     setIsEditDialogOpen(true);
   };
@@ -365,6 +364,7 @@ export default function InventarioPage() {
         purchase_price: "",
         sell_price: "",
         category_id: "",
+        category_name: "",
       });
 
       handleGetProducts();
@@ -459,6 +459,7 @@ export default function InventarioPage() {
     const endIndex = startIndex + itemsPerPage;
     return products.slice(startIndex, endIndex);
   };
+
   const Pagination = () => {
     const pages = [];
     const maxVisiblePages = 5;
@@ -569,7 +570,6 @@ export default function InventarioPage() {
       .then((data) => {
         const productsWithCategories = data.products.map((product: any) => ({
           ...product,
-          category_name: getCategoryName(product.category_id),
         }));
         //actualizar el estado de los productos
         setProducts(productsWithCategories);
@@ -869,6 +869,7 @@ export default function InventarioPage() {
                       purchase_price: "",
                       sell_price: "",
                       category_id: "",
+                      category_name: "",
                     });
                   }}
                 >
