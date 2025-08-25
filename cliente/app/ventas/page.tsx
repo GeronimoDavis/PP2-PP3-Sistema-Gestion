@@ -3,7 +3,17 @@
 import { Label } from "@/components/ui/label";
 
 import { useEffect, useState } from "react";
-import { Download, Plus, ShoppingCart, Trash2, Search, Eye, Calendar, User, X } from "lucide-react";
+import {
+  Download,
+  Plus,
+  ShoppingCart,
+  Trash2,
+  Search,
+  Eye,
+  Calendar,
+  User,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,13 +50,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { getProductByCode, getProductByName, updateProductStock } from "@/api/productsApi";
+import {
+  getProductByCode,
+  getProductByName,
+  updateProductStock,
+} from "@/api/productsApi";
 import { Loader2 } from "lucide-react";
 import { createTransaction } from "@/api/transactionsApi";
 import { createPayment } from "@/api/paymentsApi";
 import { getPersons } from "@/api/personsApi";
 import { createItem } from "@/api/itemsApi";
 import { getSalesHistory, getSaleDetails } from "@/api/transactionsApi";
+import { format } from "date-fns";
 
 // Interfaces TypeScript para los tipos de datos
 interface SaleItem {
@@ -169,12 +184,14 @@ export default function VentasPage() {
       stock: number;
     }>
   >([]);
-     //estado de carga
-   const [isLoading, setIsLoading] = useState(false);
-   //error de la busqueda
-   const [error, setError] = useState("");
-   //cantidades seleccionadas para cada producto
-   const [productQuantities, setProductQuantities] = useState<{[key: number]: number}>({});
+  //estado de carga
+  const [isLoading, setIsLoading] = useState(false);
+  //error de la busqueda
+  const [error, setError] = useState("");
+  //cantidades seleccionadas para cada producto
+  const [productQuantities, setProductQuantities] = useState<{
+    [key: number]: number;
+  }>({});
   //debounce para búsqueda automática
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
     null
@@ -228,19 +245,21 @@ export default function VentasPage() {
 
   // HISTORIAL DE VENTAS
   const [salesHistory, setSalesHistory] = useState<SalesHistoryItem[]>([]);
-  const [originalSalesHistory, setOriginalSalesHistory] = useState<SalesHistoryItem[]>([]);
+  const [originalSalesHistory, setOriginalSalesHistory] = useState<
+    SalesHistoryItem[]
+  >([]);
   const [isLoadingSales, setIsLoadingSales] = useState(false);
   const [salesError, setSalesError] = useState("");
   const [totalSales, setTotalSales] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  
+
   // Filtros del historial
   const [salesFilters, setSalesFilters] = useState({
     start_date: "",
     end_date: "",
     client_name: "",
-    limit: 10 as number | undefined
+    limit: 10 as number | undefined,
   });
 
   // Detalles de venta - Corregido el tipo
@@ -292,8 +311,6 @@ export default function VentasPage() {
           if (product && product.product) results = [product.product];
         } catch (codeError) {}
       }
-
-
 
       setSearchResults(results);
 
@@ -423,7 +440,7 @@ export default function VentasPage() {
   const loadSalesHistory = async () => {
     setIsLoadingSales(true);
     setSalesError("");
-    
+
     try {
       const response = await getSalesHistory(salesFilters);
       const salesData = response.sales || [];
@@ -442,9 +459,9 @@ export default function VentasPage() {
   };
 
   const handleSalesFilterChange = (key: string, value: string) => {
-    setSalesFilters(prev => ({
+    setSalesFilters((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
@@ -457,31 +474,29 @@ export default function VentasPage() {
       start_date: "",
       end_date: "",
       client_name: "",
-      limit: 10
+      limit: 10,
     });
     setCurrentPage(1);
     loadSalesHistory();
   };
 
-
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     const limit = salesFilters.limit || 10;
     const offset = (page - 1) * limit;
-    setSalesFilters(prev => ({
+    setSalesFilters((prev) => ({
       ...prev,
-      offset: offset
+      offset: offset,
     }));
     loadSalesHistory();
   };
 
   const handleLimitChange = (newLimit: number) => {
     setCurrentPage(1);
-    setSalesFilters(prev => ({
+    setSalesFilters((prev) => ({
       ...prev,
       limit: newLimit,
-      offset: 0
+      offset: 0,
     }));
     loadSalesHistory();
   };
@@ -510,23 +525,28 @@ export default function VentasPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-AR');
+    if (!dateString) return "";
+    // La cadena 'YYYY-MM-DD' se interpreta como medianoche UTC.
+    const date = new Date(dateString);
+    // Agregamos el desfase de la zona horaria del usuario para corregir la fecha a la local.
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    return format(date, "dd/MM/yyyy");
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS'
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
     }).format(amount);
   };
 
   const getPaymentStatus = (totalTransaction: number, totalPaid: number) => {
     if (totalPaid >= totalTransaction) {
-      return { status: 'Pagado', color: 'bg-green-100 text-green-800' };
+      return { status: "Pagado", color: "bg-green-100 text-green-800" };
     } else if (totalPaid > 0) {
-      return { status: 'Parcial', color: 'bg-yellow-100 text-yellow-800' };
+      return { status: "Parcial", color: "bg-yellow-100 text-yellow-800" };
     } else {
-      return { status: 'Pendiente', color: 'bg-red-100 text-red-800' };
+      return { status: "Pendiente", color: "bg-red-100 text-red-800" };
     }
   };
 
@@ -575,22 +595,22 @@ export default function VentasPage() {
         };
 
         await createItem(itemData);
-        
+
         // Actualizar el stock del producto
         await updateProductStock(item.id, item.cantidad);
       }
 
-             // 4. Limpiar el formulario
-       setCartItems([]);
-       setSelectedPaymentMethod("");
-       setSelectedClient("");
-       setClientSearchTerm("");
-       setPaymentAmount(0);
-       setPaymentNote("");
-       setSearchResults([]);
-       setSearchTerm("");
-       setError("");
-       setProductQuantities({});
+      // 4. Limpiar el formulario
+      setCartItems([]);
+      setSelectedPaymentMethod("");
+      setSelectedClient("");
+      setClientSearchTerm("");
+      setPaymentAmount(0);
+      setPaymentNote("");
+      setSearchResults([]);
+      setSearchTerm("");
+      setError("");
+      setProductQuantities({});
 
       // 5. Recargar el historial de ventas
       loadSalesHistory();
@@ -658,7 +678,7 @@ export default function VentasPage() {
 
   // Función para verificar si un producto ya está en el carrito
   const isProductInCart = (productId: number) => {
-    return cartItems.some(item => item.id === productId);
+    return cartItems.some((item) => item.id === productId);
   };
 
   // Función para obtener la cantidad total de un producto en el carrito
@@ -674,42 +694,44 @@ export default function VentasPage() {
     return product.stock > quantityInCart + requestedQuantity - 1;
   };
 
-     // Función para manejar el cambio de cantidad de un producto
-   const handleQuantityChange = (productId: number, quantity: number) => {
-     setProductQuantities(prev => ({
-       ...prev,
-       [productId]: quantity
-     }));
-   };
+  // Función para manejar el cambio de cantidad de un producto
+  const handleQuantityChange = (productId: number, quantity: number) => {
+    setProductQuantities((prev) => ({
+      ...prev,
+      [productId]: quantity,
+    }));
+  };
 
-   // Función para agregar o actualizar producto en el carrito
-   const addOrUpdateProductInCart = (product: any, quantity: number) => {
-     const existingItemIndex = cartItems.findIndex(item => item.id === product.product_id);
-     
-     if (existingItemIndex !== -1) {
-       // Si el producto ya existe, actualizar la cantidad
-       const updatedItems = [...cartItems];
-       const existingItem = updatedItems[existingItemIndex];
-       const newQuantity = existingItem.cantidad + quantity;
-       updatedItems[existingItemIndex] = {
-         ...existingItem,
-         cantidad: newQuantity,
-         total: existingItem.precio * newQuantity
-       };
-       setCartItems(updatedItems);
-     } else {
-       // Si el producto no existe, agregarlo como nuevo item
-       const newItem = {
-         id: product.product_id,
-         codigo: product.code,
-         nombre: product.name,
-         precio: product.sell_price,
-         cantidad: quantity,
-         total: product.sell_price * quantity,
-       };
-       setCartItems([...cartItems, newItem]);
-     }
-   };
+  // Función para agregar o actualizar producto en el carrito
+  const addOrUpdateProductInCart = (product: any, quantity: number) => {
+    const existingItemIndex = cartItems.findIndex(
+      (item) => item.id === product.product_id
+    );
+
+    if (existingItemIndex !== -1) {
+      // Si el producto ya existe, actualizar la cantidad
+      const updatedItems = [...cartItems];
+      const existingItem = updatedItems[existingItemIndex];
+      const newQuantity = existingItem.cantidad + quantity;
+      updatedItems[existingItemIndex] = {
+        ...existingItem,
+        cantidad: newQuantity,
+        total: existingItem.precio * newQuantity,
+      };
+      setCartItems(updatedItems);
+    } else {
+      // Si el producto no existe, agregarlo como nuevo item
+      const newItem = {
+        id: product.product_id,
+        codigo: product.code,
+        nombre: product.name,
+        precio: product.sell_price,
+        cantidad: quantity,
+        total: product.sell_price * quantity,
+      };
+      setCartItems([...cartItems, newItem]);
+    }
+  };
 
   // Cargar historial cuando se cambia de tab
   useEffect(() => {
@@ -717,8 +739,6 @@ export default function VentasPage() {
       loadSalesHistory();
     }
   }, [loading, token, user]);
-
-
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -802,77 +822,117 @@ export default function VentasPage() {
                       </TableHeader>
                       <TableBody>
                         {searchResults.map((product) => {
-                          const availableStock = Math.max(0, product.stock - getProductQuantityInCart(product.product_id));
+                          const availableStock = Math.max(
+                            0,
+                            product.stock -
+                              getProductQuantityInCart(product.product_id)
+                          );
                           const hasStock = hasAvailableStock(product);
-                          
+
                           return (
-                            <TableRow 
+                            <TableRow
                               key={product.product_id}
-                              className={!hasStock ? "opacity-50 bg-gray-50" : ""}
+                              className={
+                                !hasStock ? "opacity-50 bg-gray-50" : ""
+                              }
                             >
-                            <TableCell className="font-medium">
-                              {product.code}
-                            </TableCell>
-                            <TableCell>{product.name}</TableCell>
-                            <TableCell className="text-right">
-                              $
-                              {product.sell_price?.toLocaleString(
-                                "es-AR"
-                              ) || "0"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className={!hasStock ? "text-red-600 font-medium" : ""}>
-                                {Math.max(0, product.stock - getProductQuantityInCart(product.product_id))}
-                              </span>
-                              {!hasStock && (
-                                <div className="text-xs text-red-500 mt-1">
-                                  Sin stock disponible
-                                </div>
-                              )}
-                            </TableCell>
-                                                         <TableCell className="text-right">
-                               <Input
-                                 type="number"
-                                 min="1"
-                                 max={Math.max(0, product.stock - getProductQuantityInCart(product.product_id))}
-                                 className="w-16 text-right"
-                                 disabled={!hasAvailableStock(product)}
-                                 placeholder="1"
-                                 value={productQuantities[product.product_id] || 1}
-                                 onChange={(e) => {
-                                   const qty = Number(e.target.value);
-                                   if (qty > 0) {
-                                     handleQuantityChange(product.product_id, qty);
-                                   }
-                                 }}
-                               />
-                             </TableCell>
-                            <TableCell className="text-right">
-                                                             <Button
-                                 variant="outline"
-                                 size="sm"
-                                 disabled={!hasAvailableStock(product)}
-                                 onClick={async () => {
-                                   const quantity = productQuantities[product.product_id] || 1;
-                                   const availableStock = Math.max(0, product.stock - getProductQuantityInCart(product.product_id));
-                                   
-                                   if (quantity > 0 && quantity <= availableStock) {
-                                     addOrUpdateProductInCart(product, quantity);
-                                     
-                                     // Limpiar después de agregar
-                                     setTimeout(() => {
-                                       setSearchResults([]);
-                                       setSearchTerm("");
-                                       setProductQuantities({});
-                                     }, 50);
-                                   }
-                                 }}
-                               >
-                                 Agregar
-                               </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
+                              <TableCell className="font-medium">
+                                {product.code}
+                              </TableCell>
+                              <TableCell>{product.name}</TableCell>
+                              <TableCell className="text-right">
+                                $
+                                {product.sell_price?.toLocaleString("es-AR") ||
+                                  "0"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span
+                                  className={
+                                    !hasStock ? "text-red-600 font-medium" : ""
+                                  }
+                                >
+                                  {Math.max(
+                                    0,
+                                    product.stock -
+                                      getProductQuantityInCart(
+                                        product.product_id
+                                      )
+                                  )}
+                                </span>
+                                {!hasStock && (
+                                  <div className="text-xs text-red-500 mt-1">
+                                    Sin stock disponible
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max={Math.max(
+                                    0,
+                                    product.stock -
+                                      getProductQuantityInCart(
+                                        product.product_id
+                                      )
+                                  )}
+                                  className="w-16 text-right"
+                                  disabled={!hasAvailableStock(product)}
+                                  placeholder="1"
+                                  value={
+                                    productQuantities[product.product_id] || 1
+                                  }
+                                  onChange={(e) => {
+                                    const qty = Number(e.target.value);
+                                    if (qty > 0) {
+                                      handleQuantityChange(
+                                        product.product_id,
+                                        qty
+                                      );
+                                    }
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={!hasAvailableStock(product)}
+                                  onClick={async () => {
+                                    const quantity =
+                                      productQuantities[product.product_id] ||
+                                      1;
+                                    const availableStock = Math.max(
+                                      0,
+                                      product.stock -
+                                        getProductQuantityInCart(
+                                          product.product_id
+                                        )
+                                    );
+
+                                    if (
+                                      quantity > 0 &&
+                                      quantity <= availableStock
+                                    ) {
+                                      addOrUpdateProductInCart(
+                                        product,
+                                        quantity
+                                      );
+
+                                      // Limpiar después de agregar
+                                      setTimeout(() => {
+                                        setSearchResults([]);
+                                        setSearchTerm("");
+                                        setProductQuantities({});
+                                      }, 50);
+                                    }
+                                  }}
+                                >
+                                  Agregar
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
                         })}
                       </TableBody>
                     </Table>
@@ -1021,9 +1081,15 @@ export default function VentasPage() {
                         Tarjeta de Crédito/Débito
                       </SelectItem>
                       <SelectItem value="Cheque">Cheque</SelectItem>
-                      <SelectItem value="Credito30">Crédito (30 días)</SelectItem>
-                      <SelectItem value="Credito60">Crédito (60 días)</SelectItem>
-                      <SelectItem value="Credito90">Crédito (90 días)</SelectItem>
+                      <SelectItem value="Credito30">
+                        Crédito (30 días)
+                      </SelectItem>
+                      <SelectItem value="Credito60">
+                        Crédito (60 días)
+                      </SelectItem>
+                      <SelectItem value="Credito90">
+                        Crédito (90 días)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1061,7 +1127,10 @@ export default function VentasPage() {
                         onChange={(e) => setExcludeTax(e.target.checked)}
                         className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="excludeTax" className="text-sm text-gray-500">
+                      <label
+                        htmlFor="excludeTax"
+                        className="text-sm text-gray-500"
+                      >
                         Excluir
                       </label>
                     </div>
@@ -1104,7 +1173,7 @@ export default function VentasPage() {
               <CardDescription>
                 Registro de todas las ventas realizadas
               </CardDescription>
-              
+
               {/* Filtros */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                 <div className="space-y-2">
@@ -1112,7 +1181,9 @@ export default function VentasPage() {
                   <Input
                     type="date"
                     value={salesFilters.start_date}
-                    onChange={(e) => handleSalesFilterChange('start_date', e.target.value)}
+                    onChange={(e) =>
+                      handleSalesFilterChange("start_date", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -1120,7 +1191,9 @@ export default function VentasPage() {
                   <Input
                     type="date"
                     value={salesFilters.end_date}
-                    onChange={(e) => handleSalesFilterChange('end_date', e.target.value)}
+                    onChange={(e) =>
+                      handleSalesFilterChange("end_date", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -1134,8 +1207,12 @@ export default function VentasPage() {
                       } else {
                         const filteredSales = originalSalesHistory.filter(
                           (sale) =>
-                            sale.client_name.toLowerCase().includes(searchTerm) ||
-                            sale.client_company?.toLowerCase().includes(searchTerm) ||
+                            sale.client_name
+                              .toLowerCase()
+                              .includes(searchTerm) ||
+                            sale.client_company
+                              ?.toLowerCase()
+                              .includes(searchTerm) ||
                             sale.transaction_id.toString().includes(searchTerm)
                         );
                         setSalesHistory(filteredSales);
@@ -1151,8 +1228,8 @@ export default function VentasPage() {
                       <Search className="mr-2 h-4 w-4" />
                       Buscar
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={handleClearSalesFilters}
                       className="px-3"
                     >
@@ -1163,14 +1240,14 @@ export default function VentasPage() {
               </div>
             </CardHeader>
             <CardContent>
-             
-              
               {isLoadingSales ? (
                 <Card>
                   <CardContent className="p-8">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-                      <p className="mt-2 text-gray-600">Cargando historial de ventas...</p>
+                      <p className="mt-2 text-gray-600">
+                        Cargando historial de ventas...
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -1212,7 +1289,10 @@ export default function VentasPage() {
                     </TableHeader>
                     <TableBody>
                       {getPaginatedSales().map((sale) => {
-                        const paymentStatus = getPaymentStatus(sale.total_transaction, sale.total_paid);
+                        const paymentStatus = getPaymentStatus(
+                          sale.total_transaction,
+                          sale.total_paid
+                        );
                         return (
                           <TableRow key={sale.transaction_id}>
                             <TableCell className="font-medium">
@@ -1220,7 +1300,9 @@ export default function VentasPage() {
                             </TableCell>
                             <TableCell>
                               <div>
-                                <div className="font-medium">{sale.client_name}</div>
+                                <div className="font-medium">
+                                  {sale.client_name}
+                                </div>
                                 {sale.client_company && (
                                   <div className="text-sm text-muted-foreground">
                                     {sale.client_company}
@@ -1244,7 +1326,9 @@ export default function VentasPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleViewSaleDetails(sale.transaction_id)}
+                                onClick={() =>
+                                  handleViewSaleDetails(sale.transaction_id)
+                                }
                                 disabled={isLoadingSaleDetails}
                               >
                                 <Eye className="h-4 w-4" />
@@ -1255,7 +1339,7 @@ export default function VentasPage() {
                       })}
                     </TableBody>
                   </Table>
-                  
+
                   {/* Paginación local */}
                   {salesHistory.length > 0 && (
                     <div className="flex items-center justify-between px-2 py-4">
@@ -1279,8 +1363,11 @@ export default function VentasPage() {
                         </Select>
                         <span className="text-sm text-gray-700">
                           Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
-                          {Math.min(currentPage * itemsPerPage, salesHistory.length)} de{" "}
-                          {salesHistory.length} ventas
+                          {Math.min(
+                            currentPage * itemsPerPage,
+                            salesHistory.length
+                          )}{" "}
+                          de {salesHistory.length} ventas
                         </span>
                       </div>
 
@@ -1303,19 +1390,24 @@ export default function VentasPage() {
                           Anterior
                         </Button>
 
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          const page = i + 1;
-                          return (
-                            <Button
-                              key={page}
-                              variant={currentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setCurrentPage(page)}
-                            >
-                              {page}
-                            </Button>
-                          );
-                        })}
+                        {Array.from(
+                          { length: Math.min(5, totalPages) },
+                          (_, i) => {
+                            const page = i + 1;
+                            return (
+                              <Button
+                                key={page}
+                                variant={
+                                  currentPage === page ? "default" : "outline"
+                                }
+                                size="sm"
+                                onClick={() => setCurrentPage(page)}
+                              >
+                                {page}
+                              </Button>
+                            );
+                          }
+                        )}
 
                         <Button
                           variant="outline"
@@ -1352,7 +1444,7 @@ export default function VentasPage() {
               Detalles de Venta #{selectedSale?.transaction?.transaction_id}
             </DialogTitle>
           </DialogHeader>
-          
+
           {isLoadingSaleDetails ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin" />
@@ -1363,21 +1455,49 @@ export default function VentasPage() {
               {/* Información del Cliente */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <h3 className="font-semibold mb-2">Información del Cliente</h3>
-                  <p><strong>Nombre:</strong> {selectedSale.transaction.client_name}</p>
-                  <p><strong>Empresa:</strong> {selectedSale.transaction.client_company}</p>
-                  <p><strong>Email:</strong> {selectedSale.transaction.client_email}</p>
-                  <p><strong>Teléfono:</strong> {selectedSale.transaction.client_phone}</p>
+                  <h3 className="font-semibold mb-2">
+                    Información del Cliente
+                  </h3>
+                  <p>
+                    <strong>Nombre:</strong>{" "}
+                    {selectedSale.transaction.client_name}
+                  </p>
+                  <p>
+                    <strong>Empresa:</strong>{" "}
+                    {selectedSale.transaction.client_company}
+                  </p>
+                  <p>
+                    <strong>Email:</strong>{" "}
+                    {selectedSale.transaction.client_email}
+                  </p>
+                  <p>
+                    <strong>Teléfono:</strong>{" "}
+                    {selectedSale.transaction.client_phone}
+                  </p>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">Información de la Venta</h3>
-                  <p><strong>Fecha:</strong> {formatDate(selectedSale.transaction.date)}</p>
-                  <p><strong>Tipo de Impuesto:</strong> {selectedSale.transaction.tax_type}</p>
+                  <h3 className="font-semibold mb-2">
+                    Información de la Venta
+                  </h3>
+                  <p>
+                    <strong>Fecha:</strong>{" "}
+                    {formatDate(selectedSale.transaction.date)}
+                  </p>
+                  <p>
+                    <strong>Tipo de Impuesto:</strong>{" "}
+                    {selectedSale.transaction.tax_type}
+                  </p>
                   {selectedSale.transaction.tracking_number && (
-                    <p><strong>Número de Seguimiento:</strong> {selectedSale.transaction.tracking_number}</p>
+                    <p>
+                      <strong>Número de Seguimiento:</strong>{" "}
+                      {selectedSale.transaction.tracking_number}
+                    </p>
                   )}
                   {selectedSale.transaction.transport_company && (
-                    <p><strong>Transporte:</strong> {selectedSale.transaction.transport_company}</p>
+                    <p>
+                      <strong>Transporte:</strong>{" "}
+                      {selectedSale.transaction.transport_company}
+                    </p>
                   )}
                 </div>
               </div>
@@ -1398,11 +1518,19 @@ export default function VentasPage() {
                   <TableBody>
                     {selectedSale.items.map((item: any) => (
                       <TableRow key={item.item_id}>
-                        <TableCell className="font-medium">{item.product_code}</TableCell>
+                        <TableCell className="font-medium">
+                          {item.product_code}
+                        </TableCell>
                         <TableCell>{item.product_name}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
+                        <TableCell className="text-right">
+                          {item.quantity}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.price)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.quantity * item.price)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1424,9 +1552,13 @@ export default function VentasPage() {
                     <TableBody>
                       {selectedSale.extras.map((extra: any) => (
                         <TableRow key={extra.extra_id}>
-                          <TableCell className="font-medium">{extra.type}</TableCell>
+                          <TableCell className="font-medium">
+                            {extra.type}
+                          </TableCell>
                           <TableCell>{extra.note}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(extra.price)}</TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(extra.price)}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1449,8 +1581,12 @@ export default function VentasPage() {
                     {selectedSale.payments.map((payment: any) => (
                       <TableRow key={payment.payment_id}>
                         <TableCell>{formatDate(payment.date)}</TableCell>
-                        <TableCell className="font-medium">{payment.type}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(payment.amount)}</TableCell>
+                        <TableCell className="font-medium">
+                          {payment.type}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(payment.amount)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1462,22 +1598,48 @@ export default function VentasPage() {
                 <h3 className="font-semibold mb-3">Resumen</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p><strong>Subtotal Productos:</strong> {formatCurrency(selectedSale.totals.items)}</p>
-                    <p><strong>Cargos Adicionales:</strong> {formatCurrency(selectedSale.totals.extras)}</p>
-                    <p className="text-lg font-bold">Total: {formatCurrency(selectedSale.totals.transaction)}</p>
+                    <p>
+                      <strong>Subtotal Productos:</strong>{" "}
+                      {formatCurrency(selectedSale.totals.items)}
+                    </p>
+                    <p>
+                      <strong>Cargos Adicionales:</strong>{" "}
+                      {formatCurrency(selectedSale.totals.extras)}
+                    </p>
+                    <p className="text-lg font-bold">
+                      Total: {formatCurrency(selectedSale.totals.transaction)}
+                    </p>
                   </div>
                   <div>
-                    <p><strong>Total Pagado:</strong> {formatCurrency(selectedSale.totals.paid)}</p>
-                    <p><strong>Pendiente:</strong> {formatCurrency(selectedSale.totals.pending)}</p>
-                    <Badge className={getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).color}>
-                      {getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).status}
+                    <p>
+                      <strong>Total Pagado:</strong>{" "}
+                      {formatCurrency(selectedSale.totals.paid)}
+                    </p>
+                    <p>
+                      <strong>Pendiente:</strong>{" "}
+                      {formatCurrency(selectedSale.totals.pending)}
+                    </p>
+                    <Badge
+                      className={
+                        getPaymentStatus(
+                          selectedSale.totals.transaction,
+                          selectedSale.totals.paid
+                        ).color
+                      }
+                    >
+                      {
+                        getPaymentStatus(
+                          selectedSale.totals.transaction,
+                          selectedSale.totals.paid
+                        ).status
+                      }
                     </Badge>
                   </div>
                 </div>
               </div>
             </div>
           ) : null}
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSaleDetails(false)}>
               Cerrar

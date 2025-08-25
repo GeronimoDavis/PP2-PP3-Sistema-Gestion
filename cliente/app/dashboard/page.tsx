@@ -14,7 +14,7 @@ import { Overview } from "@/components/overview";
 import { RecentVentas } from "@/components/recent-ventas";
 import { DatePickerWithRange } from "@/components/date-range-picker";
 import type { DateRange } from "react-day-picker";
-import { addDays, subDays } from "date-fns";
+import { addDays, subDays, format } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getAllActiveClients } from "@/api/personsApi";
@@ -79,6 +79,15 @@ export default function DashboardPage() {
   if (loading) {
     return null;
   }
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "";
+    // La cadena 'YYYY-MM-DD' se interpreta como medianoche UTC.
+    const date = new Date(dateString);
+    // Agregamos el desfase de la zona horaria del usuario para corregir la fecha a la local.
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    return format(date, "dd/MM/yyyy");
+  };
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -169,7 +178,7 @@ export default function DashboardPage() {
                 <RecentVentas
                   key={index}
                   nombreCliente={venta.company_name}
-                  fechaVenta={venta.date}
+                  fechaVenta={formatDate(venta.date)}
                   montoVenta={formatNumber(venta.total_a_pagar)}
                 />
               ))}

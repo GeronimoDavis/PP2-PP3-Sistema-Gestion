@@ -129,7 +129,9 @@ const updateProductStock = async (id, quantity) => {
 
 const updateProductStockForPurchase = async (id, quantity) => {
   try {
-    const response = await api.put(`/product/updateStockForPurchase/${id}`, { quantity });
+    const response = await api.put(`/product/updateStockForPurchase/${id}`, {
+      quantity,
+    });
     return response.data;
   } catch (error) {
     throw error;
@@ -142,7 +144,7 @@ const getProductByStatus = async (status) => {
     return response.data;
   } catch (error) {
     throw error;
-  } 
+  }
 };
 
 //exportamos las funciones
@@ -162,6 +164,5 @@ export {
   updateProductStatus,
   updateProductStock,
   updateProductStockForPurchase,
-  getProductByStatus
-  
+  getProductByStatus,
 };

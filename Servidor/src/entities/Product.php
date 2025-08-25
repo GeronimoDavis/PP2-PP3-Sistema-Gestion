@@ -10,6 +10,7 @@ class Product {
     public float $sell_price;
     public ?int $category_id;
     public ?int $active;
+    public ?string $category_name;
 
     public function __construct(array $data)
     {
@@ -21,6 +22,7 @@ class Product {
         $this->sell_price = isset($data['sell_price']) ? (float)$data['sell_price'] : 0.0;
         $this->category_id = $data['category_id'] ?? null;
         $this->active = $data['active'] ?? 1;
+        $this->category_name = $data['category_name'] ?? '';
     }
 
     public function toArray(): array
@@ -34,6 +36,7 @@ class Product {
             'sell_price' => $this->sell_price,
             'category_id' => $this->category_id,
             'active' => $this->active,
+            'category_name' => $this->category_name,
         ];
 
     }

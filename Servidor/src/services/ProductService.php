@@ -12,13 +12,12 @@ class ProductService{
     public function __construct()
     {
         $this->pdo = DataBase::Connect();
-
     }
     public function getAll()
     {
         try{
        
-         $query = "SELECT * FROM product WHERE active = 1 ORDER BY product_id";
+         $query = "SELECT product.*, category.name as category_name FROM product JOIN category ON product.category_id = category.category_id WHERE product.active = 1 ORDER BY product.product_id";
         $stmt = $this->pdo->prepare($query);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
