@@ -145,6 +145,18 @@ export default function ComprasPage() {
   const [showPurchaseDetails, setShowPurchaseDetails] = useState(false);
   const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] = useState(false);
 
+  // LISTADO DE PROVEEDORES
+  // lista de proveedores
+  const [providersList, setProvidersList] = useState<any[]>([]);
+  // lista de proveedores original
+  const [originalProvidersList, setOriginalProvidersList] = useState<any[]>([]);
+  // estado de carga de proveedores
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
+  // error de proveedores
+  const [providersError, setProvidersError] = useState("");
+  // termino de búsqueda de proveedores
+  const [providersSearchTerm, setProvidersSearchTerm] = useState("");
+
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
   const [searchTerm, setSearchTerm] = useState("");
@@ -503,9 +515,55 @@ export default function ComprasPage() {
     loadProviders();
   }, []);
 
+  // LISTADO DE PROVEEDORES
+  const loadProvidersList = async () => {
+    setIsLoadingProviders(true);
+    setProvidersError("");
+    
+    try {
+      const response = await getAllActiveProviders();
+      const providersData = response.providers || [];
+      setProvidersList(providersData);
+      setOriginalProvidersList(providersData);
+    } catch (error: any) {
+      console.error("Error al cargar proveedores:", error.message);
+      setProvidersError("Error al cargar el listado de proveedores");
+      setProvidersList([]);
+      setOriginalProvidersList([]);
+    } finally {
+      setIsLoadingProviders(false);
+    }
+  };
+
+  // búsqueda de proveedores
+  const handleProvidersSearch = (searchTerm: string) => {
+    setProvidersSearchTerm(searchTerm);
+    
+    if (!searchTerm.trim()) {
+      setProvidersList(originalProvidersList);
+      return;
+    }
+
+    // filtrar proveedores
+    const filteredProviders = originalProvidersList.filter(
+      (provider) =>
+        provider.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    setProvidersList(filteredProviders);
+  };
+
   // Cargar historial de compras cuando se carga el componente
   useEffect(() => {
     loadPurchasesHistory();
+  }, []);
+
+  // Cargar listado de proveedores cuando se carga el componente
+  useEffect(() => {
+    loadProvidersList();
   }, []);
 
   // Recargar cuando cambien los filtros o la página
@@ -1189,6 +1247,8 @@ export default function ComprasPage() {
                 <Input
                   placeholder="Buscar proveedores..."
                   className="w-[250px]"
+                  value={providersSearchTerm}
+                  onChange={(e) => handleProvidersSearch(e.target.value)}
                 />
 
                 <Button variant="outline">
@@ -1198,216 +1258,80 @@ export default function ComprasPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>CUIT</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Última Compra</TableHead>
-                    <TableHead className="text-right">Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="text-center py-4 text-muted-foreground"
-                    >
-                      No hay proveedores registrados
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Modal de Detalles de Compra */}
-      <Dialog open={showPurchaseDetails} onOpenChange={setShowPurchaseDetails}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalles de la Compra #{selectedPurchase?.transaction?.transaction_id}</DialogTitle>
-            <DialogDescription>
-              Información completa de la compra realizada
-            </DialogDescription>
-          </DialogHeader>
-
-          {isLoadingPurchaseDetails ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-              <span className="ml-2">Cargando detalles...</span>
-            </div>
-          ) : selectedPurchase ? (
-            <div className="space-y-6">
-              {/* Información del Proveedor */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Información del Proveedor</h3>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="font-medium">Nombre:</span> {selectedPurchase.transaction.provider_name}
-                    </div>
-                    {selectedPurchase.transaction.provider_company && (
-                      <div>
-                        <span className="font-medium">Empresa:</span> {selectedPurchase.transaction.provider_company}
-                      </div>
-                    )}
-                    {selectedPurchase.transaction.provider_email && (
-                      <div>
-                        <span className="font-medium">Email:</span> {selectedPurchase.transaction.provider_email}
-                      </div>
-                    )}
-                    {selectedPurchase.transaction.provider_phone && (
-                      <div>
-                        <span className="font-medium">Teléfono:</span> {selectedPurchase.transaction.provider_phone}
-                      </div>
-                    )}
-                  </div>
+              {isLoadingProviders ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Cargando proveedores...</p>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Información de la Compra</h3>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="font-medium">Fecha:</span> {formatDate(selectedPurchase.transaction.date)}
-                    </div>
-                    <div>
-                      <span className="font-medium">Tipo de IVA:</span> {selectedPurchase.transaction.tax_type}
-                    </div>
-                    {selectedPurchase.transaction.tracking_number && (
-                      <div>
-                        <span className="font-medium">Número de Seguimiento:</span> {selectedPurchase.transaction.tracking_number}
-                      </div>
-                    )}
-                  </div>
+              ) : providersError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-600">{providersError}</p>
+                  <Button
+                    onClick={loadProvidersList}
+                    className="mt-4 bg-blue-600 hover:bg-blue-700"
+                  >
+                    Reintentar
+                  </Button>
                 </div>
-              </div>
-
-              {/* Productos Comprados */}
-              <div>
-                <h3 className="font-semibold text-lg mb-4">Productos Comprados</h3>
+              ) : providersList.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">
+                    {providersSearchTerm ? "No se encontraron proveedores" : "No hay proveedores registrados"}
+                  </p>
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Producto</TableHead>
-                      <TableHead>Código</TableHead>
-                      <TableHead className="text-right">Cantidad</TableHead>
-                      <TableHead className="text-right">Precio Unitario</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Empresa</TableHead>
+                      <TableHead>Teléfono</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead className="text-right">Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedPurchase.items.map((item: any) => (
-                      <TableRow key={item.item_id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{item.product_name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              Costo: {formatCurrency(item.product_cost)}
-                            </div>
-                          </div>
+                    {providersList.map((provider) => (
+                      <TableRow key={provider.person_id}>
+                        <TableCell className="font-medium">
+                          {provider.name}
                         </TableCell>
-                        <TableCell>{item.product_code}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
+                        <TableCell>
+                          {provider.company_name || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {provider.phone || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {provider.email || "-"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={provider.active ? "default" : "secondary"}>
+                            {provider.active ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Aquí se puede agregar funcionalidad para ver detalles o editar
+                              console.log("Ver detalles del proveedor:", provider);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-
-              {/* Extras (si existen) */}
-              {selectedPurchase.extras && selectedPurchase.extras.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-lg mb-4">Extras</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead className="text-right">Precio</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedPurchase.extras.map((extra: any) => (
-                        <TableRow key={extra.extra_id}>
-                          <TableCell>{extra.description}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(extra.price)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
               )}
-
-              {/* Pagos (si existen) */}
-              {selectedPurchase.payments && selectedPurchase.payments.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-lg mb-4">Pagos Realizados</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead className="text-right">Monto</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedPurchase.payments.map((payment: any) => (
-                        <TableRow key={payment.payment_id}>
-                          <TableCell>{formatDate(payment.date)}</TableCell>
-                          <TableCell>{payment.method}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(payment.amount)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-
-              {/* Resumen de Totales */}
-              <div className="border-t pt-4">
-                <div className="flex justify-end">
-                  <div className="space-y-2 text-right">
-                    <div className="text-lg">
-                      <span className="font-medium">Subtotal:</span> {formatCurrency(selectedPurchase.totals.items)}
-                    </div>
-                    {selectedPurchase.totals.extras > 0 && (
-                      <div>
-                        <span className="font-medium">Extras:</span> {formatCurrency(selectedPurchase.totals.extras)}
-                      </div>
-                    )}
-                    <div className="text-xl font-bold">
-                      <span>Total:</span> {formatCurrency(selectedPurchase.totals.transaction)}
-                    </div>
-                    {selectedPurchase.totals.paid > 0 && (
-                      <div className="text-sm text-muted-foreground">
-                        <span>Pagado:</span> {formatCurrency(selectedPurchase.totals.paid)}
-                        {selectedPurchase.totals.pending > 0 && (
-                          <span className="ml-2">Pendiente: {formatCurrency(selectedPurchase.totals.pending)}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No se pudieron cargar los detalles de la compra
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPurchaseDetails(false)}>
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
