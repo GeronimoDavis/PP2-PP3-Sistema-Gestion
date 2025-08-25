@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -43,7 +44,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getProducts, getProductByCode, getProductByName, updateProductStockForPurchase } from "@/api/productsApi";
-import { getAllActiveProviders } from "@/api/personsApi";
+import { getAllActiveProviders, createPerson } from "@/api/personsApi";
 import { createPurchase, getPurchasesHistory, getPurchaseDetails } from "@/api/transactionsApi";
 import { createItem } from "@/api/itemsApi";
 
@@ -156,6 +157,25 @@ export default function ComprasPage() {
   const [providersError, setProvidersError] = useState("");
   // termino de búsqueda de proveedores
   const [providersSearchTerm, setProvidersSearchTerm] = useState("");
+  // paginación de proveedores
+  const [currentProvidersPage, setCurrentProvidersPage] = useState(1);
+  // items por página de proveedores
+  const [providersItemsPerPage, setProvidersItemsPerPage] = useState(10);
+  // diálogo de crear proveedor
+  const [isCreateProviderDialogOpen, setIsCreateProviderDialogOpen] = useState(false);
+  // formulario de crear proveedor
+  const [newProvider, setNewProvider] = useState({
+    name: "",
+    company_name: "",
+    phone: "",
+    email: "",
+    address: "",
+    notes: "",
+    tax_id: "",
+    tax_type: "R.I"
+  });
+  const [isCreatingProvider, setIsCreatingProvider] = useState(false);
+  const [providerFormError, setProviderFormError] = useState("");
 
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
@@ -538,6 +558,7 @@ export default function ComprasPage() {
   // búsqueda de proveedores
   const handleProvidersSearch = (searchTerm: string) => {
     setProvidersSearchTerm(searchTerm);
+    setCurrentProvidersPage(1); // Reset a la primera página al buscar
     
     if (!searchTerm.trim()) {
       setProvidersList(originalProvidersList);
@@ -554,6 +575,155 @@ export default function ComprasPage() {
     );
 
     setProvidersList(filteredProviders);
+  };
+
+  // Funciones de paginación para proveedores
+  const getPaginatedProviders = () => {
+    const startIndex = (currentProvidersPage - 1) * providersItemsPerPage;
+    const endIndex = startIndex + providersItemsPerPage;
+    return providersList.slice(startIndex, endIndex);
+  };
+
+  const totalProvidersPages = Math.ceil(providersList.length / providersItemsPerPage);
+
+  // Funciones para crear proveedor
+  const handleProviderInputChange = (field: string, value: string) => {
+    let formattedValue = value;
+    
+    // Formatear CUIT automáticamente
+    if (field === "tax_id") {
+      // Remover todos los caracteres no numéricos
+      const numbersOnly = value.replace(/\D/g, '');
+      
+      // Aplicar formato XX-XXXXXXXX-X
+      if (numbersOnly.length <= 2) {
+        formattedValue = numbersOnly;
+      } else if (numbersOnly.length <= 10) {
+        formattedValue = `${numbersOnly.slice(0, 2)}-${numbersOnly.slice(2)}`;
+      } else {
+        formattedValue = `${numbersOnly.slice(0, 2)}-${numbersOnly.slice(2, 10)}-${numbersOnly.slice(10, 11)}`;
+      }
+    }
+    
+    setNewProvider(prev => ({
+      ...prev,
+      [field]: formattedValue
+    }));
+    setProviderFormError(""); // Limpiar errores al escribir
+  };
+
+  const validateProviderForm = () => {
+    // Validar nombre
+    if (!newProvider.name.trim()) {
+      setProviderFormError("El nombre es obligatorio");
+      return false;
+    }
+    // Validar email
+    if (!newProvider.email.trim()) {
+      setProviderFormError("El email es obligatorio");
+      return false;
+    }
+    // Validar formato de email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newProvider.email)) {
+      setProviderFormError("El email no tiene un formato válido");
+      return false;
+    } 
+    // Validar CUIT
+    if (!newProvider.tax_id.trim()) {
+      setProviderFormError("El CUIT es obligatorio");
+      return false;
+    }
+    // Validar formato de CUIT
+    if (!/^\d{2}-\d{8}-\d{1}$/.test(newProvider.tax_id)) {
+      setProviderFormError("El CUIT debe tener 11 dígitos (se formatea automáticamente)");
+      return false;
+    }
+    return true;
+  };
+
+  const handleCreateProvider = async () => {
+    if (!validateProviderForm()) return;
+
+    setIsCreatingProvider(true);
+    setProviderFormError("");
+
+    try {
+      // Convertir el CUIT de formato XX-XXXXXXXX-X a XXXXXXXXXXX (sin guiones)
+      const taxIdWithoutDashes = newProvider.tax_id.replace(/-/g, '');
+      
+      // Mapear los tipos de IVA al formato que espera el backend
+      const taxTypeMapping: { [key: string]: string } = {
+        'R.I': 'R.I',
+        'M': 'Monotributo',
+        'E': 'Exento',
+        'C': 'Consumidor Final'
+      };
+
+      const providerData = {
+        name: newProvider.name.trim(),
+        company_name: newProvider.company_name.trim() || "",
+        phone: newProvider.phone.trim() || "",
+        email: newProvider.email.trim(),
+        address: newProvider.address.trim() || "",
+        notes: newProvider.notes.trim() || "",
+        provider: true,
+        active: true,
+        tax_id: taxIdWithoutDashes,
+        tax_type: taxTypeMapping[newProvider.tax_type] || 'R.I'
+      };
+
+      console.log("Datos del proveedor a enviar:", providerData);
+      const response = await createPerson(providerData);
+      
+      if (response.person) {
+        // Limpiar formulario
+        setNewProvider({
+          name: "",
+          company_name: "",
+          phone: "",
+          email: "",
+          address: "",
+          notes: "",
+          tax_id: "",
+          tax_type: "R.I"
+        });
+        
+        // Cerrar diálogo
+        setIsCreateProviderDialogOpen(false);
+        
+        // Recargar lista de proveedores
+        await loadProvidersList();
+        
+        // Mostrar mensaje de éxito
+        alert("Proveedor creado exitosamente");
+      } else {
+        setProviderFormError("Error al crear el proveedor");
+      }
+    } catch (error: any) {
+      console.error("Error al crear proveedor:", error);
+      if (error.response && error.response.data && error.response.data.error) {
+        setProviderFormError(`Error: ${error.response.data.error}`);
+      } else {
+        setProviderFormError("Error al crear el proveedor. Intente nuevamente.");
+      }
+    } finally {
+      setIsCreatingProvider(false);
+    }
+  };
+
+  const handleCloseProviderDialog = () => {
+    setIsCreateProviderDialogOpen(false);
+    setNewProvider({
+      name: "",
+      company_name: "",
+      phone: "",
+      email: "",
+      address: "",
+      notes: "",
+      tax_id: "",
+      tax_type: "R.I"
+    });
+    setProviderFormError("");
   };
 
   // Cargar historial de compras cuando se carga el componente
@@ -1243,17 +1413,27 @@ export default function ComprasPage() {
               <CardDescription>
                 Administre la información de sus proveedores
               </CardDescription>
-              <div className="flex items-center space-x-2 mt-2">
-                <Input
-                  placeholder="Buscar proveedores..."
-                  className="w-[250px]"
-                  value={providersSearchTerm}
-                  onChange={(e) => handleProvidersSearch(e.target.value)}
-                />
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center space-x-2">
+                  <Input
+                    placeholder="Buscar proveedores..."
+                    className="w-[250px]"
+                    value={providersSearchTerm}
+                    onChange={(e) => handleProvidersSearch(e.target.value)}
+                  />
 
-                <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
+                  <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar
+                  </Button>
+                </div>
+
+                <Button 
+                  onClick={() => setIsCreateProviderDialogOpen(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Crear Proveedor
                 </Button>
               </div>
             </CardHeader>
@@ -1292,7 +1472,7 @@ export default function ComprasPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {providersList.map((provider) => (
+                    {getPaginatedProviders().map((provider) => (
                       <TableRow key={provider.person_id}>
                         <TableCell className="font-medium">
                           {provider.name}
@@ -1328,10 +1508,221 @@ export default function ComprasPage() {
                   </TableBody>
                 </Table>
               )}
+              
+              {/* Paginación de proveedores */}
+              {providersList.length > 0 && (
+                <div className="flex items-center justify-between px-2 py-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-700">Mostrar:</span>
+                    <Select
+                      value={providersItemsPerPage.toString()}
+                      onValueChange={(value) => {
+                        setProvidersItemsPerPage(parseInt(value));
+                        setCurrentProvidersPage(1); // Reset a la primera página
+                      }}
+                    >
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="25">25</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-700">
+                      Mostrando {(currentProvidersPage - 1) * providersItemsPerPage + 1} a{" "}
+                      {Math.min(currentProvidersPage * providersItemsPerPage, providersList.length)} de{" "}
+                      {providersList.length} proveedores
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentProvidersPage(1)}
+                      disabled={currentProvidersPage === 1}
+                    >
+                      Primera
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentProvidersPage(currentProvidersPage - 1)}
+                      disabled={currentProvidersPage === 1}
+                    >
+                      Anterior
+                    </Button>
+
+                    <span className="text-sm text-gray-700">
+                      Página {currentProvidersPage} de {totalProvidersPages}
+                    </span>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentProvidersPage(currentProvidersPage + 1)}
+                      disabled={currentProvidersPage === totalProvidersPages}
+                    >
+                      Siguiente
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentProvidersPage(totalProvidersPages)}
+                      disabled={currentProvidersPage === totalProvidersPages}
+                    >
+                      Última
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Diálogo de Crear Proveedor */}
+      <Dialog open={isCreateProviderDialogOpen} onOpenChange={handleCloseProviderDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Proveedor</DialogTitle>
+            <DialogDescription>
+              Complete la información del nuevo proveedor
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="provider-name">Nombre *</Label>
+                <Input
+                  id="provider-name"
+                  placeholder="Nombre del proveedor"
+                  value={newProvider.name}
+                  onChange={(e) => handleProviderInputChange("name", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="provider-company">Empresa</Label>
+                <Input
+                  id="provider-company"
+                  placeholder="Nombre de la empresa"
+                  value={newProvider.company_name}
+                  onChange={(e) => handleProviderInputChange("company_name", e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="provider-phone">Teléfono</Label>
+                <Input
+                  id="provider-phone"
+                  placeholder="Número de teléfono"
+                  value={newProvider.phone}
+                  onChange={(e) => handleProviderInputChange("phone", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="provider-email">Email *</Label>
+                <Input
+                  id="provider-email"
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={newProvider.email}
+                  onChange={(e) => handleProviderInputChange("email", e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="provider-tax-id">CUIT *</Label>
+                <Input
+                  id="provider-tax-id"
+                  placeholder="Ingrese solo números (ej: 20123456789)"
+                  value={newProvider.tax_id}
+                  onChange={(e) => handleProviderInputChange("tax_id", e.target.value)}
+                  maxLength={13}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="provider-tax-type">Tipo de IVA</Label>
+                <Select
+                  value={newProvider.tax_type}
+                  onValueChange={(value) => handleProviderInputChange("tax_type", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="R.I">Responsable Inscripto</SelectItem>
+                    <SelectItem value="M">Monotributista</SelectItem>
+                    <SelectItem value="E">Exento</SelectItem>
+                    <SelectItem value="C">Consumidor Final</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="provider-address">Dirección</Label>
+              <Input
+                id="provider-address"
+                placeholder="Dirección completa"
+                value={newProvider.address}
+                onChange={(e) => handleProviderInputChange("address", e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="provider-notes">Notas</Label>
+              <Textarea
+                id="provider-notes"
+                placeholder="Información adicional del proveedor"
+                rows={3}
+                value={newProvider.notes}
+                onChange={(e) => handleProviderInputChange("notes", e.target.value)}
+              />
+            </div>
+            
+            {/* Mensaje de error */}
+            {providerFormError && (
+              <div className="text-red-600 text-sm mt-2">
+                {providerFormError}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCloseProviderDialog}
+              disabled={isCreatingProvider}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateProvider}
+              disabled={isCreatingProvider}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isCreatingProvider ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Creando...
+                </>
+              ) : (
+                "Crear Proveedor"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
