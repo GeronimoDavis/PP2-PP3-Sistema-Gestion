@@ -6,7 +6,9 @@ use Middlewares\AuthMiddleware;
 $dashboardController = new DashboardController();
 
 $app->group('/dashboard', function(RouteCollectorProxy $group) use ($dashboardController){
-    $group->get('/totalSales', [$dashboardController, 'getTotalSales']);
-    $group->get('/totalPurchases', [$dashboardController, 'getTotalPurchases']);
-    $group->get('/recentTransactions[/{limit}]', [$dashboardController, 'getRecentTransactions']);
-})->add(new AuthMiddleware());
+    $group->get('/total-sales', [$dashboardController, 'getTotalSales']);
+    $group->get('/total-purchases', [$dashboardController, 'getTotalPurchases']);
+    $group->get('/recent-transactions[/{limit}]', [$dashboardController, 'getRecentTransactions']);
+})
+// ->add(new AuthMiddleware())
+;

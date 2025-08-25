@@ -2,6 +2,7 @@
 namespace Controllers;
 
 use Services\DashboardService;
+use Entities\Transaction;
 use Throwable;
 use Exception;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -40,8 +41,9 @@ class DashboardController {
         try {
             $limit = isset($args['limit']) ? (int)$args['limit'] : 10;
             $transactions = $this->dashboardService->getRecentTransactions($limit);
-            $transactionsArray = array_map(fn($t) => $t->toArray(), $transactions);
-            $response->getBody()->write(json_encode(['recent_transactions' => $transactionsArray]));
+            // var_dump($transactions);
+            //$transactionsArray = array_map(fn($t) => $t->toArray(), $transactions);
+            $response->getBody()->write(json_encode(['recent_transactions' => $transactions]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Throwable $e) {
             $response->getBody()->write(json_encode(['error' => 'Error fetching recent transactions: ' . $e->getMessage()]));

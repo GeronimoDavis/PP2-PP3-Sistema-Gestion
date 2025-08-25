@@ -18,11 +18,13 @@ import { addDays, subDays } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getAllActiveClients } from "@/api/personsApi";
-import { getTotalSales } from "@/api/dashboardApi";
+import { getTotalSales, getRecentTransactions } from "@/api/dashboardApi";
+import { tr } from "date-fns/locale";
 
 export default function DashboardPage() {
   const [clients, setClients] = useState({ clients: [] });
   const [totalSales, setTotalSales] = useState({ total_sales: 0 });
+  const [recentSales, setRecentSales] = useState({ recent_transactions: [{company_name:"", date:"", total_a_pagar:""}] });
   const { user, token, validateToken, loading } = useAuth();
   const router = useRouter();
   const [date, setDate] = useState<DateRange | undefined>({
@@ -34,9 +36,18 @@ export default function DashboardPage() {
     const fetchTotalSales = async () => {
       const sales = await getTotalSales();
       setTotalSales(sales);
-      console.log(sales);
+
     };
     fetchTotalSales();
+  }, []);
+
+  useEffect(() => {
+    const fetchRecentTransactions = async () => {
+      const transactions = await getRecentTransactions();
+      setRecentSales(transactions);
+      console.log(transactions);
+    };
+    fetchRecentTransactions();
   }, []);
 
   useEffect(() => {
@@ -84,7 +95,7 @@ export default function DashboardPage() {
             <ShoppingCart className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalSales.total_sales}</div>
+            <div className="text-2xl font-bold">$ {totalSales.total_sales}</div>
             <p className="text-xs text-muted-foreground">
               {/* +20.1% respecto al mes anterior */}
             </p>
@@ -149,7 +160,10 @@ export default function DashboardPage() {
             <CardDescription>Últimas transacciones realizadas</CardDescription>
           </CardHeader>
           <CardContent>
-            <RecentVentas />
+            {recentSales.recent_transactions.map((venta, index) => (
+              <RecentVentas key={index} nombreCliente={venta.company_name} fechaVenta={venta.date} montoVenta={venta.total_a_pagar} />
+            ))}
+            
           </CardContent>
         </Card>
       </div>

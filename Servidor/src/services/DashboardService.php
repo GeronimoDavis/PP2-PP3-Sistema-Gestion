@@ -44,10 +44,11 @@ class DashboardService{
 
     public function getRecentTransactions($limit = 10){
         try{
-            $stmt = $this->pdo->prepare("SELECT * FROM transaction ORDER BY date DESC LIMIT ?");
+            $stmt = $this->pdo->prepare("SELECT company_name, date, total_a_pagar 
+            FROM view_ventas_detalladas ORDER BY date DESC LIMIT ?");
             $stmt->bindParam(1, $limit, PDO::PARAM_INT);
             $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_CLASS, Transaction::class);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }catch(PDOException $e){
             throw new Exception('Error fetching recent transactions: ' . $e->getMessage());
         }
