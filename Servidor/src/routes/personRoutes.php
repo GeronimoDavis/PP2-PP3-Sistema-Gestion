@@ -13,6 +13,7 @@ $app->group("/person", function(RouteCollectorProxy $group) use ($personControll
     $group->post("/create", [$personController, "createPerson"]);
     $group->put("/updateStatus/{id}",[$personController, "updatePersonStatus"]);// no borra, se desactiva
     $group->put("/update/{id}", [$personController, "updatePerson"]);
-})->add(new AuthMiddleware());
+})
+->add(new AuthMiddleware());
 
 ?>
