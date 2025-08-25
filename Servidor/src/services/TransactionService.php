@@ -428,7 +428,7 @@ class TransactionService{
                 $query .= " AND t.transaction_id = ?";
                 $params[] = $filters['transaction_id'];
             }
-            
+
             $query .= " GROUP BY t.transaction_id, t.date, t.is_sale, t.tax_type, t.tracking_number, p.person_id, p.name, p.company_name, p.email, p.phone, tc.name, tc.url, t.transport_id";
             $query .= " ORDER BY t.date DESC";
 
