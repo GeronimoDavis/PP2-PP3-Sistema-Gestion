@@ -3,7 +3,16 @@
 import { Label } from "@/components/ui/label";
 
 import { useEffect, useState } from "react";
-import { Download, Plus, ShoppingBag, Trash2, UserPlus, Search, X, Eye } from "lucide-react";
+import {
+  Download,
+  Plus,
+  ShoppingBag,
+  Trash2,
+  UserPlus,
+  Search,
+  X,
+  Eye,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,10 +51,21 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { getProducts, getProductByCode, getProductByName, updateProductStockForPurchase } from "@/api/productsApi";
+import {
+  getProducts,
+  getProductByCode,
+  getProductByName,
+  updateProductStockForPurchase,
+} from "@/api/productsApi";
 import { getAllActiveProviders } from "@/api/personsApi";
-import { createPurchase, getPurchasesHistory, getPurchaseDetails } from "@/api/transactionsApi";
+import {
+  createPurchase,
+  getPurchasesHistory,
+  getPurchaseDetails,
+} from "@/api/transactionsApi";
 import { createItem } from "@/api/itemsApi";
+import { format } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 
 // Interfaces TypeScript para los tipos de datos
 interface CartItem {
@@ -108,7 +128,7 @@ export default function ComprasPage() {
   // fecha de compra
   const [purchaseDate, setPurchaseDate] = useState(() => {
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    return today.toISOString().split("T")[0];
   });
   // notas
   const [notes, setNotes] = useState("");
@@ -120,7 +140,9 @@ export default function ComprasPage() {
   // HISTORIAL DE COMPRAS
   const [purchasesHistory, setPurchasesHistory] = useState<any[]>([]);
   // historial de compras original
-  const [originalPurchasesHistory, setOriginalPurchasesHistory] = useState<any[]>([]);
+  const [originalPurchasesHistory, setOriginalPurchasesHistory] = useState<
+    any[]
+  >([]);
   // estado de carga de historial de compras
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
   // error de historial de compras
@@ -131,19 +153,20 @@ export default function ComprasPage() {
   const [currentPurchasesPage, setCurrentPurchasesPage] = useState(1);
   // items por página de historial de compras
   const [purchasesItemsPerPage, setPurchasesItemsPerPage] = useState(10);
-  
+
   // Filtros del historial de compras
   const [purchasesFilters, setPurchasesFilters] = useState({
     start_date: "",
     end_date: "",
     provider_name: "",
-    limit: 10 as number | undefined
+    limit: 10 as number | undefined,
   });
 
   // Detalles de compra
   const [selectedPurchase, setSelectedPurchase] = useState<any | null>(null);
   const [showPurchaseDetails, setShowPurchaseDetails] = useState(false);
-  const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] = useState(false);
+  const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] =
+    useState(false);
 
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
@@ -170,13 +193,13 @@ export default function ComprasPage() {
 
   // Definir el tipo de item del carrito
   const total = cartItems.reduce((sum, item) => sum + item.total, 0);
-  
+
   // Cálculos de IVA
   const calculateTax = () => {
     const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
     return excludeTax ? 0 : subtotal * 0.21;
   };
-  
+
   const calculateTotalWithTax = () => {
     const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
     const tax = excludeTax ? 0 : subtotal * 0.21; // 21% IVA
@@ -212,7 +235,9 @@ export default function ComprasPage() {
       maxFutureDate.setFullYear(today.getFullYear() + 1); // Máximo 1 año en el futuro
 
       if (selectedDate > maxFutureDate) {
-        errors.push("La fecha de compra no puede ser más de 1 año en el futuro");
+        errors.push(
+          "La fecha de compra no puede ser más de 1 año en el futuro"
+        );
       }
     }
 
@@ -316,7 +341,9 @@ export default function ComprasPage() {
         if (nameResult.products && nameResult.products.length > 0) {
           // Filtrar duplicados si ya encontramos por código
           const existingIds = results.map((p: Product) => p.product_id);
-          const newProducts = nameResult.products.filter((p: Product) => !existingIds.includes(p.product_id));
+          const newProducts = nameResult.products.filter(
+            (p: Product) => !existingIds.includes(p.product_id)
+          );
           results = [...results, ...newProducts];
         }
       } catch (error) {
@@ -328,9 +355,14 @@ export default function ComprasPage() {
         try {
           const allProducts = await getProducts();
           if (allProducts.products) {
-            results = allProducts.products.filter((product: Product) => 
-              product.name.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-              product.code.toLowerCase().includes(currentSearchTerm.toLowerCase())
+            results = allProducts.products.filter(
+              (product: Product) =>
+                product.name
+                  .toLowerCase()
+                  .includes(currentSearchTerm.toLowerCase()) ||
+                product.code
+                  .toLowerCase()
+                  .includes(currentSearchTerm.toLowerCase())
             );
           }
         } catch (error) {
@@ -400,7 +432,7 @@ export default function ComprasPage() {
   const confirmPurchase = async () => {
     // Validar antes de confirmar
     const errors = validatePurchase();
-    
+
     if (errors.length > 0) {
       alert("Errores de validación:\n" + errors.join("\n"));
       return;
@@ -417,7 +449,7 @@ export default function ComprasPage() {
         person_id: parseInt(selectedProvider),
         transport_id: null, // Por ahora sin transporte
         tracking_number: null,
-        tax_type: excludeTax ? "Exento" : "R.I" // Responsable Inscripto o Exento
+        tax_type: excludeTax ? "Exento" : "R.I", // Responsable Inscripto o Exento
       };
 
       const transactionResponse = await createPurchase(transactionData);
@@ -429,11 +461,11 @@ export default function ComprasPage() {
           transaction_id: transactionId,
           product_id: item.id,
           quantity: item.cantidad,
-          price: item.precioCompra
+          price: item.precioCompra,
         };
 
         await createItem(itemData);
-        
+
         // Actualizar el stock del producto (incrementar)
         await updateProductStockForPurchase(item.id, item.cantidad);
       }
@@ -451,12 +483,12 @@ export default function ComprasPage() {
       setShowSearchResults(false);
 
       alert("¡Compra confirmada exitosamente!");
-      
-     
-
     } catch (error: any) {
       console.error("Error al confirmar la compra:", error);
-      alert("Error al confirmar la compra: " + (error.response?.data?.error || error.message || "Error desconocido"));
+      alert(
+        "Error al confirmar la compra: " +
+          (error.response?.data?.error || error.message || "Error desconocido")
+      );
     } finally {
       setIsProcessingPurchase(false);
     }
@@ -469,8 +501,10 @@ export default function ComprasPage() {
       const response = await getAllActiveProviders();
 
       // Ordenar proveedores por nombre
-      const sortedProviders = response.providers
-        ?.sort((a: any, b: any) => a.name.localeCompare(b.name)) || [];
+      const sortedProviders =
+        response.providers?.sort((a: any, b: any) =>
+          a.name.localeCompare(b.name)
+        ) || [];
 
       setProviders(sortedProviders);
     } catch (error: any) {
@@ -512,7 +546,7 @@ export default function ComprasPage() {
   const loadPurchasesHistory = async () => {
     setIsLoadingPurchases(true);
     setPurchasesError("");
-    
+
     try {
       const response = await getPurchasesHistory(purchasesFilters);
       const purchasesData = response.purchases || [];
@@ -531,9 +565,9 @@ export default function ComprasPage() {
   };
 
   const handlePurchasesFilterChange = (key: string, value: string) => {
-    setPurchasesFilters(prev => ({
+    setPurchasesFilters((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
@@ -546,7 +580,7 @@ export default function ComprasPage() {
       start_date: "",
       end_date: "",
       provider_name: "",
-      limit: 10
+      limit: 10,
     });
     setCurrentPurchasesPage(1);
     loadPurchasesHistory();
@@ -567,13 +601,18 @@ export default function ComprasPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-AR');
+    if (!dateString) return "";
+    // La cadena 'YYYY-MM-DD' se interpreta como medianoche UTC.
+    const date = new Date(dateString);
+    // Agregamos el desfase de la zona horaria del usuario para corregir la fecha a la local.
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    return format(date, "dd/MM/yyyy");
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS'
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
     }).format(amount);
   };
 
@@ -584,7 +623,9 @@ export default function ComprasPage() {
     return purchasesHistory.slice(startIndex, endIndex);
   };
 
-  const totalPurchasesPages = Math.ceil(purchasesHistory.length / purchasesItemsPerPage);
+  const totalPurchasesPages = Math.ceil(
+    purchasesHistory.length / purchasesItemsPerPage
+  );
 
   // Cerrar dropdown de proveedores al hacer click fuera o presionar Escape
   useEffect(() => {
@@ -609,7 +650,7 @@ export default function ComprasPage() {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
- 
+
   // renderizar el componente
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -634,84 +675,91 @@ export default function ComprasPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                                 <div className="flex items-center space-x-2 mb-4 relative">
-                   <div className="flex-1 relative">
-                     <Input
-                       placeholder="Buscar productos por código o nombre..."
-                       className="flex-1 pr-10"
-                       value={searchTerm}
-                       onChange={(e) => setSearchTerm(e.target.value)}
-                     />
-                     {searchTerm && (
-                       <Button
-                         variant="ghost"
-                         size="sm"
-                         className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                         onClick={clearSearch}
-                       >
-                         <X className="h-4 w-4" />
-                       </Button>
-                     )}
-                     {isSearching && (
-                       <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
-                       </div>
-                     )}
-                   </div>
-                 </div>
+                <div className="flex items-center space-x-2 mb-4 relative">
+                  <div className="flex-1 relative">
+                    <Input
+                      placeholder="Buscar productos por código o nombre..."
+                      className="flex-1 pr-10"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                        onClick={clearSearch}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {isSearching && (
+                      <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                   {/* Resultados de búsqueda */}
-                 {isSearching && (
-                   <div className="mb-4 text-center py-4">
-                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto"></div>
-                     <p className="mt-2 text-sm text-gray-600">Buscando productos...</p>
-                   </div>
-                 )}
+                {/* Resultados de búsqueda */}
+                {isSearching && (
+                  <div className="mb-4 text-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-600">
+                      Buscando productos...
+                    </p>
+                  </div>
+                )}
 
-                 {searchResults.length > 0 && (
-                   <div className="mb-4">
-                     <h3 className="font-semibold mb-2">
-                       Productos encontrados:
-                     </h3>
-                     <Table>
-                       <TableHeader>
-                         <TableRow>
-                           <TableHead>Código</TableHead>
-                           <TableHead>Producto</TableHead>
-                           <TableHead className="text-right">Precio Compra</TableHead>
-                           <TableHead className="text-right">Stock</TableHead>
-                           <TableHead className="text-right">Acciones</TableHead>
-                         </TableRow>
-                       </TableHeader>
-                       <TableBody>
-                         {searchResults.map((product) => (
-                           <TableRow key={product.product_id}>
-                             <TableCell className="font-medium">
-                               {product.code}
-                             </TableCell>
-                             <TableCell>{product.name}</TableCell>
-                             <TableCell className="text-right">
-                               ${product.purchase_price?.toLocaleString("es-AR") || "0"}
-                             </TableCell>
-                             <TableCell className="text-right">
-                               {product.stock || 0}
-                             </TableCell>
-                             <TableCell className="text-right">
-                               <Button 
-                                 variant="outline"
-                                 size="sm" 
-                                 onClick={() => addProductToCart(product)}
-                               >
-                                 <Plus className="h-3 w-3 mr-1" />
-                                 Agregar
-                               </Button>
-                             </TableCell>
-                           </TableRow>
-                         ))}
-                       </TableBody>
-                     </Table>
-                   </div>
-                 )}
+                {searchResults.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="font-semibold mb-2">
+                      Productos encontrados:
+                    </h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Código</TableHead>
+                          <TableHead>Producto</TableHead>
+                          <TableHead className="text-right">
+                            Precio Compra
+                          </TableHead>
+                          <TableHead className="text-right">Stock</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {searchResults.map((product) => (
+                          <TableRow key={product.product_id}>
+                            <TableCell className="font-medium">
+                              {product.code}
+                            </TableCell>
+                            <TableCell>{product.name}</TableCell>
+                            <TableCell className="text-right">
+                              $
+                              {product.purchase_price?.toLocaleString(
+                                "es-AR"
+                              ) || "0"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {product.stock || 0}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addProductToCart(product)}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Agregar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
 
                 <Table>
                   <TableHeader>
@@ -815,26 +863,29 @@ export default function ComprasPage() {
                     />
 
                     {/* Resultados de búsqueda de proveedores */}
-                    {showProviderResults && providerSearchResults.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        {providerSearchResults.map((provider) => (
-                          <div
-                            key={provider.person_id}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                            onClick={() => {
-                              setSelectedProvider(provider.person_id.toString());
-                              setProviderSearchTerm(provider.name);
-                              setShowProviderResults(false);
-                            }}
-                          >
-                            <div className="font-medium">{provider.name}</div>
-                            <div className="text-sm text-gray-500">
-                              {provider.company_name}
-                          </div>
-                          </div>
-                        ))}
-                          </div>
-                    )}
+                    {showProviderResults &&
+                      providerSearchResults.length > 0 && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          {providerSearchResults.map((provider) => (
+                            <div
+                              key={provider.person_id}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              onClick={() => {
+                                setSelectedProvider(
+                                  provider.person_id.toString()
+                                );
+                                setProviderSearchTerm(provider.name);
+                                setShowProviderResults(false);
+                              }}
+                            >
+                              <div className="font-medium">{provider.name}</div>
+                              <div className="text-sm text-gray-500">
+                                {provider.company_name}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                     {/* Proveedor seleccionado */}
                     {selectedProvider && (
@@ -846,17 +897,18 @@ export default function ComprasPage() {
                               (p) => p.person_id.toString() === selectedProvider
                             )?.name
                           }
-                          </div>
                         </div>
+                      </div>
                     )}
-
-
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Método de Pago</Label>
                   {/* seleccionar metodo de pago */}
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <Select
+                    value={paymentMethod}
+                    onValueChange={setPaymentMethod}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar método" />
                     </SelectTrigger>
@@ -874,17 +926,19 @@ export default function ComprasPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Fecha de Compra</Label>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={purchaseDate}
                     onChange={(e) => {
                       const selectedDate = new Date(e.target.value);
                       const today = new Date();
                       const maxFutureDate = new Date();
                       maxFutureDate.setFullYear(today.getFullYear() + 1);
-                      
+
                       if (selectedDate > maxFutureDate) {
-                        alert("La fecha de compra no puede ser más de 1 año en el futuro");
+                        alert(
+                          "La fecha de compra no puede ser más de 1 año en el futuro"
+                        );
                         return;
                       }
                       setPurchaseDate(e.target.value);
@@ -892,15 +946,15 @@ export default function ComprasPage() {
                     max={(() => {
                       const maxDate = new Date();
                       maxDate.setFullYear(maxDate.getFullYear() + 1);
-                      return maxDate.toISOString().split('T')[0];
+                      return maxDate.toISOString().split("T")[0];
                     })()}
                     required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Notas</Label>
-                  <Input 
-                    placeholder="Agregar notas a la compra..." 
+                  <Input
+                    placeholder="Agregar notas a la compra..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                   />
@@ -912,7 +966,7 @@ export default function ComprasPage() {
                   </div>
                   <div className="flex justify-between text-sm mt-2">
                     <div className="flex items-center space-x-2">
-                    <span>IVA (21%)</span>
+                      <span>IVA (21%)</span>
                       <input
                         type="checkbox"
                         id="excludeTax"
@@ -920,7 +974,10 @@ export default function ComprasPage() {
                         onChange={(e) => setExcludeTax(e.target.checked)}
                         className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="excludeTax" className="text-sm text-gray-500">
+                      <label
+                        htmlFor="excludeTax"
+                        className="text-sm text-gray-500"
+                      >
                         Excluir
                       </label>
                     </div>
@@ -935,10 +992,16 @@ export default function ComprasPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button 
+                <Button
                   className="w-full bg-green-600 hover:bg-green-700"
                   onClick={confirmPurchase}
-                  disabled={isProcessingPurchase || cartItems.length === 0 || !selectedProvider || !paymentMethod || !purchaseDate}
+                  disabled={
+                    isProcessingPurchase ||
+                    cartItems.length === 0 ||
+                    !selectedProvider ||
+                    !paymentMethod ||
+                    !purchaseDate
+                  }
                 >
                   {isProcessingPurchase ? (
                     <>
@@ -947,8 +1010,8 @@ export default function ComprasPage() {
                     </>
                   ) : (
                     <>
-                  <ShoppingBag className="mr-2 h-4 w-4" />
-                  Confirmar Compra
+                      <ShoppingBag className="mr-2 h-4 w-4" />
+                      Confirmar Compra
                     </>
                   )}
                 </Button>
@@ -964,7 +1027,7 @@ export default function ComprasPage() {
               <CardDescription>
                 Registro de todas las compras realizadas a proveedores
               </CardDescription>
-              
+
               {/* Filtros */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                 <div className="space-y-2">
@@ -972,7 +1035,9 @@ export default function ComprasPage() {
                   <Input
                     type="date"
                     value={purchasesFilters.start_date}
-                    onChange={(e) => handlePurchasesFilterChange('start_date', e.target.value)}
+                    onChange={(e) =>
+                      handlePurchasesFilterChange("start_date", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -980,7 +1045,9 @@ export default function ComprasPage() {
                   <Input
                     type="date"
                     value={purchasesFilters.end_date}
-                    onChange={(e) => handlePurchasesFilterChange('end_date', e.target.value)}
+                    onChange={(e) =>
+                      handlePurchasesFilterChange("end_date", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -988,7 +1055,12 @@ export default function ComprasPage() {
                   <Input
                     placeholder="Buscar por proveedor..."
                     value={purchasesFilters.provider_name}
-                    onChange={(e) => handlePurchasesFilterChange('provider_name', e.target.value)}
+                    onChange={(e) =>
+                      handlePurchasesFilterChange(
+                        "provider_name",
+                        e.target.value
+                      )
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -998,8 +1070,8 @@ export default function ComprasPage() {
                       <Search className="mr-2 h-4 w-4" />
                       Buscar
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={handleClearPurchasesFilters}
                       className="px-3"
                     >
@@ -1010,13 +1082,14 @@ export default function ComprasPage() {
               </div>
             </CardHeader>
             <CardContent>
-              
               {isLoadingPurchases ? (
                 <Card>
                   <CardContent className="p-8">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-                      <p className="mt-2 text-gray-600">Cargando historial de compras...</p>
+                      <p className="mt-2 text-gray-600">
+                        Cargando historial de compras...
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -1063,7 +1136,9 @@ export default function ComprasPage() {
                           </TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{purchase.provider_name}</div>
+                              <div className="font-medium">
+                                {purchase.provider_name}
+                              </div>
                               {purchase.provider_company && (
                                 <div className="text-sm text-muted-foreground">
                                   {purchase.provider_company}
@@ -1082,7 +1157,11 @@ export default function ComprasPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleViewPurchaseDetails(purchase.transaction_id)}
+                              onClick={() =>
+                                handleViewPurchaseDetails(
+                                  purchase.transaction_id
+                                )
+                              }
                               disabled={isLoadingPurchaseDetails}
                             >
                               <Eye className="h-4 w-4" />
@@ -1092,7 +1171,7 @@ export default function ComprasPage() {
                       ))}
                     </TableBody>
                   </Table>
-                  
+
                   {/* Paginación local */}
                   {purchasesHistory.length > 0 && (
                     <div className="flex items-center justify-between px-2 py-4">
@@ -1115,9 +1194,15 @@ export default function ComprasPage() {
                           </SelectContent>
                         </Select>
                         <span className="text-sm text-gray-700">
-                          Mostrando {(currentPurchasesPage - 1) * purchasesItemsPerPage + 1} a{" "}
-                          {Math.min(currentPurchasesPage * purchasesItemsPerPage, purchasesHistory.length)} de{" "}
-                          {purchasesHistory.length} compras
+                          Mostrando{" "}
+                          {(currentPurchasesPage - 1) * purchasesItemsPerPage +
+                            1}{" "}
+                          a{" "}
+                          {Math.min(
+                            currentPurchasesPage * purchasesItemsPerPage,
+                            purchasesHistory.length
+                          )}{" "}
+                          de {purchasesHistory.length} compras
                         </span>
                       </div>
 
@@ -1134,7 +1219,9 @@ export default function ComprasPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPurchasesPage(currentPurchasesPage - 1)}
+                          onClick={() =>
+                            setCurrentPurchasesPage(currentPurchasesPage - 1)
+                          }
                           disabled={currentPurchasesPage === 1}
                         >
                           Anterior
@@ -1147,8 +1234,12 @@ export default function ComprasPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPurchasesPage(currentPurchasesPage + 1)}
-                          disabled={currentPurchasesPage === totalPurchasesPages}
+                          onClick={() =>
+                            setCurrentPurchasesPage(currentPurchasesPage + 1)
+                          }
+                          disabled={
+                            currentPurchasesPage === totalPurchasesPages
+                          }
                         >
                           Siguiente
                         </Button>
@@ -1156,8 +1247,12 @@ export default function ComprasPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPurchasesPage(totalPurchasesPages)}
-                          disabled={currentPurchasesPage === totalPurchasesPages}
+                          onClick={() =>
+                            setCurrentPurchasesPage(totalPurchasesPages)
+                          }
+                          disabled={
+                            currentPurchasesPage === totalPurchasesPages
+                          }
                         >
                           Última
                         </Button>
