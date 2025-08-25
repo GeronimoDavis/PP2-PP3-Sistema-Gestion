@@ -150,5 +150,18 @@ class PersonController {
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+
+    public function getAllActiveProviders(Request $request, Response $response, $args)
+    {
+        try {
+            $providers = $this->personService->getAllActiveProviders();
+            $response->getBody()->write(json_encode(['providers' => $providers]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }
+        catch (Throwable $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error fetching all active providers: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
 }
 ?>

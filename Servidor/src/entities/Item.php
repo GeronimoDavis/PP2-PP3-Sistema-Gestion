@@ -10,7 +10,7 @@ class Item
     public $price;
 
     public function __construct(Array $data){
-        $this->item_id = $data['item_id'];
+        $this->item_id = $data['item_id'] ?? null;
         $this->transaction_id = $data['transaction_id'];
         $this->product_id = $data['product_id'];
         $this->quantity = $data['quantity'];

@@ -45,9 +45,45 @@ const getSaleDetails = async (id) => {
   }
 };
 
+const getPurchasesHistory = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+        params.append(key, filters[key]);
+      }
+    });
+    
+    const url = `/transaction/purchases?${params.toString()}`;
+    
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const getPurchaseDetails = async (id) => {
+  try {
+    const response = await api.get(`/transaction/purchases/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 const createTransaction = async (transactionData) => {
   try {
     const response = await api.post("/transaction/create", transactionData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const createPurchase = async (purchaseData) => {
+  try {
+    const response = await api.post("/transaction/create", purchaseData);
     return response.data;
   } catch (error) {
     throw error;
@@ -80,7 +116,10 @@ export {
   getTransactionById,
   getSalesHistory,
   getSaleDetails,
+  getPurchasesHistory,
+  getPurchaseDetails,
   createTransaction,
+  createPurchase,
   updateTransaction,
   deleteTransaction,
 };
