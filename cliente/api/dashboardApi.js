@@ -10,7 +10,7 @@ const getTotalSales = async () => {
 };
 const getRecentTransactions = async () => {
   try {
-    const response = await api.get("/dashboard/recent-transactions");
+    const response = await api.get("/dashboard/recent-transactions/10");
     return response.data;
   } catch (error) {
     throw error;

@@ -974,28 +974,54 @@ export default function InventarioPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[100px]">Código</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead className="text-right">Precio Compra</TableHead>
-                  <TableHead className="text-right">Precio Venta</TableHead>
-                  <TableHead className="text-right">Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="text-center">Nombre</TableHead>
+                  <TableHead className="text-center">Categoría</TableHead>
+                  <TableHead className="text-center">Stock</TableHead>
+                  <TableHead className="text-center">Precio Compra</TableHead>
+                  <TableHead className="text-center">Precio Venta</TableHead>
+                  <TableHead className="text-center">Estado</TableHead>
+                  <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {getPaginatedProducts().map((product) => (
                   <TableRow key={product.product_id}>
-                    <TableCell>{product.code}</TableCell>
-                    <TableCell>{product.name}</TableCell>
-                    <TableCell>{product.category_name}</TableCell>
-                    <TableCell>{product.stock}</TableCell>
-                    <TableCell>{product.purchase_price}</TableCell>
-                    <TableCell>{product.sell_price || "N/A"}</TableCell>
-                    <TableCell>
-                      {product.active ? "Activo" : "Inactivo"}
+                    <TableCell className="text-center">
+                      {product.code}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
+                      {product.name}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {product.category_name}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {product.stock}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {product.purchase_price}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {product.sell_price || "N/A"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {product.active ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-green-500 text-white"
+                        >
+                          Activo
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="bg-red-500 text-white"
+                        >
+                          Inactivo
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
