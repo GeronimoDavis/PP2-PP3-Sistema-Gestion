@@ -164,6 +164,7 @@ export default function VentasPage() {
       codigo: string;
       nombre: string;
       precio: number;
+      precioOriginal: number; // Precio original del producto
       cantidad: number;
       total: number;
     }>
@@ -669,6 +670,27 @@ export default function VentasPage() {
     );
   };
 
+  // Función para restaurar precio original
+  const restoreOriginalPrice = (productId: number) => {
+    setCartItems(
+      cartItems.map((item) => {
+        if (item.id === productId) {
+          return {
+            ...item,
+            precio: item.precioOriginal,
+            total: item.precioOriginal * item.cantidad,
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Función para verificar si el precio fue modificado
+  const isPriceModified = (item: any) => {
+    return item.precio !== item.precioOriginal;
+  };
+
   // Función para recargar los resultados de búsqueda
   const reloadSearchResults = async () => {
     if (searchTerm.trim()) {
@@ -722,12 +744,13 @@ export default function VentasPage() {
     } else {
       // Si el producto no existe, agregarlo como nuevo item
       const newItem = {
-        id: product.product_id,
-        codigo: product.code,
-        nombre: product.name,
-        precio: product.sell_price,
-        cantidad: quantity,
-        total: product.sell_price * quantity,
+        id: product.product_id,// ID del producto
+        codigo: product.code,// Código del producto
+        nombre: product.name,// Nombre del producto
+        precio: product.sell_price, // Precio de venta
+        precioOriginal: product.sell_price, // Guardar precio original
+        cantidad: quantity,// Cantidad del producto
+        total: product.sell_price * quantity,// Total del producto
       };
       setCartItems([...cartItems, newItem]);
     }
@@ -957,10 +980,62 @@ export default function VentasPage() {
                           {item.codigo}
                         </TableCell>
                         <TableCell>{item.nombre}</TableCell>
-                        <TableCell className="text-right">
-                          ${item.precio.toLocaleString("es-AR")}
+                        <TableCell className="text-right align-middle">
+                          <div className="flex items-center justify-end space-x-2">
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                value={item.precio}
+                                onChange={(e) => {
+                                  const newPrice = parseFloat(e.target.value) || 0;
+                                  setCartItems(
+                                    cartItems.map((cartItem) => {
+                                      if (cartItem.id === item.id) {
+                                        return {
+                                          ...cartItem,
+                                          precio: newPrice,
+                                          total: newPrice * cartItem.cantidad,
+                                        };
+                                      }
+                                      return cartItem;
+                                    })
+                                  );
+                                }}
+                                min="0"
+                                step="0.01"
+                                className={`w-24 text-right h-8 ${
+                                  isPriceModified(item) 
+                                    ? 'border-orange-300 bg-orange-50' 
+                                    : ''
+                                }`}
+                              />
+                              {isPriceModified(item) && (
+                                <div className="absolute -top-1 -right-1">
+                                  <div className="w-2 h-2 bg-orange-500 rounded-full" title="Precio modificado"></div>
+                                </div>
+                              )}
+                            </div>
+                            {isPriceModified(item) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => restoreOriginalPrice(item.id)}
+                                className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
+                                title="Restaurar precio original"
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              </Button>
+                            )}
+                          </div>
+                          {isPriceModified(item) && (
+                            <div className="text-xs text-orange-600 mt-1 text-right">
+                              Original: ${item.precioOriginal.toLocaleString("es-AR")}
+                            </div>
+                          )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right align-middle">
                           <Input
                             type="number"
                             value={item.cantidad}
@@ -971,7 +1046,7 @@ export default function VentasPage() {
                               )
                             }
                             min="1"
-                            className="w-16 text-right"
+                            className="w-16 text-right h-8"
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -1113,6 +1188,18 @@ export default function VentasPage() {
                 </div>
 
                 <div className="pt-4 border-t">
+                  {/* Indicador para precios modificados */}
+                  {cartItems.some(item => isPriceModified(item)) && (
+                    <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-md">
+                      <div className="flex items-center text-orange-700 text-sm">
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span className="font-medium">Venta con precio modificado</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
                     <span>${total.toLocaleString("es-AR")}</span>
