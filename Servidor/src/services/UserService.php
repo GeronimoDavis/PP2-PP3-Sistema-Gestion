@@ -1,4 +1,5 @@
 <?php
+
 namespace Services;
 
 use Config\DataBase;
@@ -45,7 +46,8 @@ class UserService
             $hashedPassword = password_hash($user->password, PASSWORD_DEFAULT);
 
             $stmt = $this->db->prepare(
-                "INSERT INTO users (username, password, role) VALUES (:username, :password, :role)"
+                "INSERT INTO users (username, password, role) 
+                 VALUES (:username, :password, :role)"
             );
             $stmt->bindParam(':username', $user->username, PDO::PARAM_STR);
             $stmt->bindParam(':password', $hashedPassword, PDO::PARAM_STR);
@@ -57,6 +59,20 @@ class UserService
             return $user;
         } catch (PDOException $e) {
             throw new Exception("Error al crear usuario: " . $e->getMessage());
+        }
+    }
+
+    public function recoverPass($username, $hashedPassword)
+    {
+        // tabla user no tiene email, utilizo el username
+        try{
+            $stmt = $this->db->prepare("UPDATE user SET password = :password WHERE username = :username");
+            $stmt->bindParam(':password', $hashedPassword, PDO::PARAM_STR);
+            $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+            $stmt->execute();
+        }
+        catch (PDOException $e) {
+            throw new Exception("Error al recuperar contraseña: " . $e->getMessage());
         }
     }
 }
