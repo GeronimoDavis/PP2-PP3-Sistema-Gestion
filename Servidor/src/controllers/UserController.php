@@ -2,10 +2,7 @@
 
 namespace Controllers;
 
-//require 'vendor/autoload.php';
 require_once __DIR__.'/../../config/mailer.php';
-require_once __DIR__.'/../utils/mail.php';
-
 
 use Services\UserService;
 use Entities\User;
@@ -15,8 +12,8 @@ use Exception;
 use Throwable;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use PHPMailer\PHPMailer\PHPMailer;
 
+use PHPMailer\PHPMailer\PHPMailer;
 
 class UserController
 {

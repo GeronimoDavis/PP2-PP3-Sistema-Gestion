@@ -52,9 +52,20 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { getProducts, getProductByCode, getProductByName, updateProductStockForPurchase } from "@/api/productsApi";
+
+import {
+  getProducts,
+  getProductByCode,
+  getProductByName,
+  updateProductStockForPurchase,
+} from "@/api/productsApi";
 import { getAllActiveProviders, createPerson } from "@/api/personsApi";
-import { createPurchase, getPurchasesHistory, getPurchaseDetails } from "@/api/transactionsApi";
+import {
+  createPurchase,
+  getPurchasesHistory,
+  getPurchaseDetails,
+} from "@/api/transactionsApi";
+
 import { createItem } from "@/api/itemsApi";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
@@ -176,7 +187,8 @@ export default function ComprasPage() {
   // items por página de proveedores
   const [providersItemsPerPage, setProvidersItemsPerPage] = useState(10);
   // diálogo de crear proveedor
-  const [isCreateProviderDialogOpen, setIsCreateProviderDialogOpen] = useState(false);
+  const [isCreateProviderDialogOpen, setIsCreateProviderDialogOpen] =
+    useState(false);
   // formulario de crear proveedor
   const [newProvider, setNewProvider] = useState({
     name: "",
@@ -186,7 +198,7 @@ export default function ComprasPage() {
     address: "",
     notes: "",
     tax_id: "",
-    tax_type: "R.I"
+    tax_type: "R.I",
   });
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
   const [providerFormError, setProviderFormError] = useState("");
@@ -564,7 +576,7 @@ export default function ComprasPage() {
   const loadProvidersList = async () => {
     setIsLoadingProviders(true);
     setProvidersError("");
-    
+
     try {
       const response = await getAllActiveProviders();
       const providersData = response.providers || [];
@@ -584,7 +596,7 @@ export default function ComprasPage() {
   const handleProvidersSearch = (searchTerm: string) => {
     setProvidersSearchTerm(searchTerm);
     setCurrentProvidersPage(1); // Reset a la primera página al buscar
-    
+
     if (!searchTerm.trim()) {
       setProvidersList(originalProvidersList);
       return;
@@ -594,7 +606,9 @@ export default function ComprasPage() {
     const filteredProviders = originalProvidersList.filter(
       (provider) =>
         provider.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        provider.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        provider.company_name
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
         provider.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         provider.phone?.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -609,30 +623,35 @@ export default function ComprasPage() {
     return providersList.slice(startIndex, endIndex);
   };
 
-  const totalProvidersPages = Math.ceil(providersList.length / providersItemsPerPage);
+  const totalProvidersPages = Math.ceil(
+    providersList.length / providersItemsPerPage
+  );
 
   // Funciones para crear proveedor
   const handleProviderInputChange = (field: string, value: string) => {
     let formattedValue = value;
-    
+
     // Formatear CUIT automáticamente
     if (field === "tax_id") {
       // Remover todos los caracteres no numéricos
-      const numbersOnly = value.replace(/\D/g, '');
-      
+      const numbersOnly = value.replace(/\D/g, "");
+
       // Aplicar formato XX-XXXXXXXX-X
       if (numbersOnly.length <= 2) {
         formattedValue = numbersOnly;
       } else if (numbersOnly.length <= 10) {
         formattedValue = `${numbersOnly.slice(0, 2)}-${numbersOnly.slice(2)}`;
       } else {
-        formattedValue = `${numbersOnly.slice(0, 2)}-${numbersOnly.slice(2, 10)}-${numbersOnly.slice(10, 11)}`;
+        formattedValue = `${numbersOnly.slice(0, 2)}-${numbersOnly.slice(
+          2,
+          10
+        )}-${numbersOnly.slice(10, 11)}`;
       }
     }
-    
-    setNewProvider(prev => ({
+
+    setNewProvider((prev) => ({
       ...prev,
-      [field]: formattedValue
+      [field]: formattedValue,
     }));
     setProviderFormError(""); // Limpiar errores al escribir
   };
@@ -652,7 +671,7 @@ export default function ComprasPage() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newProvider.email)) {
       setProviderFormError("El email no tiene un formato válido");
       return false;
-    } 
+    }
     // Validar CUIT
     if (!newProvider.tax_id.trim()) {
       setProviderFormError("El CUIT es obligatorio");
@@ -660,7 +679,9 @@ export default function ComprasPage() {
     }
     // Validar formato de CUIT
     if (!/^\d{2}-\d{8}-\d{1}$/.test(newProvider.tax_id)) {
-      setProviderFormError("El CUIT debe tener 11 dígitos (se formatea automáticamente)");
+      setProviderFormError(
+        "El CUIT debe tener 11 dígitos (se formatea automáticamente)"
+      );
       return false;
     }
     return true;
@@ -674,14 +695,14 @@ export default function ComprasPage() {
 
     try {
       // Convertir el CUIT de formato XX-XXXXXXXX-X a XXXXXXXXXXX (sin guiones)
-      const taxIdWithoutDashes = newProvider.tax_id.replace(/-/g, '');
-      
+      const taxIdWithoutDashes = newProvider.tax_id.replace(/-/g, "");
+
       // Mapear los tipos de IVA al formato que espera el backend
       const taxTypeMapping: { [key: string]: string } = {
-        'R.I': 'R.I',
-        'M': 'Monotributo',
-        'E': 'Exento',
-        'C': 'Consumidor Final'
+        "R.I": "R.I",
+        M: "Monotributo",
+        E: "Exento",
+        C: "Consumidor Final",
       };
 
       const providerData = {
@@ -694,12 +715,12 @@ export default function ComprasPage() {
         provider: true,
         active: true,
         tax_id: taxIdWithoutDashes,
-        tax_type: taxTypeMapping[newProvider.tax_type] || 'R.I'
+        tax_type: taxTypeMapping[newProvider.tax_type] || "R.I",
       };
 
       console.log("Datos del proveedor a enviar:", providerData);
       const response = await createPerson(providerData);
-      
+
       if (response.person) {
         // Limpiar formulario
         setNewProvider({
@@ -710,15 +731,15 @@ export default function ComprasPage() {
           address: "",
           notes: "",
           tax_id: "",
-          tax_type: "R.I"
+          tax_type: "R.I",
         });
-        
+
         // Cerrar diálogo
         setIsCreateProviderDialogOpen(false);
-        
+
         // Recargar lista de proveedores
         await loadProvidersList();
-        
+
         // Mostrar mensaje de éxito
         alert("Proveedor creado exitosamente");
       } else {
@@ -729,7 +750,9 @@ export default function ComprasPage() {
       if (error.response && error.response.data && error.response.data.error) {
         setProviderFormError(`Error: ${error.response.data.error}`);
       } else {
-        setProviderFormError("Error al crear el proveedor. Intente nuevamente.");
+        setProviderFormError(
+          "Error al crear el proveedor. Intente nuevamente."
+        );
       }
     } finally {
       setIsCreatingProvider(false);
@@ -746,7 +769,7 @@ export default function ComprasPage() {
       address: "",
       notes: "",
       tax_id: "",
-      tax_type: "R.I"
+      tax_type: "R.I",
     });
     setProviderFormError("");
   };
@@ -776,9 +799,9 @@ export default function ComprasPage() {
       const filtersWithPagination = {
         ...purchasesFilters,
         limit: purchasesItemsPerPage,
-        offset: offset
+        offset: offset,
       };
-      
+
       const response = await getPurchasesHistory(filtersWithPagination);
       const purchasesData = response.purchases || [];
       setPurchasesHistory(purchasesData);
@@ -849,6 +872,7 @@ export default function ComprasPage() {
   };
 
   // Funciones de paginación para compras
+
   const totalPurchasesPages = Math.ceil(totalPurchases / purchasesItemsPerPage);
 
   // Cerrar dropdown de proveedores al hacer click fuera o presionar Escape
@@ -1300,7 +1324,7 @@ export default function ComprasPage() {
                       className="px-3"
                     >
                       Limpiar
-                </Button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1341,18 +1365,18 @@ export default function ComprasPage() {
                 </Card>
               ) : (
                 <div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
                         <TableHead className="w-[100px]">Nº Compra</TableHead>
-                    <TableHead>Proveedor</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                        <TableHead>Proveedor</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
                         <TableHead className="text-right">Items</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {purchasesHistory.map((purchase) => (
                         <TableRow key={purchase.transaction_id}>
                           <TableCell className="font-medium">
@@ -1371,15 +1395,15 @@ export default function ComprasPage() {
                             </div>
                           </TableCell>
                           <TableCell>{formatDate(purchase.date)}</TableCell>
-                    <TableCell className="text-right">
+                          <TableCell className="text-right">
                             {formatCurrency(purchase.total_transaction)}
-                    </TableCell>
-                    <TableCell className="text-right">
+                          </TableCell>
+                          <TableCell className="text-right">
                             {purchase.items_count || 0}
-                    </TableCell>
-                    <TableCell className="text-right">
+                          </TableCell>
+                          <TableCell className="text-right">
                             <Button
-                        variant="outline"
+                              variant="outline"
                               size="sm"
                               onClick={() =>
                                 handleViewPurchaseDetails(
@@ -1389,13 +1413,13 @@ export default function ComprasPage() {
                               disabled={isLoadingPurchaseDetails}
                             >
                               <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                  
+
                   {/* Paginación */}
                   {totalPurchases > 0 && (
                     <div className="flex items-center justify-between px-2 py-4">
@@ -1419,23 +1443,27 @@ export default function ComprasPage() {
                           </SelectContent>
                         </Select>
                         <span className="text-sm text-gray-700">
-                          
-                          Mostrando {(currentPurchasesPage - 1) * purchasesItemsPerPage + 1} a{" "}
-                          {Math.min(currentPurchasesPage * purchasesItemsPerPage, totalPurchases)} de{" "}
-                          {totalPurchases} compras
+                          Mostrando{" "}
+                          {(currentPurchasesPage - 1) * purchasesItemsPerPage +
+                            1}{" "}
+                          a{" "}
+                          {Math.min(
+                            currentPurchasesPage * purchasesItemsPerPage,
+                            totalPurchases
+                          )}{" "}
+                          de {totalPurchases} compras
                         </span>
-                        
                       </div>
 
                       <div className="flex items-center space-x-2">
                         <Button
-                        variant="outline"
+                          variant="outline"
                           size="sm"
                           onClick={() => setCurrentPurchasesPage(1)}
                           disabled={currentPurchasesPage === 1}
                         >
                           Primera
-                      </Button>
+                        </Button>
 
                         <Button
                           variant="outline"
@@ -1446,7 +1474,7 @@ export default function ComprasPage() {
                           disabled={currentPurchasesPage === 1}
                         >
                           Anterior
-                      </Button>
+                        </Button>
 
                         <span className="text-sm text-gray-700">
                           Página {currentPurchasesPage} de {totalPurchasesPages}
@@ -1463,7 +1491,7 @@ export default function ComprasPage() {
                           }
                         >
                           Siguiente
-                      </Button>
+                        </Button>
 
                         <Button
                           variant="outline"
@@ -1508,7 +1536,7 @@ export default function ComprasPage() {
                   </Button>
                 </div>
 
-                <Button 
+                <Button
                   onClick={() => setIsCreateProviderDialogOpen(true)}
                   className="bg-green-600 hover:bg-green-700"
                 >
@@ -1536,7 +1564,9 @@ export default function ComprasPage() {
               ) : providersList.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-600">
-                    {providersSearchTerm ? "No se encontraron proveedores" : "No hay proveedores registrados"}
+                    {providersSearchTerm
+                      ? "No se encontraron proveedores"
+                      : "No hay proveedores registrados"}
                   </p>
                 </div>
               ) : (
@@ -1557,17 +1587,13 @@ export default function ComprasPage() {
                         <TableCell className="font-medium">
                           {provider.name}
                         </TableCell>
-                        <TableCell>
-                          {provider.company_name || "-"}
-                        </TableCell>
-                        <TableCell>
-                          {provider.phone || "-"}
-                        </TableCell>
-                        <TableCell>
-                          {provider.email || "-"}
-                        </TableCell>
+                        <TableCell>{provider.company_name || "-"}</TableCell>
+                        <TableCell>{provider.phone || "-"}</TableCell>
+                        <TableCell>{provider.email || "-"}</TableCell>
                         <TableCell className="text-right">
-                          <Badge variant={provider.active ? "default" : "secondary"}>
+                          <Badge
+                            variant={provider.active ? "default" : "secondary"}
+                          >
                             {provider.active ? "Activo" : "Inactivo"}
                           </Badge>
                         </TableCell>
@@ -1577,7 +1603,10 @@ export default function ComprasPage() {
                             size="sm"
                             onClick={() => {
                               // Aquí se puede agregar funcionalidad para ver detalles o editar
-                              console.log("Ver detalles del proveedor:", provider);
+                              console.log(
+                                "Ver detalles del proveedor:",
+                                provider
+                              );
                             }}
                           >
                             <Eye className="h-4 w-4" />
@@ -1588,7 +1617,7 @@ export default function ComprasPage() {
                   </TableBody>
                 </Table>
               )}
-              
+
               {/* Paginación de proveedores */}
               {providersList.length > 0 && (
                 <div className="flex items-center justify-between px-2 py-4">
@@ -1611,9 +1640,13 @@ export default function ComprasPage() {
                       </SelectContent>
                     </Select>
                     <span className="text-sm text-gray-700">
-                      Mostrando {(currentProvidersPage - 1) * providersItemsPerPage + 1} a{" "}
-                      {Math.min(currentProvidersPage * providersItemsPerPage, providersList.length)} de{" "}
-                      {providersList.length} proveedores
+                      Mostrando{" "}
+                      {(currentProvidersPage - 1) * providersItemsPerPage + 1} a{" "}
+                      {Math.min(
+                        currentProvidersPage * providersItemsPerPage,
+                        providersList.length
+                      )}{" "}
+                      de {providersList.length} proveedores
                     </span>
                   </div>
 
@@ -1630,7 +1663,9 @@ export default function ComprasPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentProvidersPage(currentProvidersPage - 1)}
+                      onClick={() =>
+                        setCurrentProvidersPage(currentProvidersPage - 1)
+                      }
                       disabled={currentProvidersPage === 1}
                     >
                       Anterior
@@ -1643,7 +1678,9 @@ export default function ComprasPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentProvidersPage(currentProvidersPage + 1)}
+                      onClick={() =>
+                        setCurrentProvidersPage(currentProvidersPage + 1)
+                      }
                       disabled={currentProvidersPage === totalProvidersPages}
                     >
                       Siguiente
@@ -1652,7 +1689,9 @@ export default function ComprasPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentProvidersPage(totalProvidersPages)}
+                      onClick={() =>
+                        setCurrentProvidersPage(totalProvidersPages)
+                      }
                       disabled={currentProvidersPage === totalProvidersPages}
                     >
                       Última
@@ -1666,7 +1705,10 @@ export default function ComprasPage() {
       </Tabs>
 
       {/* Diálogo de Crear Proveedor */}
-      <Dialog open={isCreateProviderDialogOpen} onOpenChange={handleCloseProviderDialog}>
+      <Dialog
+        open={isCreateProviderDialogOpen}
+        onOpenChange={handleCloseProviderDialog}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Crear Nuevo Proveedor</DialogTitle>
@@ -1674,7 +1716,7 @@ export default function ComprasPage() {
               Complete la información del nuevo proveedor
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -1683,7 +1725,9 @@ export default function ComprasPage() {
                   id="provider-name"
                   placeholder="Nombre del proveedor"
                   value={newProvider.name}
-                  onChange={(e) => handleProviderInputChange("name", e.target.value)}
+                  onChange={(e) =>
+                    handleProviderInputChange("name", e.target.value)
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -1692,11 +1736,13 @@ export default function ComprasPage() {
                   id="provider-company"
                   placeholder="Nombre de la empresa"
                   value={newProvider.company_name}
-                  onChange={(e) => handleProviderInputChange("company_name", e.target.value)}
+                  onChange={(e) =>
+                    handleProviderInputChange("company_name", e.target.value)
+                  }
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="provider-phone">Teléfono</Label>
@@ -1704,7 +1750,9 @@ export default function ComprasPage() {
                   id="provider-phone"
                   placeholder="Número de teléfono"
                   value={newProvider.phone}
-                  onChange={(e) => handleProviderInputChange("phone", e.target.value)}
+                  onChange={(e) =>
+                    handleProviderInputChange("phone", e.target.value)
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -1714,11 +1762,13 @@ export default function ComprasPage() {
                   type="email"
                   placeholder="correo@ejemplo.com"
                   value={newProvider.email}
-                  onChange={(e) => handleProviderInputChange("email", e.target.value)}
+                  onChange={(e) =>
+                    handleProviderInputChange("email", e.target.value)
+                  }
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="provider-tax-id">CUIT *</Label>
@@ -1726,7 +1776,9 @@ export default function ComprasPage() {
                   id="provider-tax-id"
                   placeholder="Ingrese solo números (ej: 20123456789)"
                   value={newProvider.tax_id}
-                  onChange={(e) => handleProviderInputChange("tax_id", e.target.value)}
+                  onChange={(e) =>
+                    handleProviderInputChange("tax_id", e.target.value)
+                  }
                   maxLength={13}
                 />
               </div>
@@ -1734,7 +1786,9 @@ export default function ComprasPage() {
                 <Label htmlFor="provider-tax-type">Tipo de IVA</Label>
                 <Select
                   value={newProvider.tax_type}
-                  onValueChange={(value) => handleProviderInputChange("tax_type", value)}
+                  onValueChange={(value) =>
+                    handleProviderInputChange("tax_type", value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1748,17 +1802,19 @@ export default function ComprasPage() {
                 </Select>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="provider-address">Dirección</Label>
               <Input
                 id="provider-address"
                 placeholder="Dirección completa"
                 value={newProvider.address}
-                onChange={(e) => handleProviderInputChange("address", e.target.value)}
+                onChange={(e) =>
+                  handleProviderInputChange("address", e.target.value)
+                }
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="provider-notes">Notas</Label>
               <Textarea
@@ -1766,10 +1822,12 @@ export default function ComprasPage() {
                 placeholder="Información adicional del proveedor"
                 rows={3}
                 value={newProvider.notes}
-                onChange={(e) => handleProviderInputChange("notes", e.target.value)}
+                onChange={(e) =>
+                  handleProviderInputChange("notes", e.target.value)
+                }
               />
             </div>
-            
+
             {/* Mensaje de error */}
             {providerFormError && (
               <div className="text-red-600 text-sm mt-2">
@@ -1777,7 +1835,7 @@ export default function ComprasPage() {
               </div>
             )}
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -1786,7 +1844,7 @@ export default function ComprasPage() {
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
               onClick={handleCreateProvider}
               disabled={isCreatingProvider}
               className="bg-green-600 hover:bg-green-700"

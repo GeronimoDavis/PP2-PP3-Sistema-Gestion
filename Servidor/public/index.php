@@ -1,16 +1,15 @@
 <?php
-use Psr\Http\Message\ResponseInterface as Response;
-use Psr\Http\Message\ServerRequestInterface as Request;
-use Slim\Factory\AppFactory;
-use Dotenv\Dotenv;
-use Middlewares\CorsMiddleware;
+require_once __DIR__ . '/../vendor/autoload.php';
 
-require __DIR__ . '/../vendor/autoload.php';
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../'); 
+$dotenv->load();
+
+use Slim\Factory\AppFactory;
+use Middlewares\CorsMiddleware;
+use Slim\Routing\RouteCollectorProxy;
 
 
 $app = AppFactory::create();
-$dotenv = Dotenv::createImmutable(__DIR__. '/../');
-$dotenv->load();
 
 $app->addBodyParsingMiddleware();
 $app->add(new CorsMiddleware());
