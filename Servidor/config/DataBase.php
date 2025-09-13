@@ -8,8 +8,6 @@ class DataBase {
 
     private static $db;
   
-   
-
     public static function Connect()
     {
         $connectionString = 'mysql:host=' . $_ENV["DB_HOST"]. ';dbname=' . $_ENV["DB_NAME"]. ';charset=utf8';
