@@ -50,4 +50,17 @@ class DashboardController {
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+
+    public function getProductsWithoutStock(Request $request, Response $response, $args)
+    {
+        try {
+            $products = $this->dashboardService->getProductsWithoutStock();
+            $productsArray = array_map(fn($p) => $p->toArray(), $products);
+            $response->getBody()->write(json_encode(['products' => $productsArray]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Throwable $e) {
+            throw new Exception("Error fetching products without stock: " . $e->getMessage());
+        }
+    }   
+
 }

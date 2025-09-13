@@ -4,6 +4,7 @@ namespace Services;
 
 use Config\DataBase;
 use Entities\Transaction;
+use Entities\Product;
 use Exception;
 use PDO;
 use PDOException;
@@ -51,6 +52,19 @@ class DashboardService{
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }catch(PDOException $e){
             throw new Exception('Error fetching recent transactions: ' . $e->getMessage());
+        }
+    }
+
+    
+    public function getProductsWithoutStock() {
+        try {
+            $query = "SELECT * FROM product WHERE stock = 0";
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute();
+            $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return array_map(fn($p) => new Product($p), $products);
+        } catch (PDOException $e) {
+            throw new Exception("Error fetching products without stock: " . $e->getMessage());
         }
     }
 }

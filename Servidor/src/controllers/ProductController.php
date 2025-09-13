@@ -225,10 +225,6 @@ class ProductController
         }
     }
 
-
- 
-   
-
 }
 
     

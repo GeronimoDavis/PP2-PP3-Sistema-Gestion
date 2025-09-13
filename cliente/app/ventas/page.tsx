@@ -438,12 +438,12 @@ export default function VentasPage() {
   };
 
   // HISTORIAL DE VENTAS
-  const loadSalesHistory = async () => {
+  const loadSalesHistory = async (filters = salesFilters) => {
     setIsLoadingSales(true);
     setSalesError("");
 
     try {
-      const response = await getSalesHistory(salesFilters);
+      const response = await getSalesHistory(filters);
       const salesData = response.sales || [];
       setSalesHistory(salesData);
       setOriginalSalesHistory(salesData);
@@ -467,49 +467,48 @@ export default function VentasPage() {
   };
 
   const handleSalesSearch = () => {
-    loadSalesHistory();
+    loadSalesHistory(salesFilters);
   };
 
   const handleClearSalesFilters = () => {
-    setSalesFilters({
+    const newFilters = {
       start_date: "",
       end_date: "",
       client_name: "",
       limit: 10,
-    });
+      offset: 0,
+    };
+    setSalesFilters(newFilters);
     setCurrentPage(1);
-    loadSalesHistory();
+    loadSalesHistory(newFilters);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     const limit = salesFilters.limit || 10;
     const offset = (page - 1) * limit;
-    setSalesFilters((prev) => ({
-      ...prev,
+
+    const newFilters = {
+      ...salesFilters,
       offset: offset,
-    }));
-    loadSalesHistory();
+    };
+
+    setSalesFilters(newFilters);
+    loadSalesHistory(newFilters);
   };
 
   const handleLimitChange = (newLimit: number) => {
     setCurrentPage(1);
-    setSalesFilters((prev) => ({
-      ...prev,
+    const newFilters = {
+      ...salesFilters,
       limit: newLimit,
       offset: 0,
-    }));
-    loadSalesHistory();
+    };
+    setSalesFilters(newFilters);
+    loadSalesHistory(newFilters);
   };
 
-  // Funciones de paginacion
-  const getPaginatedSales = () => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return salesHistory.slice(startIndex, endIndex);
-  };
-
-  const totalPages = Math.ceil(salesHistory.length / itemsPerPage);
+  const totalPages = Math.ceil(totalSales / (salesFilters.limit || 10));
 
   const handleViewSaleDetails = async (transactionId: number) => {
     setIsLoadingSaleDetails(true);
@@ -614,7 +613,7 @@ export default function VentasPage() {
       setProductQuantities({});
 
       // 5. Recargar el historial de ventas
-      loadSalesHistory();
+      loadSalesHistory(salesFilters);
 
       alert("Venta finalizada exitosamente!");
     } catch (error: any) {
@@ -744,13 +743,13 @@ export default function VentasPage() {
     } else {
       // Si el producto no existe, agregarlo como nuevo item
       const newItem = {
-        id: product.product_id,// ID del producto
-        codigo: product.code,// Código del producto
-        nombre: product.name,// Nombre del producto
+        id: product.product_id, // ID del producto
+        codigo: product.code, // Código del producto
+        nombre: product.name, // Nombre del producto
         precio: product.sell_price, // Precio de venta
         precioOriginal: product.sell_price, // Guardar precio original
-        cantidad: quantity,// Cantidad del producto
-        total: product.sell_price * quantity,// Total del producto
+        cantidad: quantity, // Cantidad del producto
+        total: product.sell_price * quantity, // Total del producto
       };
       setCartItems([...cartItems, newItem]);
     }
@@ -759,7 +758,7 @@ export default function VentasPage() {
   // Cargar historial cuando se cambia de tab
   useEffect(() => {
     if (salesHistory.length === 0 && !loading && token) {
-      loadSalesHistory();
+      loadSalesHistory(salesFilters);
     }
   }, [loading, token, user]);
 
@@ -987,7 +986,8 @@ export default function VentasPage() {
                                 type="number"
                                 value={item.precio}
                                 onChange={(e) => {
-                                  const newPrice = parseFloat(e.target.value) || 0;
+                                  const newPrice =
+                                    parseFloat(e.target.value) || 0;
                                   setCartItems(
                                     cartItems.map((cartItem) => {
                                       if (cartItem.id === item.id) {
@@ -1004,14 +1004,17 @@ export default function VentasPage() {
                                 min="0"
                                 step="0.01"
                                 className={`w-24 text-right h-8 ${
-                                  isPriceModified(item) 
-                                    ? 'border-orange-300 bg-orange-50' 
-                                    : ''
+                                  isPriceModified(item)
+                                    ? "border-orange-300 bg-orange-50"
+                                    : ""
                                 }`}
                               />
                               {isPriceModified(item) && (
                                 <div className="absolute -top-1 -right-1">
-                                  <div className="w-2 h-2 bg-orange-500 rounded-full" title="Precio modificado"></div>
+                                  <div
+                                    className="w-2 h-2 bg-orange-500 rounded-full"
+                                    title="Precio modificado"
+                                  ></div>
                                 </div>
                               )}
                             </div>
@@ -1023,15 +1026,26 @@ export default function VentasPage() {
                                 className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
                                 title="Restaurar precio original"
                               >
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                <svg
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                  />
                                 </svg>
                               </Button>
                             )}
                           </div>
                           {isPriceModified(item) && (
                             <div className="text-xs text-orange-600 mt-1 text-right">
-                              Original: ${item.precioOriginal.toLocaleString("es-AR")}
+                              Original: $
+                              {item.precioOriginal.toLocaleString("es-AR")}
                             </div>
                           )}
                         </TableCell>
@@ -1189,17 +1203,27 @@ export default function VentasPage() {
 
                 <div className="pt-4 border-t">
                   {/* Indicador para precios modificados */}
-                  {cartItems.some(item => isPriceModified(item)) && (
+                  {cartItems.some((item) => isPriceModified(item)) && (
                     <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-md">
                       <div className="flex items-center text-orange-700 text-sm">
-                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
                         </svg>
-                        <span className="font-medium">Venta con precio modificado</span>
+                        <span className="font-medium">
+                          Venta con precio modificado
+                        </span>
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
                     <span>${total.toLocaleString("es-AR")}</span>
@@ -1375,7 +1399,7 @@ export default function VentasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {getPaginatedSales().map((sale) => {
+                      {salesHistory.map((sale) => {
                         const paymentStatus = getPaymentStatus(
                           sale.total_transaction,
                           sale.total_paid
@@ -1433,10 +1457,9 @@ export default function VentasPage() {
                       <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-700">Mostrar:</span>
                         <Select
-                          value={itemsPerPage.toString()}
+                          value={(salesFilters.limit || 10).toString()}
                           onValueChange={(value) => {
-                            setItemsPerPage(parseInt(value));
-                            setCurrentPage(1); // Reset a la primera página
+                            handleLimitChange(parseInt(value));
                           }}
                         >
                           <SelectTrigger className="w-20">
@@ -1449,12 +1472,13 @@ export default function VentasPage() {
                           </SelectContent>
                         </Select>
                         <span className="text-sm text-gray-700">
-                          Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+                          Mostrando{" "}
+                          {(currentPage - 1) * (salesFilters.limit || 10) + 1} a{" "}
                           {Math.min(
-                            currentPage * itemsPerPage,
-                            salesHistory.length
+                            currentPage * (salesFilters.limit || 10),
+                            totalSales
                           )}{" "}
-                          de {salesHistory.length} ventas
+                          de {totalSales} ventas
                         </span>
                       </div>
 
@@ -1462,7 +1486,7 @@ export default function VentasPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(1)}
+                          onClick={() => handlePageChange(1)}
                           disabled={currentPage === 1}
                         >
                           Primera
@@ -1471,7 +1495,7 @@ export default function VentasPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(currentPage - 1)}
+                          onClick={() => handlePageChange(currentPage - 1)}
                           disabled={currentPage === 1}
                         >
                           Anterior
@@ -1488,7 +1512,7 @@ export default function VentasPage() {
                                   currentPage === page ? "default" : "outline"
                                 }
                                 size="sm"
-                                onClick={() => setCurrentPage(page)}
+                                onClick={() => handlePageChange(page)}
                               >
                                 {page}
                               </Button>
@@ -1499,7 +1523,7 @@ export default function VentasPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(currentPage + 1)}
+                          onClick={() => handlePageChange(currentPage + 1)}
                           disabled={currentPage === totalPages}
                         >
                           Siguiente
@@ -1508,7 +1532,7 @@ export default function VentasPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(totalPages)}
+                          onClick={() => handlePageChange(totalPages)}
                           disabled={currentPage === totalPages}
                         >
                           Última

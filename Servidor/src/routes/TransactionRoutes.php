@@ -15,6 +15,6 @@ $app->group("/transaction", function(RouteCollectorProxy $group) use ($transacti
     $group->post("/create", [$transactionController, "createTransaction"]);
     $group->put("/update/{id}", [$transactionController, "updateTransaction"]);
     $group->delete("/delete/{id}", [$transactionController, "deleteTransaction"]);
-})->add(new AuthMiddleware());
+});//->add(new AuthMiddleware());
 
 ?>
