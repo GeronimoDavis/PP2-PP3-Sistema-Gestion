@@ -1368,7 +1368,9 @@ export default function VentasPage() {
                     <div className="text-center">
                       <p className="text-red-600">{salesError}</p>
                       <Button
-                        onClick={loadSalesHistory}
+                        onClick={() => {
+                          loadSalesHistory();
+                        }}
                         className="mt-4 bg-blue-600 hover:bg-blue-700"
                       >
                         Reintentar

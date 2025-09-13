@@ -45,4 +45,10 @@ const getCategoryByStatus = async (status) => {
   }
 };
 
-export { getCategories, getCategoryById, createCategory, updateCategory, getCategoryByStatus };
+export {
+  getCategories,
+  getCategoryById,
+  createCategory,
+  updateCategory,
+  getCategoryByStatus,
+};
