@@ -96,7 +96,7 @@ class UserController
     // Genera una contraseña aleatoria
     private function generateRandomPassword($length = 10)
     {
-        return bin2hex(random_bytes($length / 2));
+        return bin2hex(random_bytes($length));
     }
 
     // Hashea y actualiza en la DB
@@ -104,49 +104,36 @@ class UserController
     {
 
         try {
-            if (isset($args['username']) && !empty($args['username'])) {
-
-                $username = $args['username'];
-                $newPassword = $this->generateRandomPassword();
-                $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-                $this->userService->recoverPass($username, $hashedPassword);
-                $response->getBody()->write(json_encode(['newPassword' => $newPassword]));
+            $data = $request->getParsedBody();
+            $username = $data['username'];            
+            $newPassword = $this->generateRandomPassword();
+            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+            $this->userService->recoverPass($username, $hashedPassword);
+            $cuerpoMail = "
+            <div style='height: 100px; width: 100%; background-color: #22aa22;'>
+            </div>
+            <div style=''>
+            <h1 style='text-align: center; font-family: sans-serif;'>${username}, tu nueva contraseña es: <b style='color: #333;'>${newPassword}</b></h1>
+            <p style='text-align: center; font-family: sans-serif;'>Recuerda cambiar tu contraseña por una más segura</p>
+            </div>
+            <div style='height: 100px; width: 100%; background-color: #22aa22;'>
+            ";
+            
+            try {
+                enviarCorreo($cuerpoMail, utf8_decode('Recuperación de contraseña'), "agusmigliorero@gmail.com");
+                $response->getBody()->write(json_encode(['message' => 'Contraseña recuperada con éxito y enviada por correo']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+            } catch (Exception $mailException) {
+                $response->getBody()->write(json_encode([
+                    'message' => 'Contraseña recuperada con éxito, pero hubo un error al enviar el correo: ' . $mailException->getMessage()
+                ]));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
             }
+            
         } catch (Exception $e) {
             $response->getBody()->write(json_encode(['Error: ' . $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
         }
     }
 
-    // Necesito aclarar la forma de guardar la contraseña que viene de recoverPass
-    // para enviarla por mail.
-    public function enviarCorreo(Request $request, Response $response, $args)
-    {
-
-        $mail = new PHPMailer(true);
-
-        try {
-            $newPassword = $this->recoverPass();
-            $mail->isSMTP();
-            $mail->Host = $_ENV['MAIL_HOST'];
-            $mail->SMTPAuth = true;
-            $mail->Username = $_ENV['MAIL_USERNAME'];
-            $mail->Password = $_ENV['MAIL_PASSWORD'];
-            $mail->SMTPSecure = 'tls';
-            $mail->Port = $_ENV['MAIL_PORT'];
-
-            $mail->setFrom('iskandersoto21@gmail.com', 'Iskander Soto');
-            $mail->addAddress('st_juanma@hotmail.com', 'Juan Soto');
-
-            $mail->isHTML(true);
-            $mail->Subject = 'Tu nuevo password';
-            $mail->Body = 'Tu nuevo password es: ' . $newPassword;
-
-            $mail->send();
-            echo 'Correo enviado con éxito!';
-        } catch (Exception $e) {
-            echo 'Error al enviar correo: ' . $mail->ErrorInfo;
-        }
-    }
 }
