@@ -265,12 +265,7 @@ class ProductService{
             throw new Exception("Error updating product stock for purchase: " . $e->getMessage());
         }
     }
-  
 
-
-
-
-    
 }
 
 

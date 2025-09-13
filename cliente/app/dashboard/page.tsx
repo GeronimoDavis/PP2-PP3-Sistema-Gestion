@@ -19,7 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getAllActiveClients } from "@/api/personsApi";
 import { getTotalSales, getRecentTransactions } from "@/api/dashboardApi";
-import { tr } from "date-fns/locale";
+import { getProductsWithoutStock } from "@/api/dashboardApi";
 import { formatNumber } from "@/utils/numUtils";
 
 export default function DashboardPage() {
@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const [totalSales, setTotalSales] = useState({ total_sales: 0 });
   const [recentSales, setRecentSales] = useState({
     recent_transactions: [{ company_name: "", date: "", total_a_pagar: "" }],
+  });
+  const [productsWithoutStock, setProductsWithoutStock] = useState({
+    products: [],
   });
   const { user, token, validateToken, loading } = useAuth();
   const router = useRouter();
@@ -50,6 +53,15 @@ export default function DashboardPage() {
       console.log(transactions);
     };
     fetchRecentTransactions();
+  }, []);
+
+  useEffect(() => {
+    const fetchProductsWithoutStock = async () => {
+      const products = await getProductsWithoutStock();
+      setProductsWithoutStock(products);
+      console.log(products);
+    };
+    fetchProductsWithoutStock();
   }, []);
 
   useEffect(() => {
@@ -148,7 +160,9 @@ export default function DashboardPage() {
             <Leaf className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">
+              {productsWithoutStock.products.length}
+            </div>
             <p className="text-xs text-muted-foreground">
               Requieren reposición urgente
             </p>

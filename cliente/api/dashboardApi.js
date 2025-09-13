@@ -17,4 +17,13 @@ const getRecentTransactions = async () => {
   }
 };
 
-export { getTotalSales, getRecentTransactions };
+const getProductsWithoutStock = async () => {
+  try {
+    const response = await api.get("/dashboard/withoutStock");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export { getTotalSales, getRecentTransactions, getProductsWithoutStock };
