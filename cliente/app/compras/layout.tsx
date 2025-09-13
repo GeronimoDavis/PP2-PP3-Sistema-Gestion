@@ -1,11 +1,12 @@
-import type React from "react"
-import { MainNav } from "@/components/main-nav"
-import { UserNav } from "@/components/user-nav"
+import type React from "react";
+import { MainNav } from "@/components/main-nav";
+import { UserNav } from "@/components/user-nav";
+import VerDolar from "@/components/VerDolar";
 
 export default function ComprasLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <div className="flex min-h-screen flex-col">
@@ -16,11 +17,12 @@ export default function ComprasLayout({
           </div>
           <MainNav />
           <div className="ml-auto flex items-center space-x-4">
+            <VerDolar />
             <UserNav />
           </div>
         </div>
       </div>
       {children}
     </div>
-  )
+  );
 }

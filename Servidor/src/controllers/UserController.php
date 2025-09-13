@@ -1,5 +1,11 @@
 <?php
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 namespace Controllers;
+
+require_once __DIR__.'/../../config/mailer.php';
 
 use Services\UserService;
 use Entities\User;
@@ -9,6 +15,10 @@ use Exception;
 use Throwable;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+<<<<<<< Updated upstream
+=======
+use PHPMailer\PHPMailer\PHPMailer;
+>>>>>>> Stashed changes
 
 class UserController
 {
