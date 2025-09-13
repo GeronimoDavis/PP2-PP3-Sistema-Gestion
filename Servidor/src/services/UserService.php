@@ -66,7 +66,7 @@ class UserService
     {
         // tabla user no tiene email, utilizo el username
         try{
-            $stmt = $this->db->prepare("UPDATE user SET password = :password WHERE username = :username");
+            $stmt = $this->db->prepare("UPDATE users SET password = :password WHERE username = :username");
             $stmt->bindParam(':password', $hashedPassword, PDO::PARAM_STR);
             $stmt->bindParam(':username', $username, PDO::PARAM_STR);
             $stmt->execute();

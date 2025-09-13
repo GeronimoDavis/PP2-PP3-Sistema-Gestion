@@ -7,5 +7,5 @@ $userController = new UserController();
 $app->group('/user', function (RouteCollectorProxy $group) use ($userController) {
     $group->post('/register', [$userController, 'register']);
     $group->post('/login', [$userController, 'login']);
-    $group->get('/recover-pass/{username}', [$userController, 'recoverPass']);
+    $group->post('/recover-pass', [$userController, 'recoverPass']);
 }); 

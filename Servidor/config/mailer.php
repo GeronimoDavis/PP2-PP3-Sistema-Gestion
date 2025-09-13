@@ -1,8 +1,8 @@
 <?php
 
-require 'vendor/autoload.php';
+require '../vendor/autoload.php';
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->load();
 
 define('MAIL_HOST', $_ENV['MAIL_HOST']);
