@@ -96,11 +96,16 @@ create table payments(
 	payment_id int primary key auto_increment,
 	transaction_id int,
 	amount mediumint,
+	note VARCHAR(255) DEFAULT ''
 	type enum(
-		"Efectivo",
-		"Transferencia",
-		"Cheque",
-		"Otro"
+		 'Efectivo',
+    'Transferencia', 
+    'Tarjeta',
+    'Cheque',
+    'Credito30',
+    'Credito60', 
+    'Credito90',
+    'Otro'
 	),
 	date datetime,
 	foreign key(transaction_id) references transaction(transaction_id)
