@@ -79,6 +79,31 @@ interface SaleItem {
   product_cost: number;
 }
 
+// Función para determinar si una transacción tiene IVA
+const hasIVA = (taxType: string): boolean => {
+  // Los tipos que NO tienen IVA son: "Exento", "R.N.I", "Monotributo"
+  // Los tipos que SÍ tienen IVA son: "R.I", "Consumidor Final"
+  return taxType === "R.I" || taxType === "Consumidor Final";
+};
+
+// Función para obtener el texto descriptivo del IVA
+const getIVADescription = (taxType: string): string => {
+  switch (taxType) {
+    case "R.I":
+      return "Responsable Inscripto - Con IVA";
+    case "Exento":
+      return "Exento - Sin IVA";
+    case "R.N.I":
+      return "Responsable No Inscripto - Sin IVA";
+    case "Monotributo":
+      return "Monotributo - Sin IVA";
+    case "Consumidor Final":
+      return "Consumidor Final - Con IVA";
+    default:
+      return taxType;
+  }
+};
+
 interface SaleExtra {
   extra_id: number;
   transaction_id: number;
@@ -2051,9 +2076,17 @@ export default function VentasPage() {
                     <strong>Fecha:</strong>{" "}
                     {formatDate(selectedSale.transaction.date)}
                   </p>
-                  <p>
-                    <strong>Tipo de Impuesto:</strong>{" "}
-                    {selectedSale.transaction.tax_type}
+                  <div className="flex items-center gap-2 mb-2">
+                    <strong>Tipo de Impuesto:</strong>
+                    <Badge 
+                      variant={hasIVA(selectedSale.transaction.tax_type) ? "default" : "secondary"}
+                      className={hasIVA(selectedSale.transaction.tax_type) ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}
+                    >
+                      {hasIVA(selectedSale.transaction.tax_type) ? "Con IVA" : "Sin IVA"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    {getIVADescription(selectedSale.transaction.tax_type)}
                   </p>
                   {selectedSale.transaction.tracking_number && (
                     <p>
@@ -2221,21 +2254,32 @@ export default function VentasPage() {
                       <strong>Pendiente:</strong>{" "}
                       {formatCurrency(selectedSale.totals.pending)}
                     </p>
-                    <Badge
-                      className={
-                        getPaymentStatus(
-                          selectedSale.totals.transaction,
-                          selectedSale.totals.paid
-                        ).color
-                      }
-                    >
-                      {
-                        getPaymentStatus(
-                          selectedSale.totals.transaction,
-                          selectedSale.totals.paid
-                        ).status
-                      }
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={
+                          getPaymentStatus(
+                            selectedSale.totals.transaction,
+                            selectedSale.totals.paid
+                          ).color
+                        }
+                      >
+                        {
+                          getPaymentStatus(
+                            selectedSale.totals.transaction,
+                            selectedSale.totals.paid
+                          ).status
+                        }
+                      </Badge>
+                      <Badge 
+                        className={
+                          hasIVA(selectedSale.transaction.tax_type) 
+                            ? "bg-green-100 text-green-800 border-green-300 font-semibold" 
+                            : "bg-red-100 text-red-800 border-red-300 font-semibold"
+                        }
+                      >
+                        {hasIVA(selectedSale.transaction.tax_type) ? "Incluye IVA" : "No incluye IVA"}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </div>
