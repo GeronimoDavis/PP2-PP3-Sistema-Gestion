@@ -90,6 +90,15 @@ interface Product {
   active: number;
 }
 
+interface PurchaseHistoryItem {
+  transaction_id: number;
+  date: string;
+  provider_name: string;
+  provider_company: string;
+  total_transaction: number;
+  items_count: number;
+}
+
 export default function ComprasPage() {
   const { user, token, validateToken, loading } = useAuth();
   const router = useRouter();
@@ -141,10 +150,12 @@ export default function ComprasPage() {
   const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
 
   // HISTORIAL DE COMPRAS
-  const [purchasesHistory, setPurchasesHistory] = useState<any[]>([]);
+  const [purchasesHistory, setPurchasesHistory] = useState<
+    PurchaseHistoryItem[]
+  >([]);
   // historial de compras original
   const [originalPurchasesHistory, setOriginalPurchasesHistory] = useState<
-    any[]
+    PurchaseHistoryItem[]
   >([]);
   // estado de carga de historial de compras
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
@@ -163,6 +174,8 @@ export default function ComprasPage() {
     end_date: "",
     provider_name: "",
     limit: 10 as number | undefined,
+    sort_by: "date",
+    sort_direction: "desc",
   });
 
   // Detalles de compra
@@ -170,6 +183,27 @@ export default function ComprasPage() {
   const [showPurchaseDetails, setShowPurchaseDetails] = useState(false);
   const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] =
     useState(false);
+
+  const requestPurchasesSort = (key: string) => {
+    const newDirection =
+      purchasesFilters.sort_by === key &&
+      purchasesFilters.sort_direction === "asc"
+        ? "desc"
+        : "asc";
+
+    setPurchasesFilters((prev) => ({
+      ...prev,
+      sort_by: key,
+      sort_direction: newDirection,
+    }));
+  };
+
+  const getPurchasesSortIndicator = (key: string) => {
+    if (purchasesFilters.sort_by !== key) {
+      return null;
+    }
+    return purchasesFilters.sort_direction === "asc" ? " ▲" : " ▼";
+  };
 
   // LISTADO DE PROVEEDORES
   // lista de proveedores
@@ -835,7 +869,9 @@ export default function ComprasPage() {
       start_date: "",
       end_date: "",
       provider_name: "",
-      limit: 10,
+      limit: 10 as number | undefined,
+      sort_by: "date",
+      sort_direction: "desc",
     });
     setCurrentPurchasesPage(1);
     loadPurchasesHistory();
@@ -1368,11 +1404,57 @@ export default function ComprasPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[100px]">Nº Compra</TableHead>
-                        <TableHead>Proveedor</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="text-right">Items</TableHead>
+                        <TableHead className="w-[100px]">
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              requestPurchasesSort("transaction_id")
+                            }
+                          >
+                            Nº Compra
+                            {getPurchasesSortIndicator("transaction_id")}
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              requestPurchasesSort("provider_name")
+                            }
+                          >
+                            Proveedor
+                            {getPurchasesSortIndicator("provider_name")}
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestPurchasesSort("date")}
+                          >
+                            Fecha
+                            {getPurchasesSortIndicator("date")}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              requestPurchasesSort("total_transaction")
+                            }
+                          >
+                            Total
+                            {getPurchasesSortIndicator("total_transaction")}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestPurchasesSort("items_count")}
+                          >
+                            Items
+                            {getPurchasesSortIndicator("items_count")}
+                          </Button>
+                        </TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
