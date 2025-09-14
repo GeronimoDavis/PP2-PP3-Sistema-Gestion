@@ -629,10 +629,10 @@ export default function VentasPage() {
       return;
     }
 
-    if (!selectedPaymentMethod) {
-      alert("Por favor seleccione un método de pago");
-      return;
-    }
+     if (paymentAmount > 0 && !selectedPaymentMethod) {
+       alert("Por favor seleccione un método de pago");
+       return;
+     }
 
     if (!selectedClient) {
       alert("Por favor seleccione un cliente");
@@ -672,17 +672,30 @@ export default function VentasPage() {
         await updateProductStock(item.id, item.cantidad);
       }
 
-      // 3. Crear los extras de la transacción
-      for (const extra of saleExtras) {
-        const extraData = {
-          transaction_id: transactionId,
-          type: extra.type,
-          price: extra.price,
-          note: extra.note,
-        };
+       // 3. Crear los extras de la transacción
+       for (const extra of saleExtras) {
+         const extraData = {
+           transaction_id: transactionId,
+           type: extra.type,
+           price: extra.price,
+           note: extra.note,
+         };
 
-        await createExtra(extraData);
-      }
+         await createExtra(extraData);
+       }
+
+       // 4. Crear el pago de la transacción
+       if (paymentAmount > 0) {
+         const paymentData = {
+           transaction_id: transactionId,
+           date: paymentDate,
+           type: selectedPaymentMethod,
+           amount: paymentAmount,
+           note: paymentNote,
+         };
+
+         await createPayment(paymentData);
+       }
 
       // 4. Limpiar el formulario
       setCartItems([]);
@@ -727,19 +740,19 @@ export default function VentasPage() {
     }
   };
 
-  const validatePayment = () => {
-    if (cartItems.length === 0) {
-      alert("El carrito está vacío");
-      return false;
-    }
+   const validatePayment = () => {
+     if (cartItems.length === 0) {
+       alert("El carrito está vacío");
+       return false;
+     }
 
-    if (!selectedPaymentMethod) {
-      alert("Por favor seleccione un método de pago");
-      return false;
-    }
+     if (paymentAmount > 0 && !selectedPaymentMethod) {
+       alert("Por favor seleccione un método de pago");
+       return false;
+     }
 
-    return true;
-  };
+     return true;
+   };
 
   const removeItem = (id: number) => {
     setCartItems(cartItems.filter((item) => item.id !== id));
@@ -1313,14 +1326,37 @@ export default function VentasPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Fecha de Pago</Label>
-                  <Input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                  />
-                </div>
+                 <div className="space-y-2">
+                   <div className="flex items-center justify-between">
+                     <Label>Monto a Pagar</Label>
+                     <Button
+                       type="button"
+                       variant="outline"
+                       size="sm"
+                       onClick={() => setPaymentAmount(calculateTotalWithTax())}
+                       className="text-xs"
+                     >
+                       Total
+                     </Button>
+                   </div>
+                   <Input
+                     type="number"
+                     placeholder="0.00"
+                     value={paymentAmount.toFixed(2) || ""}
+                     onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                     min="0"
+                     step="0.01"
+                   />
+                 </div>
+
+                 <div className="space-y-2">
+                   <Label>Fecha de Pago</Label>
+                   <Input
+                     type="date"
+                     value={paymentDate}
+                     onChange={(e) => setPaymentDate(e.target.value)}
+                   />
+                 </div>
 
                 <div className="space-y-2">
                   <Label>Notas</Label>
@@ -1389,12 +1425,38 @@ export default function VentasPage() {
                     </div>
                     <span>${calculateTax().toLocaleString("es-AR")}</span>
                   </div>
-                  <div className="flex justify-between font-bold text-lg mt-4">
-                    <span>Total</span>
-                    <span>
-                      ${calculateTotalWithTax().toLocaleString("es-AR")}
-                    </span>
-                  </div>
+                   <div className="flex justify-between font-bold text-lg mt-4">
+                     <span>Total</span>
+                     <span>
+                       ${calculateTotalWithTax().toLocaleString("es-AR")}
+                     </span>
+                   </div>
+                   
+                   {/* Mostrar información de pago */}
+                   {paymentAmount > 0 && (
+                     <div className="pt-4 border-t space-y-2">
+                       <div className="flex justify-between text-sm">
+                         <span>Monto a Pagar</span>
+                         <span className="font-medium">${paymentAmount.toLocaleString("es-AR")}</span>
+                       </div>
+                       {paymentAmount < calculateTotalWithTax() && (
+                         <div className="flex justify-between text-sm">
+                           <span>Pendiente</span>
+                           <span className="font-medium text-orange-600">
+                             ${(calculateTotalWithTax() - paymentAmount).toLocaleString("es-AR")}
+                           </span>
+                         </div>
+                       )}
+                       {paymentAmount > calculateTotalWithTax() && (
+                         <div className="flex justify-between text-sm">
+                           <span>Vuelto</span>
+                           <span className="font-medium text-green-600">
+                             ${(paymentAmount - calculateTotalWithTax()).toLocaleString("es-AR")}
+                           </span>
+                         </div>
+                       )}
+                     </div>
+                   )}
                 </div>
               </CardContent>
               <CardFooter>
