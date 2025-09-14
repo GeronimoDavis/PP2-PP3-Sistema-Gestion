@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -60,6 +61,7 @@ import { createTransaction } from "@/api/transactionsApi";
 import { createPayment } from "@/api/paymentsApi";
 import { getPersons } from "@/api/personsApi";
 import { createItem } from "@/api/itemsApi";
+import { createExtra } from "@/api/extrasApi";
 import { getSalesHistory, getSaleDetails } from "@/api/transactionsApi";
 import { format } from "date-fns";
 
@@ -172,6 +174,44 @@ export default function VentasPage() {
 
   const total = cartItems.reduce((sum, item) => sum + item.total, 0);
 
+  // Funciones para manejar extras
+  const addExtra = () => {
+    if (!newExtraType.trim() || newExtraPrice <= 0) {
+      alert("Por favor complete el tipo de extra y un monto válido");
+      return;
+    }
+
+    const newExtra = {
+      id: Date.now().toString(),
+      type: newExtraType.trim(),
+      price: newExtraPrice,
+      note: "", // Sin nota
+      paidInFull: false, // Siempre false por defecto
+    };
+
+    setSaleExtras([...saleExtras, newExtra]);
+    
+    // Limpiar formulario y cerrar modal
+    setNewExtraType("");
+    setNewExtraPrice(0);
+    setShowExtraModal(false);
+  };
+
+  const openExtraModal = () => {
+    setShowExtraModal(true);
+  };
+
+  const closeExtraModal = () => {
+    setShowExtraModal(false);
+    // Limpiar formulario al cerrar
+    setNewExtraType("");
+    setNewExtraPrice(0);
+  };
+
+  const removeExtra = (id: string) => {
+    setSaleExtras(saleExtras.filter(extra => extra.id !== id));
+  };
+
   //VENTA
   //busqueda de productos
   const [searchTerm, setSearchTerm] = useState("");
@@ -211,8 +251,51 @@ export default function VentasPage() {
   const [paymentNote, setPaymentNote] = useState("");
   //estado de procesamiento de pago
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  //EXTRAS DE LA VENTA
+  //lista de extras agregados
+  const [saleExtras, setSaleExtras] = useState<
+    Array<{
+      id: string;
+      type: string;
+      price: number;
+      note: string;
+      paidInFull: boolean;
+    }>
+  >([]);
+  //formulario de nuevo extra
+  const [newExtraType, setNewExtraType] = useState("");
+  const [newExtraPrice, setNewExtraPrice] = useState(0);
+  const [newExtraNote, setNewExtraNote] = useState("");
+  const [newExtraPaidInFull, setNewExtraPaidInFull] = useState(false);
+  
+  // Estado para el modal de extras
+  const [showExtraModal, setShowExtraModal] = useState(false);
+  
+  // Función helper para calcular total de extras (descuentos se restan, otros se suman)
+  const calculateExtrasTotal = (extras: any[]) => {
+    return extras.reduce((sum, extra) => {
+      return extra.type === "Descuento" ? sum - extra.price : sum + extra.price;
+    }, 0);
+  };
+
+  // Calcular total de extras (descuentos se restan, otros se suman)
+  const totalExtras = calculateExtrasTotal(saleExtras);
+  
   //excluir IVA
   const [excludeTax, setExcludeTax] = useState(false);
+
+  // calculo de IVA
+  const calculateTax = () => {
+    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0) + totalExtras;
+    return excludeTax ? 0 : subtotal * 0.21;
+  };
+  // calculo de total con IVA
+  const calculateTotalWithTax = () => {
+    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0) + totalExtras;
+    const tax = excludeTax ? 0 : subtotal * 0.21; // 21% IVA
+    return subtotal + tax;
+  };
 
   //CLIENTES
   //lista de clientes disponibles
@@ -268,17 +351,6 @@ export default function VentasPage() {
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [isLoadingSaleDetails, setIsLoadingSaleDetails] = useState(false);
 
-  // calculo de IVA
-  const calculateTax = () => {
-    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-    return excludeTax ? 0 : subtotal * 0.21;
-  };
-  // calculo de total con IVA
-  const calculateTotalWithTax = () => {
-    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-    const tax = excludeTax ? 0 : subtotal * 0.21; // 21% IVA
-    return subtotal + tax;
-  };
 
   //FUNCIONES DE LA VENTA
   //busqueda de productos por codigo o nomrbe
@@ -591,7 +663,7 @@ export default function VentasPage() {
           transaction_id: transactionId,
           product_id: item.id, // Usar el id del item como product_id
           quantity: item.cantidad,
-          price: item.precio,
+          price: excludeTax ? item.precio : item.precio * 1.21,
         };
 
         await createItem(itemData);
@@ -600,8 +672,21 @@ export default function VentasPage() {
         await updateProductStock(item.id, item.cantidad);
       }
 
+      // 3. Crear los extras de la transacción
+      for (const extra of saleExtras) {
+        const extraData = {
+          transaction_id: transactionId,
+          type: extra.type,
+          price: extra.price,
+          note: extra.note,
+        };
+
+        await createExtra(extraData);
+      }
+
       // 4. Limpiar el formulario
       setCartItems([]);
+      setSaleExtras([]);
       setSelectedPaymentMethod("");
       setSelectedClient("");
       setClientSearchTerm("");
@@ -611,6 +696,8 @@ export default function VentasPage() {
       setSearchTerm("");
       setError("");
       setProductQuantities({});
+      setNewExtraType("");
+      setNewExtraPrice(0);
 
       // 5. Recargar el historial de ventas
       loadSalesHistory(salesFilters);
@@ -1091,6 +1178,8 @@ export default function VentasPage() {
                 </Table>
               </CardContent>
             </Card>
+
+
             <Card className="md:col-span-4">
               <CardHeader>
                 <CardTitle>Resumen de Venta</CardTitle>
@@ -1150,6 +1239,47 @@ export default function VentasPage() {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Sección de Extras - Compacta */}
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Extras</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={openExtraModal}
+                    >
+                      <Plus className="mr-1 h-3 w-3" />
+                      Agregar
+                    </Button>
+                  </div>
+                  
+                  {/* Lista compacta de extras */}
+                  {saleExtras.length > 0 && (
+                    <div className="space-y-2">
+                      {saleExtras.map((extra) => (
+                         <div key={extra.id} className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
+                           <div className="flex-1">
+                             <span className="font-medium">{extra.type}</span>
+                           </div>
+                             <div className="flex items-center space-x-2">
+                               <span className={`font-medium ${extra.type === "Descuento" ? "text-green-600" : ""}`}>
+                                 {extra.type === "Descuento" ? "-" : ""}${extra.price.toLocaleString("es-AR")}
+                               </span>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => removeExtra(extra.id)}
+                               className="h-6 w-6 p-0"
+                             >
+                               <X className="h-3 w-3 text-red-500" />
+                             </Button>
+                           </div>
+                         </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1225,8 +1355,20 @@ export default function VentasPage() {
                   )}
 
                   <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
+                    <span>Subtotal Productos</span>
                     <span>${total.toLocaleString("es-AR")}</span>
+                  </div>
+                   {totalExtras !== 0 && (
+                     <div className="flex justify-between text-sm">
+                       <span>Extras</span>
+                       <span className={`${totalExtras < 0 ? "text-green-600" : ""}`}>
+                         {totalExtras < 0 ? "-" : ""}${Math.abs(totalExtras).toLocaleString("es-AR")}
+                       </span>
+                     </div>
+                   )}
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>Subtotal Total</span>
+                    <span>${(total + totalExtras).toLocaleString("es-AR")}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
                     <div className="flex items-center space-x-2">
@@ -1669,9 +1811,9 @@ export default function VentasPage() {
                             {extra.type}
                           </TableCell>
                           <TableCell>{extra.note}</TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(extra.price)}
-                          </TableCell>
+                           <TableCell className={`text-right ${extra.type === "Descuento" ? "text-green-600" : ""}`}>
+                             {extra.type === "Descuento" ? "-" : ""}{formatCurrency(extra.price)}
+                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1715,10 +1857,12 @@ export default function VentasPage() {
                       <strong>Subtotal Productos:</strong>{" "}
                       {formatCurrency(selectedSale.totals.items)}
                     </p>
-                    <p>
-                      <strong>Cargos Adicionales:</strong>{" "}
-                      {formatCurrency(selectedSale.totals.extras)}
-                    </p>
+                     <p>
+                       <strong>Cargos Adicionales:</strong>{" "}
+                       <span className={selectedSale.totals.extras < 0 ? "text-green-600" : ""}>
+                         {selectedSale.totals.extras < 0 ? "-" : ""}{formatCurrency(Math.abs(selectedSale.totals.extras))}
+                       </span>
+                     </p>
                     <p className="text-lg font-bold">
                       Total: {formatCurrency(selectedSale.totals.transaction)}
                     </p>
@@ -1756,6 +1900,56 @@ export default function VentasPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSaleDetails(false)}>
               Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para agregar extras */}
+      <Dialog open={showExtraModal} onOpenChange={setShowExtraModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar Extra</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+             <div className="space-y-2">
+               <Label htmlFor="extraType">Tipo de Extra</Label>
+               <Select
+                 value={newExtraType}
+                 onValueChange={setNewExtraType}
+               >
+                 <SelectTrigger>
+                   <SelectValue placeholder="Seleccionar tipo de extra..." />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="Mano de obra">Mano de obra</SelectItem>
+                   <SelectItem value="Envio">Envío</SelectItem>
+                   <SelectItem value="Descuento">Descuento</SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="extraPrice">Monto</Label>
+              <Input
+                id="extraPrice"
+                type="number"
+                placeholder="0.00"
+                value={newExtraPrice || ""}
+                onChange={(e) => setNewExtraPrice(parseFloat(e.target.value) || 0)}
+                min="0"
+                step="0.01"
+              />
+            </div>
+            
+            
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={closeExtraModal}>
+              Cancelar
+            </Button>
+            <Button onClick={addExtra}>
+              Agregar Extra
             </Button>
           </DialogFooter>
         </DialogContent>
