@@ -409,67 +409,58 @@ class TransactionService{
         try {
             $query = "
                 SELECT 
-                    t.transaction_id,
-                    t.date,
-                    t.is_sale,
-                    t.tax_type,
-                    t.tracking_number,
-                    p.person_id,
-                    p.name as provider_name,
-                    p.company_name as provider_company,
-                    p.email as provider_email,
-                    p.phone as provider_phone,
-                    tc.name as transport_company,
-                    tc.url as transport_url,
-                    COALESCE(SUM(i.quantity * i.price), 0) as total_items,
-                    COALESCE(SUM(e.price), 0) as total_extras,
-                    COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0) as total_transaction,
-                    COALESCE(SUM(pa.amount), 0) as total_paid,
-                    COUNT(DISTINCT i.item_id) as items_count,
-                    COUNT(DISTINCT e.extra_id) as extras_count,
-                    COUNT(DISTINCT pa.payment_id) as payments_count
-                FROM transaction t
-                LEFT JOIN person p ON t.person_id = p.person_id
-                LEFT JOIN transport_companies tc ON t.transport_id = tc.company_id
-                LEFT JOIN items i ON t.transaction_id = i.transaction_id
-                LEFT JOIN extras e ON t.transaction_id = e.transaction_id
-                LEFT JOIN payments pa ON t.transaction_id = pa.transaction_id
-                WHERE t.is_sale = 0
+                    transaction_id,
+                    date,
+                    tracking_number,
+                    tax_type,
+                    person_id,
+                    person_name as provider_name,
+                    company_name as provider_company,
+                    email as provider_email,
+                    phone as provider_phone,
+                    transport_company,
+                    transport_id,
+                    total_items,
+                    total_extras,
+                    total_descuentos,
+                    total_a_pagar as total_transaction,
+                    total_pagado as total_paid,
+                    saldo_restante
+                FROM view_compras_detalladas
+                WHERE 1=1
             ";
             
             $params = [];
 
             // Aplicar filtros
             if (isset($filters['start_date'])) {
-                $query .= " AND t.date >= ?";
+                $query .= " AND date >= ?";
                 $params[] = $filters['start_date'];
             }
-            // fin de fecha
+
             if (isset($filters['end_date'])) {
-                $query .= " AND t.date <= ?";
+                $query .= " AND date <= ?";
                 $params[] = $filters['end_date'];
             }
-            // nombre del proveedor
+
             if (isset($filters['provider_name'])) {
-                $query .= " AND (p.name LIKE ? OR p.company_name LIKE ?)";
+                $query .= " AND (person_name LIKE ? OR company_name LIKE ?)";
                 $searchTerm = '%' . $filters['provider_name'] . '%';
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
             }
-            // id de la transaccion
+
             if (isset($filters['transaction_id'])) {
-                $query .= " AND t.transaction_id = ?";
+                $query .= " AND transaction_id = ?";
                 $params[] = $filters['transaction_id'];
             }
 
-            $query .= " GROUP BY t.transaction_id, t.date, t.is_sale, t.tax_type, t.tracking_number, p.person_id, p.name, p.company_name, p.email, p.phone, tc.name, tc.url, t.transport_id";
-            
             // Ordenamiento
-            $sortBy = 't.date'; // Default sort
+            $sortBy = 'date'; // Default sort
             if (isset($filters['sort_by'])) {
                 switch ($filters['sort_by']) {
                     case 'transaction_id':
-                        $sortBy = 't.transaction_id';
+                        $sortBy = 'transaction_id';
                         break;
                     case 'provider_name':
                         $sortBy = 'provider_name';
@@ -477,14 +468,27 @@ class TransactionService{
                     case 'total_transaction':
                         $sortBy = 'total_transaction';
                         break;
-                    case 'items_count':
-                        $sortBy = 'items_count';
+                    case 'total_paid':
+                        $sortBy = 'total_paid';
+                        break;
+                    case 'status':
+                        $sortBy = 'status';
                         break;
                 }
             }
-
+            
             $sortDirection = isset($filters['sort_direction']) && strtoupper($filters['sort_direction']) === 'ASC' ? 'ASC' : 'DESC';
-            $query .= " ORDER BY $sortBy $sortDirection";
+
+            if ($sortBy === 'status') {
+                $query .= " ORDER BY 
+                    CASE 
+                        WHEN total_paid >= total_transaction THEN 2 -- Pagado
+                        WHEN total_paid > 0 AND total_paid < total_transaction THEN 1 -- Parcial
+                        ELSE 0 -- Pendiente
+                    END $sortDirection, date DESC";
+            } else {
+                $query .= " ORDER BY $sortBy $sortDirection";
+            }
 
             // Aplicar limite y offset para paginacion 
             if (isset($filters['limit'])) {
@@ -508,6 +512,14 @@ class TransactionService{
             $stmt->execute();
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Agregar campos adicionales que el frontend espera
+            foreach ($rows as &$row) {
+                $row['is_sale'] = 0; // Siempre es compra
+                $row['items_count'] = 0; // Se puede calcular si es necesario
+                $row['extras_count'] = 0; // Se puede calcular si es necesario
+                $row['payments_count'] = 0; // Se puede calcular si es necesario
+            }
+
             return $rows;
         } catch (PDOException $e) {
             throw new Exception("Error al obtener compras con detalles: " . $e->getMessage());
@@ -517,34 +529,45 @@ class TransactionService{
     public function getPurchasesCount(array $filters = []) {
         try {
             $query = "
-                SELECT COUNT(DISTINCT t.transaction_id) as total
-                FROM transaction t
-                LEFT JOIN person p ON t.person_id = p.person_id
-                WHERE t.is_sale = 0
+                SELECT COUNT(*) as total
+                FROM view_compras_detalladas
+                WHERE 1=1
             ";
             
             $params = [];
 
             // Aplicar filtros 
             if (isset($filters['start_date'])) {
-                $query .= " AND t.date >= ?";
+                $query .= " AND date >= ?";
                 $params[] = $filters['start_date'];
             }
 
             if (isset($filters['end_date'])) {
-                $query .= " AND t.date <= ?";
+                $query .= " AND date <= ?";
                 $params[] = $filters['end_date'];
             }
 
             if (isset($filters['provider_name'])) {
-                $query .= " AND (p.name LIKE ? OR p.company_name LIKE ?)";
+                $query .= " AND (person_name LIKE ? OR company_name LIKE ?)";
                 $searchTerm = '%' . $filters['provider_name'] . '%';
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
             }
 
+            if (isset($filters['transaction_id'])) {
+                $query .= " AND transaction_id = ?";
+                $params[] = $filters['transaction_id'];
+            }
+
             $stmt = $this->pdo->prepare($query);
-            $stmt->execute($params);
+            
+            // Bind parameters con tipos correctos
+            foreach ($params as $index => $param) {
+                $paramType = is_int($param) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($index + 1, $param, $paramType);
+            }
+            
+            $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
             return (int)$result['total'];
@@ -652,6 +675,18 @@ class TransactionService{
             return $rows;
         } catch (PDOException $e) {
             throw new Exception("Error al obtener todas las ventas: " . $e->getMessage());
+        }
+    }
+
+    public function getAllPurchases() {
+        try {
+            $query = "SELECT * FROM view_compras_detalladas";
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $rows;
+        } catch (PDOException $e) {
+            throw new Exception("Error al obtener todas las compras: " . $e->getMessage());
         }
     }
 }

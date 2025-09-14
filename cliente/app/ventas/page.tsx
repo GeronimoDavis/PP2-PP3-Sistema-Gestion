@@ -13,6 +13,7 @@ import {
   Calendar,
   User,
   X,
+  Banknote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -355,6 +356,15 @@ export default function VentasPage() {
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [isLoadingSaleDetails, setIsLoadingSaleDetails] = useState(false);
 
+  // Estados para el modal de pagos
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedSaleForPayment, setSelectedSaleForPayment] = useState<SalesHistoryItem | null>(null);
+  const [newPaymentAmount, setNewPaymentAmount] = useState(0);
+  const [newPaymentMethod, setNewPaymentMethod] = useState("");
+  const [newPaymentDate, setNewPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newPaymentNote, setNewPaymentNote] = useState("");
+  const [isProcessingNewPayment, setIsProcessingNewPayment] = useState(false);
+
   const requestSalesSort = (key: keyof SalesHistoryItem | "status") => {
     const direction =
       salesFilters.sort_by === key && salesFilters.sort_direction === "asc"
@@ -375,6 +385,63 @@ export default function VentasPage() {
       return null;
     }
     return salesFilters.sort_direction === "asc" ? " ▲" : " ▼";
+  };
+
+  // Funciones para el modal de pagos
+  const openPaymentModal = (sale: SalesHistoryItem) => {
+    setSelectedSaleForPayment(sale);
+    setNewPaymentAmount(0);
+    setNewPaymentMethod("");
+    setNewPaymentDate(new Date().toISOString().split("T")[0]);
+    setNewPaymentNote("");
+    setShowPaymentModal(true);
+  };
+
+  const closePaymentModal = () => {
+    setShowPaymentModal(false);
+    setSelectedSaleForPayment(null);
+    setNewPaymentAmount(0);
+    setNewPaymentMethod("");
+    setNewPaymentNote("");
+  };
+
+  const handleAddPayment = async () => {
+    if (!selectedSaleForPayment) return;
+
+    if (newPaymentAmount <= 0) {
+      alert("Por favor ingrese un monto válido");
+      return;
+    }
+
+    if (!newPaymentMethod) {
+      alert("Por favor seleccione un método de pago");
+      return;
+    }
+
+    setIsProcessingNewPayment(true);
+
+    try {
+      const paymentData = {
+        transaction_id: selectedSaleForPayment.transaction_id,
+        date: newPaymentDate,
+        type: newPaymentMethod,
+        amount: newPaymentAmount,
+        note: newPaymentNote,
+      };
+
+      await createPayment(paymentData);
+
+      // Recargar el historial de ventas
+      loadSalesHistory(salesFilters);
+
+      alert("Pago agregado exitosamente!");
+      closePaymentModal();
+    } catch (error: any) {
+      console.error("Error al agregar pago:", error);
+      alert("Error al agregar pago: " + (error.message || "Error desconocido"));
+    } finally {
+      setIsProcessingNewPayment(false);
+    }
   };
 
   //FUNCIONES DE LA VENTA
@@ -1719,18 +1786,32 @@ export default function VentasPage() {
                                 {paymentStatus.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleViewSaleDetails(sale.transaction_id)
-                                }
-                                disabled={isLoadingSaleDetails}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
+                             <TableCell className="text-right">
+                               <div className="flex items-center justify-end space-x-2">
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() =>
+                                     handleViewSaleDetails(sale.transaction_id)
+                                   }
+                                   disabled={isLoadingSaleDetails}
+                                   title="Ver detalles"
+                                 >
+                                   <Eye className="h-4 w-4" />
+                                 </Button>
+                                 {sale.total_paid < sale.total_transaction && (
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => openPaymentModal(sale)}
+                                     className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+                                     title="Agregar pago"
+                                   >
+                                     <Banknote className="h-4 w-4" />
+                                   </Button>
+                                 )}
+                               </div>
+                             </TableCell>
                           </TableRow>
                         );
                       })}
@@ -2053,50 +2134,157 @@ export default function VentasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal para agregar extras */}
-      <Dialog open={showExtraModal} onOpenChange={setShowExtraModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Agregar Extra</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="extraType">Tipo de Extra</Label>
-              <Select value={newExtraType} onValueChange={setNewExtraType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar tipo de extra..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Mano de obra">Mano de obra</SelectItem>
-                  <SelectItem value="Envio">Envío</SelectItem>
-                  <SelectItem value="Descuento">Descuento</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+       {/* Modal para agregar extras */}
+       <Dialog open={showExtraModal} onOpenChange={setShowExtraModal}>
+         <DialogContent className="sm:max-w-md">
+           <DialogHeader>
+             <DialogTitle>Agregar Extra</DialogTitle>
+           </DialogHeader>
+           <div className="space-y-4">
+             <div className="space-y-2">
+               <Label htmlFor="extraType">Tipo de Extra</Label>
+               <Select value={newExtraType} onValueChange={setNewExtraType}>
+                 <SelectTrigger>
+                   <SelectValue placeholder="Seleccionar tipo de extra..." />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="Mano de obra">Mano de obra</SelectItem>
+                   <SelectItem value="Envio">Envío</SelectItem>
+                   <SelectItem value="Descuento">Descuento</SelectItem>
+                 </SelectContent>
+               </Select>
+             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="extraPrice">Monto</Label>
-              <Input
-                id="extraPrice"
-                type="number"
-                placeholder="0.00"
-                value={newExtraPrice || ""}
-                onChange={(e) =>
-                  setNewExtraPrice(parseFloat(e.target.value) || 0)
-                }
-                min="0"
-                step="0.01"
-              />
-            </div>
-          </div>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={closeExtraModal}>
-              Cancelar
-            </Button>
-            <Button onClick={addExtra}>Agregar Extra</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+             <div className="space-y-2">
+               <Label htmlFor="extraPrice">Monto</Label>
+               <Input
+                 id="extraPrice"
+                 type="number"
+                 placeholder="0.00"
+                 value={newExtraPrice || ""}
+                 onChange={(e) =>
+                   setNewExtraPrice(parseFloat(e.target.value) || 0)
+                 }
+                 min="0"
+                 step="0.01"
+               />
+             </div>
+           </div>
+           <DialogFooter className="flex gap-2">
+             <Button variant="outline" onClick={closeExtraModal}>
+               Cancelar
+             </Button>
+             <Button onClick={addExtra}>Agregar Extra</Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+
+       {/* Modal para agregar pagos */}
+       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+         <DialogContent className="sm:max-w-md">
+           <DialogHeader>
+             <DialogTitle>
+               Agregar Pago - Venta #{selectedSaleForPayment?.transaction_id}
+             </DialogTitle>
+           </DialogHeader>
+           {selectedSaleForPayment && (
+             <div className="space-y-4">
+               {/* Información de la venta */}
+               <div className="p-3 bg-gray-50 rounded-lg">
+                 <div className="text-sm space-y-1">
+                   <div className="flex justify-between">
+                     <span>Cliente:</span>
+                     <span className="font-medium">{selectedSaleForPayment.client_name}</span>
+                   </div>
+                   <div className="flex justify-between">
+                     <span>Total Venta:</span>
+                     <span className="font-medium">${selectedSaleForPayment.total_transaction.toLocaleString("es-AR")}</span>
+                   </div>
+                   <div className="flex justify-between">
+                     <span>Pagado:</span>
+                     <span className="font-medium">${selectedSaleForPayment.total_paid.toLocaleString("es-AR")}</span>
+                   </div>
+                   <div className="flex justify-between font-semibold">
+                     <span>Pendiente:</span>
+                     <span className="text-orange-600">${(selectedSaleForPayment.total_transaction - selectedSaleForPayment.total_paid).toLocaleString("es-AR")}</span>
+                   </div>
+                 </div>
+               </div>
+
+               {/* Formulario de pago */}
+               <div className="space-y-4">
+                 <div className="space-y-2">
+                   <Label>Monto del Pago</Label>
+                   <Input
+                     type="number"
+                     placeholder="0.00"
+                     value={newPaymentAmount || ""}
+                     onChange={(e) => setNewPaymentAmount(parseFloat(e.target.value) || 0)}
+                     min="0"
+                     step="0.01"
+                     max={selectedSaleForPayment.total_transaction - selectedSaleForPayment.total_paid}
+                   />
+                 </div>
+
+                 <div className="space-y-2">
+                   <Label>Método de Pago</Label>
+                   <Select value={newPaymentMethod} onValueChange={setNewPaymentMethod}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="Seleccionar método" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="Efectivo">Efectivo</SelectItem>
+                       <SelectItem value="Transferencia">Transferencia Bancaria</SelectItem>
+                       <SelectItem value="Tarjeta">Tarjeta de Crédito/Débito</SelectItem>
+                       <SelectItem value="Cheque">Cheque</SelectItem>
+                       <SelectItem value="Credito30">Crédito (30 días)</SelectItem>
+                       <SelectItem value="Credito60">Crédito (60 días)</SelectItem>
+                       <SelectItem value="Credito90">Crédito (90 días)</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+
+                 <div className="space-y-2">
+                   <Label>Fecha del Pago</Label>
+                   <Input
+                     type="date"
+                     value={newPaymentDate}
+                     onChange={(e) => setNewPaymentDate(e.target.value)}
+                   />
+                 </div>
+
+                 <div className="space-y-2">
+                   <Label>Notas (opcional)</Label>
+                   <Input
+                     placeholder="Agregar notas al pago..."
+                     value={newPaymentNote}
+                     onChange={(e) => setNewPaymentNote(e.target.value)}
+                   />
+                 </div>
+               </div>
+             </div>
+           )}
+           <DialogFooter className="flex gap-2">
+             <Button variant="outline" onClick={closePaymentModal}>
+               Cancelar
+             </Button>
+             <Button 
+               onClick={handleAddPayment}
+               disabled={isProcessingNewPayment}
+               className="bg-green-600 hover:bg-green-700"
+             >
+               {isProcessingNewPayment ? (
+                 <>
+                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                   Procesando...
+                 </>
+               ) : (
+                 "Agregar Pago"
+               )}
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
     </div>
   );
 }

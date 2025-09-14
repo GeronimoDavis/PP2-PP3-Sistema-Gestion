@@ -63,7 +63,8 @@ class PaymentsController
                 $data['transaction_id'],
                 (float)$data['amount'],
                 PaymentsType::from($data['type']),
-                new \DateTime($data['date'])
+                new \DateTime($data['date']),
+                $data['note'] ?? ""
             );
             $createdPayment = $this->paymentsService->create($payment);
             $response->getBody()->write(json_encode(['payment' => $createdPayment->toArray()]));
@@ -93,7 +94,8 @@ class PaymentsController
                 $data['transaction_id'],
                 (float)$data['amount'],
                 PaymentsType::from($data['type']),
-                new \DateTime($data['date'])
+                new \DateTime($data['date']),
+                $data['note'] ?? ""
             );
             $updatedPayment = $this->paymentsService->update($payment);
             $response->getBody()->write(json_encode(['payment' => $updatedPayment->toArray()]));
