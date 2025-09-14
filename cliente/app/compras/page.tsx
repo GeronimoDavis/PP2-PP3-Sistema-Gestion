@@ -2,7 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Download,
   Plus,
@@ -97,6 +97,15 @@ interface PurchaseHistoryItem {
   provider_company: string;
   total_transaction: number;
   items_count: number;
+}
+
+interface Provider {
+  person_id: number;
+  name: string;
+  company_name: string;
+  phone: string;
+  email: string;
+  active: boolean;
 }
 
 export default function ComprasPage() {
@@ -207,9 +216,11 @@ export default function ComprasPage() {
 
   // LISTADO DE PROVEEDORES
   // lista de proveedores
-  const [providersList, setProvidersList] = useState<any[]>([]);
+  const [providersList, setProvidersList] = useState<Provider[]>([]);
   // lista de proveedores original
-  const [originalProvidersList, setOriginalProvidersList] = useState<any[]>([]);
+  const [originalProvidersList, setOriginalProvidersList] = useState<
+    Provider[]
+  >([]);
   // estado de carga de proveedores
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
   // error de proveedores
@@ -236,6 +247,62 @@ export default function ComprasPage() {
   });
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
   const [providerFormError, setProviderFormError] = useState("");
+
+  const [providersSortConfig, setProvidersSortConfig] = useState<{
+    key: keyof Provider | null;
+    direction: "ascending" | "descending";
+  }>({
+    key: null,
+    direction: "ascending",
+  });
+
+  const requestProvidersSort = (key: keyof Provider) => {
+    let direction: "ascending" | "descending" = "ascending";
+    if (
+      providersSortConfig.key === key &&
+      providersSortConfig.direction === "ascending"
+    ) {
+      direction = "descending";
+    }
+    setProvidersSortConfig({ key, direction });
+  };
+
+  const getProvidersSortIndicator = (key: keyof Provider) => {
+    if (providersSortConfig.key !== key) {
+      return null;
+    }
+    return providersSortConfig.direction === "ascending" ? " ▲" : " ▼";
+  };
+
+  const sortedProviders = useMemo(() => {
+    let sortableItems = [...providersList];
+    if (providersSortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const valA = a[providersSortConfig.key!];
+        const valB = b[providersSortConfig.key!];
+
+        if (valA === null || typeof valA === "undefined") return 1;
+        if (valB === null || typeof valB === "undefined") return -1;
+
+        if (typeof valA === "boolean" && typeof valB === "boolean") {
+          if (valA === valB) return 0;
+          if (providersSortConfig.direction === "ascending") {
+            return valA ? -1 : 1;
+          }
+          return valA ? 1 : -1;
+        }
+
+        if (valA < valB) {
+          return providersSortConfig.direction === "ascending" ? -1 : 1;
+        }
+        if (valA > valB) {
+          return providersSortConfig.direction === "ascending" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [providersList, providersSortConfig]);
 
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
@@ -654,7 +721,7 @@ export default function ComprasPage() {
   const getPaginatedProviders = () => {
     const startIndex = (currentProvidersPage - 1) * providersItemsPerPage;
     const endIndex = startIndex + providersItemsPerPage;
-    return providersList.slice(startIndex, endIndex);
+    return sortedProviders.slice(startIndex, endIndex);
   };
 
   const totalProvidersPages = Math.ceil(
@@ -1655,11 +1722,46 @@ export default function ComprasPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead className="text-right">Estado</TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("name")}
+                        >
+                          Nombre{getProvidersSortIndicator("name")}
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("company_name")}
+                        >
+                          Empresa{getProvidersSortIndicator("company_name")}
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("phone")}
+                        >
+                          Teléfono{getProvidersSortIndicator("phone")}
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("email")}
+                        >
+                          Email{getProvidersSortIndicator("email")}
+                        </Button>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("active")}
+                        >
+                          Estado{getProvidersSortIndicator("active")}
+                        </Button>
+                      </TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
