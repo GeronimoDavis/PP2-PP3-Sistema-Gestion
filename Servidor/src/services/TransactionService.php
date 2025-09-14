@@ -193,10 +193,44 @@ class TransactionService{
                 $params[] = $filters['transaction_id'];
             }
 
-            $query .= " ORDER BY date DESC";
+            // Ordenamiento
+            $sortBy = 'date'; // Default sort
+            if (isset($filters['sort_by'])) {
+                switch ($filters['sort_by']) {
+                    case 'transaction_id':
+                        $sortBy = 'transaction_id';
+                        break;
+                    case 'client_name':
+                        $sortBy = 'client_name';
+                        break;
+                    case 'total_transaction':
+                        $sortBy = 'total_transaction';
+                        break;
+                    case 'total_paid':
+                        $sortBy = 'total_paid';
+                        break;
+                    case 'status':
+                        $sortBy = 'status';
+                        break;
+                }
+            }
+            
+            $sortDirection = isset($filters['sort_direction']) && strtoupper($filters['sort_direction']) === 'ASC' ? 'ASC' : 'DESC';
 
-            // Aplicar limite y offset para paginacion 
-            if (isset($filters['limit'])) {
+            if ($sortBy === 'status') {
+                $query .= " ORDER BY 
+                    CASE 
+                        WHEN total_paid >= total_transaction THEN 2 -- Pagado
+                        WHEN total_paid > 0 AND total_paid < total_transaction THEN 1 -- Parcial
+                        ELSE 0 -- Pendiente
+                    END $sortDirection, date DESC";
+            } else {
+                $query .= " ORDER BY $sortBy $sortDirection";
+            }
+
+ 
+             // Aplicar limite y offset para paginacion 
+             if (isset($filters['limit'])) {
                 $query .= " LIMIT ?";
                 $params[] = (int)$filters['limit'];
                 

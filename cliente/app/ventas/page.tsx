@@ -361,14 +361,11 @@ export default function VentasPage() {
         ? "desc"
         : "asc";
 
-    const newFilters = {
-      ...salesFilters,
+    setSalesFilters((prev) => ({
+      ...prev,
       sort_by: key,
       sort_direction: direction,
-    };
-
-    setSalesFilters(newFilters);
-    loadSalesHistory(newFilters);
+    }));
   };
 
   const getSalesSortIndicator = (
@@ -538,12 +535,19 @@ export default function VentasPage() {
   };
 
   // HISTORIAL DE VENTAS
-  const loadSalesHistory = async (filters = salesFilters) => {
+  const loadSalesHistory = async () => {
     setIsLoadingSales(true);
     setSalesError("");
 
     try {
-      const response = await getSalesHistory(filters);
+      const offset = (currentPage - 1) * itemsPerPage;
+      const filtersWithPagination = {
+        ...salesFilters,
+        limit: itemsPerPage,
+        offset: offset,
+      };
+
+      const response = await getSalesHistory(filtersWithPagination);
       const salesData = response.sales || [];
       setSalesHistory(salesData);
       setOriginalSalesHistory(salesData);
@@ -567,50 +571,32 @@ export default function VentasPage() {
   };
 
   const handleSalesSearch = () => {
-    loadSalesHistory(salesFilters);
+    setCurrentPage(1);
+    loadSalesHistory();
   };
 
   const handleClearSalesFilters = () => {
-    const newFilters = {
+    setSalesFilters({
       start_date: "",
       end_date: "",
       client_name: "",
       limit: 10,
-      offset: 0,
       sort_by: "date",
       sort_direction: "desc",
-    };
-    setSalesFilters(newFilters);
+    });
     setCurrentPage(1);
-    loadSalesHistory(newFilters);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    const limit = salesFilters.limit || 10;
-    const offset = (page - 1) * limit;
-
-    const newFilters = {
-      ...salesFilters,
-      offset: offset,
-    };
-
-    setSalesFilters(newFilters);
-    loadSalesHistory(newFilters);
   };
 
   const handleLimitChange = (newLimit: number) => {
+    setItemsPerPage(newLimit);
     setCurrentPage(1);
-    const newFilters = {
-      ...salesFilters,
-      limit: newLimit,
-      offset: 0,
-    };
-    setSalesFilters(newFilters);
-    loadSalesHistory(newFilters);
   };
 
-  const totalPages = Math.ceil(totalSales / (salesFilters.limit || 10));
+  const totalPages = Math.ceil(totalSales / itemsPerPage);
 
   const handleViewSaleDetails = async (transactionId: number) => {
     setIsLoadingSaleDetails(true);
@@ -659,10 +645,10 @@ export default function VentasPage() {
       return;
     }
 
-     if (paymentAmount > 0 && !selectedPaymentMethod) {
-       alert("Por favor seleccione un método de pago");
-       return;
-     }
+    if (paymentAmount > 0 && !selectedPaymentMethod) {
+      alert("Por favor seleccione un método de pago");
+      return;
+    }
 
     if (!selectedClient) {
       alert("Por favor seleccione un cliente");
@@ -702,30 +688,30 @@ export default function VentasPage() {
         await updateProductStock(item.id, item.cantidad);
       }
 
-       // 3. Crear los extras de la transacción
-       for (const extra of saleExtras) {
-         const extraData = {
-           transaction_id: transactionId,
-           type: extra.type,
-           price: extra.price,
-           note: extra.note,
-         };
+      // 3. Crear los extras de la transacción
+      for (const extra of saleExtras) {
+        const extraData = {
+          transaction_id: transactionId,
+          type: extra.type,
+          price: extra.price,
+          note: extra.note,
+        };
 
-         await createExtra(extraData);
-       }
+        await createExtra(extraData);
+      }
 
-       // 4. Crear el pago de la transacción
-       if (paymentAmount > 0) {
-         const paymentData = {
-           transaction_id: transactionId,
-           date: paymentDate,
-           type: selectedPaymentMethod,
-           amount: paymentAmount,
-           note: paymentNote,
-         };
+      // 4. Crear el pago de la transacción
+      if (paymentAmount > 0) {
+        const paymentData = {
+          transaction_id: transactionId,
+          date: paymentDate,
+          type: selectedPaymentMethod,
+          amount: paymentAmount,
+          note: paymentNote,
+        };
 
-         await createPayment(paymentData);
-       }
+        await createPayment(paymentData);
+      }
 
       // 4. Limpiar el formulario
       setCartItems([]);
@@ -743,7 +729,7 @@ export default function VentasPage() {
       setNewExtraPrice(0);
 
       // 5. Recargar el historial de ventas
-      loadSalesHistory(salesFilters);
+      loadSalesHistory();
 
       alert("Venta finalizada exitosamente!");
     } catch (error: any) {
@@ -770,19 +756,19 @@ export default function VentasPage() {
     }
   };
 
-   const validatePayment = () => {
-     if (cartItems.length === 0) {
-       alert("El carrito está vacío");
-       return false;
-     }
+  const validatePayment = () => {
+    if (cartItems.length === 0) {
+      alert("El carrito está vacío");
+      return false;
+    }
 
-     if (paymentAmount > 0 && !selectedPaymentMethod) {
-       alert("Por favor seleccione un método de pago");
-       return false;
-     }
+    if (paymentAmount > 0 && !selectedPaymentMethod) {
+      alert("Por favor seleccione un método de pago");
+      return false;
+    }
 
-     return true;
-   };
+    return true;
+  };
 
   const removeItem = (id: number) => {
     setCartItems(cartItems.filter((item) => item.id !== id));
@@ -888,9 +874,14 @@ export default function VentasPage() {
   // Cargar historial cuando se cambia de tab
   useEffect(() => {
     if (salesHistory.length === 0 && !loading && token) {
-      loadSalesHistory(salesFilters);
+      loadSalesHistory();
     }
   }, [loading, token, user]);
+
+  // Recargar cuando cambien los filtros o la página
+  useEffect(() => {
+    loadSalesHistory();
+  }, [salesFilters, currentPage, itemsPerPage]);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -1365,37 +1356,39 @@ export default function VentasPage() {
                   </Select>
                 </div>
 
-                 <div className="space-y-2">
-                   <div className="flex items-center justify-between">
-                     <Label>Monto a Pagar</Label>
-                     <Button
-                       type="button"
-                       variant="outline"
-                       size="sm"
-                       onClick={() => setPaymentAmount(calculateTotalWithTax())}
-                       className="text-xs"
-                     >
-                       Total
-                     </Button>
-                   </div>
-                   <Input
-                     type="number"
-                     placeholder="0.00"
-                     value={paymentAmount.toFixed(2) || ""}
-                     onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
-                     min="0"
-                     step="0.01"
-                   />
-                 </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Monto a Pagar</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPaymentAmount(calculateTotalWithTax())}
+                      className="text-xs"
+                    >
+                      Total
+                    </Button>
+                  </div>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={paymentAmount.toFixed(2) || ""}
+                    onChange={(e) =>
+                      setPaymentAmount(parseFloat(e.target.value) || 0)
+                    }
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
 
-                 <div className="space-y-2">
-                   <Label>Fecha de Pago</Label>
-                   <Input
-                     type="date"
-                     value={paymentDate}
-                     onChange={(e) => setPaymentDate(e.target.value)}
-                   />
-                 </div>
+                <div className="space-y-2">
+                  <Label>Fecha de Pago</Label>
+                  <Input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label>Notas</Label>
@@ -1469,38 +1462,46 @@ export default function VentasPage() {
                     </div>
                     <span>${calculateTax().toLocaleString("es-AR")}</span>
                   </div>
-                   <div className="flex justify-between font-bold text-lg mt-4">
-                     <span>Total</span>
-                     <span>
-                       ${calculateTotalWithTax().toLocaleString("es-AR")}
-                     </span>
-                   </div>
-                   
-                   {/* Mostrar información de pago */}
-                   {paymentAmount > 0 && (
-                     <div className="pt-4 border-t space-y-2">
-                       <div className="flex justify-between text-sm">
-                         <span>Monto a Pagar</span>
-                         <span className="font-medium">${paymentAmount.toLocaleString("es-AR")}</span>
-                       </div>
-                       {paymentAmount < calculateTotalWithTax() && (
-                         <div className="flex justify-between text-sm">
-                           <span>Pendiente</span>
-                           <span className="font-medium text-orange-600">
-                             ${(calculateTotalWithTax() - paymentAmount).toLocaleString("es-AR")}
-                           </span>
-                         </div>
-                       )}
-                       {paymentAmount > calculateTotalWithTax() && (
-                         <div className="flex justify-between text-sm">
-                           <span>Vuelto</span>
-                           <span className="font-medium text-green-600">
-                             ${(paymentAmount - calculateTotalWithTax()).toLocaleString("es-AR")}
-                           </span>
-                         </div>
-                       )}
-                     </div>
-                   )}
+                  <div className="flex justify-between font-bold text-lg mt-4">
+                    <span>Total</span>
+                    <span>
+                      ${calculateTotalWithTax().toLocaleString("es-AR")}
+                    </span>
+                  </div>
+
+                  {/* Mostrar información de pago */}
+                  {paymentAmount > 0 && (
+                    <div className="pt-4 border-t space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Monto a Pagar</span>
+                        <span className="font-medium">
+                          ${paymentAmount.toLocaleString("es-AR")}
+                        </span>
+                      </div>
+                      {paymentAmount < calculateTotalWithTax() && (
+                        <div className="flex justify-between text-sm">
+                          <span>Pendiente</span>
+                          <span className="font-medium text-orange-600">
+                            $
+                            {(
+                              calculateTotalWithTax() - paymentAmount
+                            ).toLocaleString("es-AR")}
+                          </span>
+                        </div>
+                      )}
+                      {paymentAmount > calculateTotalWithTax() && (
+                        <div className="flex justify-between text-sm">
+                          <span>Vuelto</span>
+                          <span className="font-medium text-green-600">
+                            $
+                            {(
+                              paymentAmount - calculateTotalWithTax()
+                            ).toLocaleString("es-AR")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
               <CardFooter>
@@ -1559,25 +1560,10 @@ export default function VentasPage() {
                   <Label>Cliente</Label>
                   <Input
                     placeholder="Buscar por cliente..."
-                    onChange={(e) => {
-                      const searchTerm = e.target.value.toLowerCase();
-                      if (searchTerm === "") {
-                        setSalesHistory(originalSalesHistory);
-                      } else {
-                        const filteredSales = originalSalesHistory.filter(
-                          (sale) =>
-                            sale.client_name
-                              .toLowerCase()
-                              .includes(searchTerm) ||
-                            sale.client_company
-                              ?.toLowerCase()
-                              .includes(searchTerm) ||
-                            sale.transaction_id.toString().includes(searchTerm)
-                        );
-                        setSalesHistory(filteredSales);
-                      }
-                      setCurrentPage(1); // Reset a la primera página
-                    }}
+                    value={salesFilters.client_name}
+                    onChange={(e) =>
+                      handleSalesFilterChange("client_name", e.target.value)
+                    }
                   />
                 </div>
                 <div className="space-y-2">
@@ -1757,7 +1743,7 @@ export default function VentasPage() {
                       <div className="flex items-center space-x-2">
                         <span className="text-sm text-gray-700">Mostrar:</span>
                         <Select
-                          value={(salesFilters.limit || 10).toString()}
+                          value={itemsPerPage.toString()}
                           onValueChange={(value) => {
                             handleLimitChange(parseInt(value));
                           }}
@@ -1772,13 +1758,9 @@ export default function VentasPage() {
                           </SelectContent>
                         </Select>
                         <span className="text-sm text-gray-700">
-                          Mostrando{" "}
-                          {(currentPage - 1) * (salesFilters.limit || 10) + 1} a{" "}
-                          {Math.min(
-                            currentPage * (salesFilters.limit || 10),
-                            totalSales
-                          )}{" "}
-                          de {totalSales} ventas
+                          Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+                          {Math.min(currentPage * itemsPerPage, totalSales)} de{" "}
+                          {totalSales} ventas
                         </span>
                       </div>
 
