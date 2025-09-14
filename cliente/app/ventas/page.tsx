@@ -591,7 +591,7 @@ export default function VentasPage() {
           transaction_id: transactionId,
           product_id: item.id, // Usar el id del item como product_id
           quantity: item.cantidad,
-          price: item.precio,
+          price: excludeTax ? item.precio : item.precio * 1.21,
         };
 
         await createItem(itemData);

@@ -10,4 +10,4 @@ $app->group('/dashboard', function(RouteCollectorProxy $group) use ($dashboardCo
     $group->get('/total-purchases', [$dashboardController, 'getTotalPurchases']);
     $group->get('/recent-transactions[/{limit}]', [$dashboardController, 'getRecentTransactions']);
     $group->get('/withoutStock', [$dashboardController, 'getProductsWithoutStock']);
-})->add(new AuthMiddleware());
+});//->add(new AuthMiddleware());
