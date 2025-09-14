@@ -35,7 +35,8 @@ class PaymentsService {
                     $row['transaction_id'],
                     (float)$row['amount'],
                     PaymentsType::from($row['type']),
-                    new DateTime($row['date'])
+                    new DateTime($row['date']),
+                    $row['note'] ?? ""
                 );
             }
 
@@ -61,7 +62,8 @@ class PaymentsService {
                 $payment['transaction_id'],
                 (float)$payment['amount'],
                 PaymentsType::from($payment['type']),
-                new DateTime($payment['date'])
+                new DateTime($payment['date']),
+                $payment['note'] ?? ""
             );
         } catch (PDOException $e) {
             throw new Exception("Error fetching payment by ID $id: " . $e->getMessage());
@@ -81,7 +83,8 @@ class PaymentsService {
                     $row['transaction_id'],
                     (float)$row['amount'],
                     PaymentsType::from($row['type']),
-                    new DateTime($row['date'])
+                    new DateTime($row['date']),
+                    $row['note'] ?? ""
                 );
             }
 
@@ -95,12 +98,13 @@ class PaymentsService {
     public function create(Payments $payment)
     {
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO payments (transaction_id, amount, type, date) VALUES (?, ?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO payments (transaction_id, amount, type, date, note) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([
                 $payment->transaction_id,
                 number_format($payment->amount, 2, '.', ''),
                 $payment->type->value,
-                ($payment->date instanceof \DateTime ? $payment->date->format('Y-m-d H:i:s') : date('Y-m-d H:i:s', strtotime($payment->date)))
+                ($payment->date instanceof \DateTime ? $payment->date->format('Y-m-d H:i:s') : date('Y-m-d H:i:s', strtotime($payment->date))),
+                $payment->note
             ]);
 
             $payment->payment_id = $this->pdo->lastInsertId();
@@ -112,12 +116,13 @@ class PaymentsService {
     public function update(Payments $payment)
     {
         try {
-            $stmt = $this->pdo->prepare("UPDATE payments SET transaction_id = ?, amount = ?, type = ?, date = ? WHERE payment_id = ?");
+            $stmt = $this->pdo->prepare("UPDATE payments SET transaction_id = ?, amount = ?, type = ?, date = ?, note = ? WHERE payment_id = ?");
             $stmt->execute([
                 $payment->transaction_id,
                 number_format($payment->amount, 2, '.', ''),
                 $payment->type->value,
                 ($payment->date instanceof \DateTime ? $payment->date->format('Y-m-d H:i:s') : date('Y-m-d H:i:s', strtotime($payment->date))),
+                $payment->note,
                 $payment->payment_id
             ]);
 
@@ -151,7 +156,8 @@ class PaymentsService {
                 $payment['transaction_id'],
                 (float)$payment['amount'],
                 PaymentsType::from($payment['type']),
-                new DateTime($payment['date'])
+                new DateTime($payment['date']),
+                $payment['note'] ?? ""
             );
         } catch (PDOException $e) {
             throw new Exception("Error fetching payment by transaction ID $transactionId: " . $e->getMessage());
@@ -171,7 +177,8 @@ class PaymentsService {
                     $row['transaction_id'],
                     (float)$row['amount'],
                     PaymentsType::from($row['type']),
-                    new DateTime($row['date'])
+                    new DateTime($row['date']),
+                    $row['note'] ?? ""
                 );
             }
 
@@ -194,7 +201,8 @@ class PaymentsService {
                     $row['transaction_id'],
                     (float)$row['amount'],
                     PaymentsType::from($row['type']),
-                    new DateTime($row['date'])
+                    new DateTime($row['date']),
+                    $row['note'] ?? ""
                 );
             }
 
