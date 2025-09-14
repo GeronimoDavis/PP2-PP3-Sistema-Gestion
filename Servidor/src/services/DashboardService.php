@@ -32,16 +32,18 @@ class DashboardService{
         }
     }
 
-    public function getTotalPurchases(){
-        try{
-            $stmt = $this->pdo->prepare("SELECT SUM(total) as total_purchases FROM transaction WHERE type = 'purchase'");
-            $stmt->execute();
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $result['total_purchases'] ?? 0;
-        }catch(PDOException $e){
-            throw new Exception('Error fetching total purchases: ' . $e->getMessage());
-        }
+// ... dentro de la clase DashboardService en Servidor/src/services/DashboardService.php
+
+public function getTotalPurchases(){
+    try{
+        $stmt = $this->pdo->prepare("SELECT SUM(total_a_pagar) as total_purchases FROM view_compras_detalladas");
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['total_purchases'] ?? 0;
+    }catch(PDOException $e){
+        throw new Exception('Error fetching total purchases: ' . $e->getMessage());
     }
+}
 
     public function getRecentTransactions($limit = 10){
         try{
@@ -65,6 +67,18 @@ class DashboardService{
             return array_map(fn($p) => new Product($p), $products);
         } catch (PDOException $e) {
             throw new Exception("Error fetching products without stock: " . $e->getMessage());
+        }
+    }
+
+    public function getVentasConSaldoPendiente()
+    {
+        $sql = "SELECT * FROM view_ventas_detalladas WHERE saldo_restante > 0";
+        try {
+            $stmt = $this->pdo->query($sql);
+            $ventas = $stmt->fetchAll(PDO::FETCH_OBJ);
+            return $ventas;
+        } catch (PDOException $e) {
+            throw new Exception('Error al obtener ventas con saldo pendiente: ' . $e->getMessage());
         }
     }
 }

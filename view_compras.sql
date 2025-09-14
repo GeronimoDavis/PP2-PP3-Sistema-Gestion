@@ -1,11 +1,11 @@
-CREATE OR REPLACE VIEW view_ventas_detalladas AS
+CREATE OR REPLACE VIEW view_compras_detalladas AS
 SELECT
     t.transaction_id,
     t.date,
     t.tracking_number,
     t.tax_type,
     
-    -- Cliente
+    -- Proveedor
     p.person_id,
     p.name AS person_name,
     p.company_name,
@@ -49,7 +49,7 @@ LEFT JOIN transport_companies tc ON t.transport_id = tc.company_id
 LEFT JOIN items i ON t.transaction_id = i.transaction_id
 LEFT JOIN extras e ON t.transaction_id = e.transaction_id
 LEFT JOIN payments pay ON t.transaction_id = pay.transaction_id
-WHERE t.is_sale = TRUE
+WHERE t.is_sale = FALSE
 GROUP BY
     t.transaction_id, t.date, t.tracking_number, t.tax_type,
     p.person_id, p.name, p.company_name, p.email, p.phone,
