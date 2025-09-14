@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Download,
   MoreHorizontal,
@@ -102,6 +102,59 @@ export default function InventarioPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: string | null;
+    direction: "ascending" | "descending";
+  }>({
+    key: null,
+    direction: "ascending",
+  });
+
+  const requestSort = (key: string) => {
+    let direction: "ascending" | "descending" = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIndicator = (columnKey: string) => {
+    if (sortConfig.key !== columnKey) {
+      return null;
+    }
+    return sortConfig.direction === "ascending" ? " ▲" : " ▼";
+  };
+
+  const sortedProducts = useMemo(() => {
+    let sortableItems = [...products];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const valA = a[sortConfig.key!];
+        const valB = b[sortConfig.key!];
+
+        if (valA === null || typeof valA === "undefined") return 1;
+        if (valB === null || typeof valB === "undefined") return -1;
+
+        if (typeof valA === "boolean" && typeof valB === "boolean") {
+          if (valA === valB) return 0;
+          if (sortConfig.direction === "ascending") {
+            return valA ? -1 : 1;
+          }
+          return valA ? 1 : -1;
+        }
+
+        if (valA < valB) {
+          return sortConfig.direction === "ascending" ? -1 : 1;
+        }
+        if (valA > valB) {
+          return sortConfig.direction === "ascending" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [products, sortConfig]);
 
   //este es el que se encarga de actualizar el estado del producto
   const handleUpdateProductStatus = async (productId: string) => {
@@ -457,7 +510,7 @@ export default function InventarioPage() {
   const getPaginatedProducts = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return products.slice(startIndex, endIndex);
+    return sortedProducts.slice(startIndex, endIndex);
   };
 
   const Pagination = () => {
@@ -974,13 +1027,56 @@ export default function InventarioPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">Código</TableHead>
-                  <TableHead className="text-center">Nombre</TableHead>
-                  <TableHead className="text-center">Categoría</TableHead>
-                  <TableHead className="text-center">Stock</TableHead>
-                  <TableHead className="text-center">Precio Compra</TableHead>
-                  <TableHead className="text-center">Precio Venta</TableHead>
-                  <TableHead className="text-center">Estado</TableHead>
+                  <TableHead className="w-[100px]">
+                    <Button variant="ghost" onClick={() => requestSort("code")}>
+                      Código{getSortIndicator("code")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" onClick={() => requestSort("name")}>
+                      Nombre{getSortIndicator("name")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => requestSort("category_name")}
+                    >
+                      Categoría{getSortIndicator("category_name")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => requestSort("stock")}
+                    >
+                      Stock{getSortIndicator("stock")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => requestSort("purchase_price")}
+                    >
+                      Precio Compra{getSortIndicator("purchase_price")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => requestSort("sell_price")}
+                    >
+                      Precio Venta{getSortIndicator("sell_price")}
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => requestSort("active")}
+                    >
+                      Estado{getSortIndicator("active")}
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
