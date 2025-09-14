@@ -6,7 +6,7 @@ namespace Entities;
         case ManoDeObra = 'Mano de obra';
         case Envio = 'Envio';
         case Descuento = 'Descuento';
-    }
+        }
 class Extras
 {
 
