@@ -80,21 +80,23 @@ class PaymentsController
             $data = json_decode($request->getBody()->getContents(), true);
 
             //validaciones
-            if (!isset($data['transaction_id'], $data['amount'], $data['type'], $data['date'])) {
-                throw new Exception("Missing required fields.");
+            if (!isset($data['amount'], $data['type'])) {
+                throw new Exception("Missing required fields: amount and type are required.");
             }
 
              if (!is_numeric($data['amount']) || $data['amount'] <= 0) {
                 throw new Exception("Amount must be a positive number."); 
             }
 
+            // Obtener el pago existente para mantener la fecha original
+            $existingPayment = $this->paymentsService->getById($args['id']);
 
             $payment = new Payments(
                 (int)$args['id'], 
-                $data['transaction_id'],
+                $existingPayment->transaction_id, // Mantener el transaction_id original
                 (float)$data['amount'],
                 PaymentsType::from($data['type']),
-                new \DateTime($data['date']),
+                $existingPayment->date, // Mantener la fecha original
                 $data['note'] ?? ""
             );
             $updatedPayment = $this->paymentsService->update($payment);

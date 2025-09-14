@@ -14,6 +14,7 @@ import {
   User,
   X,
   Banknote,
+  Edit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +60,7 @@ import {
 } from "@/api/productsApi";
 import { Loader2 } from "lucide-react";
 import { createTransaction } from "@/api/transactionsApi";
-import { createPayment } from "@/api/paymentsApi";
+import { createPayment, updatePayment, deletePayment } from "@/api/paymentsApi";
 import { getPersons } from "@/api/personsApi";
 import { createItem } from "@/api/itemsApi";
 import { createExtra } from "@/api/extrasApi";
@@ -365,6 +366,15 @@ export default function VentasPage() {
   const [newPaymentNote, setNewPaymentNote] = useState("");
   const [isProcessingNewPayment, setIsProcessingNewPayment] = useState(false);
 
+  // Estados para el modal de edición de pagos
+  const [showEditPaymentModal, setShowEditPaymentModal] = useState(false);
+  const [selectedPaymentForEdit, setSelectedPaymentForEdit] = useState<SalePayment | null>(null);
+  const [editPaymentAmount, setEditPaymentAmount] = useState(0);
+  const [editPaymentMethod, setEditPaymentMethod] = useState("");
+  const [editPaymentDate, setEditPaymentDate] = useState("");
+  const [editPaymentNote, setEditPaymentNote] = useState("");
+  const [isProcessingEditPayment, setIsProcessingEditPayment] = useState(false);
+
   const requestSalesSort = (key: keyof SalesHistoryItem | "status") => {
     const direction =
       salesFilters.sort_by === key && salesFilters.sort_direction === "asc"
@@ -432,7 +442,7 @@ export default function VentasPage() {
       await createPayment(paymentData);
 
       // Recargar el historial de ventas
-      loadSalesHistory(salesFilters);
+      loadSalesHistory();
 
       alert("Pago agregado exitosamente!");
       closePaymentModal();
@@ -441,6 +451,90 @@ export default function VentasPage() {
       alert("Error al agregar pago: " + (error.message || "Error desconocido"));
     } finally {
       setIsProcessingNewPayment(false);
+    }
+  };
+
+  // Funciones para el modal de edición de pagos
+  const openEditPaymentModal = (payment: SalePayment) => {
+    setSelectedPaymentForEdit(payment);
+    setEditPaymentAmount(payment.amount);
+    setEditPaymentMethod(payment.type);
+    setEditPaymentNote(payment.note);
+    setShowEditPaymentModal(true);
+  };
+
+  const closeEditPaymentModal = () => {
+    setShowEditPaymentModal(false);
+    setSelectedPaymentForEdit(null);
+    setEditPaymentAmount(0);
+    setEditPaymentMethod("");
+    setEditPaymentNote("");
+  };
+
+  const handleEditPayment = async () => {
+    if (!selectedPaymentForEdit) return;
+
+    if (editPaymentAmount <= 0) {
+      alert("Por favor ingrese un monto válido");
+      return;
+    }
+
+    if (!editPaymentMethod) {
+      alert("Por favor seleccione un método de pago");
+      return;
+    }
+
+    setIsProcessingEditPayment(true);
+
+    try {
+      const paymentData = {
+        type: editPaymentMethod,
+        amount: editPaymentAmount,
+        note: editPaymentNote,
+      };
+
+      await updatePayment(selectedPaymentForEdit.payment_id, paymentData);
+
+      // Recargar los detalles de la venta
+      if (selectedSale) {
+        const response = await getSaleDetails(selectedSale.transaction.transaction_id);
+        setSelectedSale(response);
+      }
+
+      // Recargar el historial de ventas
+      loadSalesHistory();
+
+      alert("Pago actualizado exitosamente!");
+      closeEditPaymentModal();
+    } catch (error: any) {
+      console.error("Error al actualizar pago:", error);
+      alert("Error al actualizar pago: " + (error.message || "Error desconocido"));
+    } finally {
+      setIsProcessingEditPayment(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!confirm("¿Está seguro de que desea eliminar este pago?")) {
+      return;
+    }
+
+    try {
+      await deletePayment(paymentId);
+
+      // Recargar los detalles de la venta
+      if (selectedSale) {
+        const response = await getSaleDetails(selectedSale.transaction.transaction_id);
+        setSelectedSale(response);
+      }
+
+      // Recargar el historial de ventas
+      loadSalesHistory();
+
+      alert("Pago eliminado exitosamente!");
+    } catch (error: any) {
+      console.error("Error al eliminar pago:", error);
+      alert("Error al eliminar pago: " + (error.message || "Error desconocido"));
     }
   };
 
@@ -2054,6 +2148,7 @@ export default function VentasPage() {
                       <TableHead>Fecha</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead className="text-right">Monto</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2065,6 +2160,27 @@ export default function VentasPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(payment.amount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditPaymentModal(payment)}
+                              title="Editar pago"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeletePayment(payment.payment_id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Eliminar pago"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -2280,6 +2396,82 @@ export default function VentasPage() {
                  </>
                ) : (
                  "Agregar Pago"
+               )}
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+
+       {/* Modal para editar pagos */}
+       <Dialog open={showEditPaymentModal} onOpenChange={setShowEditPaymentModal}>
+         <DialogContent className="sm:max-w-md">
+           <DialogHeader>
+             <DialogTitle>
+               Editar Pago - Venta #{selectedSale?.transaction?.transaction_id}
+             </DialogTitle>
+           </DialogHeader>
+           {selectedPaymentForEdit && (
+             <div className="space-y-4">
+               {/* Formulario de edición de pago */}
+               <div className="space-y-4">
+                 <div className="space-y-2">
+                   <Label>Monto del Pago</Label>
+                   <Input
+                     type="number"
+                     placeholder="0.00"
+                     value={editPaymentAmount || ""}
+                     onChange={(e) => setEditPaymentAmount(parseFloat(e.target.value) || 0)}
+                     min="0"
+                     step="0.01"
+                   />
+                 </div>
+
+                 <div className="space-y-2">
+                   <Label>Método de Pago</Label>
+                   <Select value={editPaymentMethod} onValueChange={setEditPaymentMethod}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="Seleccionar método" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="Efectivo">Efectivo</SelectItem>
+                       <SelectItem value="Transferencia">Transferencia Bancaria</SelectItem>
+                       <SelectItem value="Tarjeta">Tarjeta de Crédito/Débito</SelectItem>
+                       <SelectItem value="Cheque">Cheque</SelectItem>
+                       <SelectItem value="Credito30">Crédito (30 días)</SelectItem>
+                       <SelectItem value="Credito60">Crédito (60 días)</SelectItem>
+                       <SelectItem value="Credito90">Crédito (90 días)</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+
+
+                 <div className="space-y-2">
+                   <Label>Notas (opcional)</Label>
+                   <Input
+                     placeholder="Agregar notas al pago..."
+                     value={editPaymentNote}
+                     onChange={(e) => setEditPaymentNote(e.target.value)}
+                   />
+                 </div>
+               </div>
+             </div>
+           )}
+           <DialogFooter className="flex gap-2">
+             <Button variant="outline" onClick={closeEditPaymentModal}>
+               Cancelar
+             </Button>
+             <Button 
+               onClick={handleEditPayment}
+               disabled={isProcessingEditPayment}
+               className="bg-blue-600 hover:bg-blue-700"
+             >
+               {isProcessingEditPayment ? (
+                 <>
+                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                   Procesando...
+                 </>
+               ) : (
+                 "Actualizar Pago"
                )}
              </Button>
            </DialogFooter>
