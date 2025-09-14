@@ -63,4 +63,16 @@ class DashboardController {
         }
     }   
 
+    public function getVentasConSaldoPendiente(Request $request, Response $response)
+    {
+        try {
+            $ventas = $this->dashboardService->getVentasConSaldoPendiente();
+            $response->getBody()->write(json_encode($ventas));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Exception $e) {
+            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+
 }

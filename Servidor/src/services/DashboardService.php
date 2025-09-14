@@ -67,4 +67,16 @@ class DashboardService{
             throw new Exception("Error fetching products without stock: " . $e->getMessage());
         }
     }
+
+    public function getVentasConSaldoPendiente()
+    {
+        $sql = "SELECT * FROM view_ventas_detalladas WHERE saldo_restante > 0";
+        try {
+            $stmt = $this->pdo->query($sql);
+            $ventas = $stmt->fetchAll(PDO::FETCH_OBJ);
+            return $ventas;
+        } catch (PDOException $e) {
+            throw new Exception('Error al obtener ventas con saldo pendiente: ' . $e->getMessage());
+        }
+    }
 }

@@ -26,4 +26,18 @@ const getProductsWithoutStock = async () => {
   }
 };
 
-export { getTotalSales, getRecentTransactions, getProductsWithoutStock };
+const getSalesWithPendingBalance = async () => {
+  try {
+    const response = await api.get("/dashboard/sales-with-pending-balance");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export {
+  getTotalSales,
+  getRecentTransactions,
+  getProductsWithoutStock,
+  getSalesWithPendingBalance,
+};

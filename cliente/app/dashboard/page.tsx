@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Leaf, Package, ShoppingCart, Users } from "lucide-react";
+import { DollarSign, Leaf, Package, ShoppingCart, Users } from "lucide-react";
 
 import {
   Card,
@@ -18,7 +18,11 @@ import { addDays, subDays, format } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { getAllActiveClients } from "@/api/personsApi";
-import { getTotalSales, getRecentTransactions } from "@/api/dashboardApi";
+import {
+  getTotalSales,
+  getRecentTransactions,
+  getSalesWithPendingBalance,
+} from "@/api/dashboardApi";
 import { getProductsWithoutStock } from "@/api/dashboardApi";
 import { formatNumber } from "@/utils/numUtils";
 
@@ -31,6 +35,7 @@ export default function DashboardPage() {
   const [productsWithoutStock, setProductsWithoutStock] = useState({
     products: [],
   });
+  const [salesWithPendingBalance, setSalesWithPendingBalance] = useState([]);
   const { user, token, validateToken, loading } = useAuth();
   const router = useRouter();
   const [date, setDate] = useState<DateRange | undefined>({
@@ -50,7 +55,6 @@ export default function DashboardPage() {
     const fetchRecentTransactions = async () => {
       const transactions = await getRecentTransactions();
       setRecentSales(transactions);
-      console.log(transactions);
     };
     fetchRecentTransactions();
   }, []);
@@ -70,6 +74,15 @@ export default function DashboardPage() {
       setClients(clients);
     };
     fetchClients();
+  }, []);
+
+  useEffect(() => {
+    const fetchSalesWithPendingBalance = async () => {
+      const sales = await getSalesWithPendingBalance();
+      setSalesWithPendingBalance(sales);
+      console.log(sales);
+    };
+    fetchSalesWithPendingBalance();
   }, []);
 
   useEffect(() => {
@@ -129,20 +142,6 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Productos en Stock
-            </CardTitle>
-            <Package className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2,350</div>
-            <p className="text-xs text-muted-foreground">
-              +180 nuevos productos este mes
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
               Clientes Activos
             </CardTitle>
             <Users className="h-4 w-4 text-green-600" />
@@ -150,6 +149,19 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{clients.clients.length}</div>
             <p className="text-xs text-muted-foreground">+24 nuevos este mes</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Ventas con Saldo Pendiente
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {salesWithPendingBalance.length}
+            </div>
           </CardContent>
         </Card>
         <Card>
