@@ -2,7 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Download,
   Plus,
@@ -190,7 +190,7 @@ export default function VentasPage() {
     };
 
     setSaleExtras([...saleExtras, newExtra]);
-    
+
     // Limpiar formulario y cerrar modal
     setNewExtraType("");
     setNewExtraPrice(0);
@@ -209,7 +209,7 @@ export default function VentasPage() {
   };
 
   const removeExtra = (id: string) => {
-    setSaleExtras(saleExtras.filter(extra => extra.id !== id));
+    setSaleExtras(saleExtras.filter((extra) => extra.id !== id));
   };
 
   //VENTA
@@ -268,10 +268,10 @@ export default function VentasPage() {
   const [newExtraPrice, setNewExtraPrice] = useState(0);
   const [newExtraNote, setNewExtraNote] = useState("");
   const [newExtraPaidInFull, setNewExtraPaidInFull] = useState(false);
-  
+
   // Estado para el modal de extras
   const [showExtraModal, setShowExtraModal] = useState(false);
-  
+
   // Función helper para calcular total de extras (descuentos se restan, otros se suman)
   const calculateExtrasTotal = (extras: any[]) => {
     return extras.reduce((sum, extra) => {
@@ -281,18 +281,20 @@ export default function VentasPage() {
 
   // Calcular total de extras (descuentos se restan, otros se suman)
   const totalExtras = calculateExtrasTotal(saleExtras);
-  
+
   //excluir IVA
   const [excludeTax, setExcludeTax] = useState(false);
 
   // calculo de IVA
   const calculateTax = () => {
-    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0) + totalExtras;
+    const subtotal =
+      cartItems.reduce((sum, item) => sum + item.total, 0) + totalExtras;
     return excludeTax ? 0 : subtotal * 0.21;
   };
   // calculo de total con IVA
   const calculateTotalWithTax = () => {
-    const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0) + totalExtras;
+    const subtotal =
+      cartItems.reduce((sum, item) => sum + item.total, 0) + totalExtras;
     const tax = excludeTax ? 0 : subtotal * 0.21; // 21% IVA
     return subtotal + tax;
   };
@@ -344,6 +346,8 @@ export default function VentasPage() {
     end_date: "",
     client_name: "",
     limit: 10 as number | undefined,
+    sort_by: "date",
+    sort_direction: "desc",
   });
 
   // Detalles de venta - Corregido el tipo
@@ -351,6 +355,30 @@ export default function VentasPage() {
   const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [isLoadingSaleDetails, setIsLoadingSaleDetails] = useState(false);
 
+  const requestSalesSort = (key: keyof SalesHistoryItem | "status") => {
+    const direction =
+      salesFilters.sort_by === key && salesFilters.sort_direction === "asc"
+        ? "desc"
+        : "asc";
+
+    const newFilters = {
+      ...salesFilters,
+      sort_by: key,
+      sort_direction: direction,
+    };
+
+    setSalesFilters(newFilters);
+    loadSalesHistory(newFilters);
+  };
+
+  const getSalesSortIndicator = (
+    columnKey: keyof SalesHistoryItem | "status"
+  ) => {
+    if (salesFilters.sort_by !== columnKey) {
+      return null;
+    }
+    return salesFilters.sort_direction === "asc" ? " ▲" : " ▼";
+  };
 
   //FUNCIONES DE LA VENTA
   //busqueda de productos por codigo o nomrbe
@@ -549,6 +577,8 @@ export default function VentasPage() {
       client_name: "",
       limit: 10,
       offset: 0,
+      sort_by: "date",
+      sort_direction: "desc",
     };
     setSalesFilters(newFilters);
     setCurrentPage(1);
@@ -1179,7 +1209,6 @@ export default function VentasPage() {
               </CardContent>
             </Card>
 
-
             <Card className="md:col-span-4">
               <CardHeader>
                 <CardTitle>Resumen de Venta</CardTitle>
@@ -1254,29 +1283,39 @@ export default function VentasPage() {
                       Agregar
                     </Button>
                   </div>
-                  
+
                   {/* Lista compacta de extras */}
                   {saleExtras.length > 0 && (
                     <div className="space-y-2">
                       {saleExtras.map((extra) => (
-                         <div key={extra.id} className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm">
-                           <div className="flex-1">
-                             <span className="font-medium">{extra.type}</span>
-                           </div>
-                             <div className="flex items-center space-x-2">
-                               <span className={`font-medium ${extra.type === "Descuento" ? "text-green-600" : ""}`}>
-                                 {extra.type === "Descuento" ? "-" : ""}${extra.price.toLocaleString("es-AR")}
-                               </span>
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               onClick={() => removeExtra(extra.id)}
-                               className="h-6 w-6 p-0"
-                             >
-                               <X className="h-3 w-3 text-red-500" />
-                             </Button>
-                           </div>
-                         </div>
+                        <div
+                          key={extra.id}
+                          className="flex items-center justify-between bg-gray-50 p-2 rounded text-sm"
+                        >
+                          <div className="flex-1">
+                            <span className="font-medium">{extra.type}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span
+                              className={`font-medium ${
+                                extra.type === "Descuento"
+                                  ? "text-green-600"
+                                  : ""
+                              }`}
+                            >
+                              {extra.type === "Descuento" ? "-" : ""}$
+                              {extra.price.toLocaleString("es-AR")}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeExtra(extra.id)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <X className="h-3 w-3 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -1358,17 +1397,22 @@ export default function VentasPage() {
                     <span>Subtotal Productos</span>
                     <span>${total.toLocaleString("es-AR")}</span>
                   </div>
-                   {totalExtras !== 0 && (
-                     <div className="flex justify-between text-sm">
-                       <span>Extras</span>
-                       <span className={`${totalExtras < 0 ? "text-green-600" : ""}`}>
-                         {totalExtras < 0 ? "-" : ""}${Math.abs(totalExtras).toLocaleString("es-AR")}
-                       </span>
-                     </div>
-                   )}
+                  {totalExtras !== 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Extras</span>
+                      <span
+                        className={`${totalExtras < 0 ? "text-green-600" : ""}`}
+                      >
+                        {totalExtras < 0 ? "-" : ""}$
+                        {Math.abs(totalExtras).toLocaleString("es-AR")}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm font-medium">
                     <span>Subtotal Total</span>
-                    <span>${(total + totalExtras).toLocaleString("es-AR")}</span>
+                    <span>
+                      ${(total + totalExtras).toLocaleString("es-AR")}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
                     <div className="flex items-center space-x-2">
@@ -1533,12 +1577,62 @@ export default function VentasPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[100px]">Nº Venta</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="text-right">Pagado</TableHead>
-                        <TableHead className="text-right">Estado</TableHead>
+                        <TableHead className="w-[100px]">
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestSalesSort("transaction_id")}
+                          >
+                            Nº Venta
+                            {getSalesSortIndicator("transaction_id")}
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestSalesSort("client_name")}
+                          >
+                            Cliente
+                            {getSalesSortIndicator("client_name")}
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestSalesSort("date")}
+                          >
+                            Fecha
+                            {getSalesSortIndicator("date")}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              requestSalesSort("total_transaction")
+                            }
+                          >
+                            Total
+                            {getSalesSortIndicator("total_transaction")}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestSalesSort("total_paid")}
+                          >
+                            Pagado
+                            {getSalesSortIndicator("total_paid")}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestSalesSort("status")}
+                          >
+                            Estado
+                            {getSalesSortIndicator("status")}
+                          </Button>
+                        </TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1811,9 +1905,14 @@ export default function VentasPage() {
                             {extra.type}
                           </TableCell>
                           <TableCell>{extra.note}</TableCell>
-                           <TableCell className={`text-right ${extra.type === "Descuento" ? "text-green-600" : ""}`}>
-                             {extra.type === "Descuento" ? "-" : ""}{formatCurrency(extra.price)}
-                           </TableCell>
+                          <TableCell
+                            className={`text-right ${
+                              extra.type === "Descuento" ? "text-green-600" : ""
+                            }`}
+                          >
+                            {extra.type === "Descuento" ? "-" : ""}
+                            {formatCurrency(extra.price)}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1857,12 +1956,17 @@ export default function VentasPage() {
                       <strong>Subtotal Productos:</strong>{" "}
                       {formatCurrency(selectedSale.totals.items)}
                     </p>
-                     <p>
-                       <strong>Cargos Adicionales:</strong>{" "}
-                       <span className={selectedSale.totals.extras < 0 ? "text-green-600" : ""}>
-                         {selectedSale.totals.extras < 0 ? "-" : ""}{formatCurrency(Math.abs(selectedSale.totals.extras))}
-                       </span>
-                     </p>
+                    <p>
+                      <strong>Cargos Adicionales:</strong>{" "}
+                      <span
+                        className={
+                          selectedSale.totals.extras < 0 ? "text-green-600" : ""
+                        }
+                      >
+                        {selectedSale.totals.extras < 0 ? "-" : ""}
+                        {formatCurrency(Math.abs(selectedSale.totals.extras))}
+                      </span>
+                    </p>
                     <p className="text-lg font-bold">
                       Total: {formatCurrency(selectedSale.totals.transaction)}
                     </p>
@@ -1912,23 +2016,20 @@ export default function VentasPage() {
             <DialogTitle>Agregar Extra</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-             <div className="space-y-2">
-               <Label htmlFor="extraType">Tipo de Extra</Label>
-               <Select
-                 value={newExtraType}
-                 onValueChange={setNewExtraType}
-               >
-                 <SelectTrigger>
-                   <SelectValue placeholder="Seleccionar tipo de extra..." />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="Mano de obra">Mano de obra</SelectItem>
-                   <SelectItem value="Envio">Envío</SelectItem>
-                   <SelectItem value="Descuento">Descuento</SelectItem>
-                 </SelectContent>
-               </Select>
-             </div>
-            
+            <div className="space-y-2">
+              <Label htmlFor="extraType">Tipo de Extra</Label>
+              <Select value={newExtraType} onValueChange={setNewExtraType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo de extra..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mano de obra">Mano de obra</SelectItem>
+                  <SelectItem value="Envio">Envío</SelectItem>
+                  <SelectItem value="Descuento">Descuento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="extraPrice">Monto</Label>
               <Input
@@ -1936,21 +2037,19 @@ export default function VentasPage() {
                 type="number"
                 placeholder="0.00"
                 value={newExtraPrice || ""}
-                onChange={(e) => setNewExtraPrice(parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  setNewExtraPrice(parseFloat(e.target.value) || 0)
+                }
                 min="0"
                 step="0.01"
               />
             </div>
-            
-            
           </div>
           <DialogFooter className="flex gap-2">
             <Button variant="outline" onClick={closeExtraModal}>
               Cancelar
             </Button>
-            <Button onClick={addExtra}>
-              Agregar Extra
-            </Button>
+            <Button onClick={addExtra}>Agregar Extra</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
