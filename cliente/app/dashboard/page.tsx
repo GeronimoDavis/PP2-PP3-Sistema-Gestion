@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DollarSign, Leaf, Package, ShoppingCart, Users } from "lucide-react";
+import {
+  BoxIcon,
+  DollarSign,
+  Leaf,
+  Package,
+  ShoppingCart,
+  Users,
+} from "lucide-react";
 
 import {
   Card,
@@ -22,6 +29,7 @@ import {
   getTotalSales,
   getRecentTransactions,
   getSalesWithPendingBalance,
+  getTotalPurchases,
 } from "@/api/dashboardApi";
 import { getProductsWithoutStock } from "@/api/dashboardApi";
 import { formatNumber } from "@/utils/numUtils";
@@ -29,6 +37,7 @@ import { formatNumber } from "@/utils/numUtils";
 export default function DashboardPage() {
   const [clients, setClients] = useState({ clients: [] });
   const [totalSales, setTotalSales] = useState({ total_sales: 0 });
+  const [totalPurchases, setTotalPurchases] = useState({ total_purchases: 0 });
   const [recentSales, setRecentSales] = useState({
     recent_transactions: [{ company_name: "", date: "", total_a_pagar: "" }],
   });
@@ -83,6 +92,18 @@ export default function DashboardPage() {
       console.log(sales);
     };
     fetchSalesWithPendingBalance();
+  }, []);
+
+  useEffect(() => {
+    const fetchTotalPurchases = async () => {
+      try {
+        const purchases = await getTotalPurchases();
+        setTotalPurchases(purchases);
+      } catch (error) {
+        console.error("Error fetching total purchases:", error);
+      }
+    };
+    fetchTotalPurchases();
   }, []);
 
   useEffect(() => {
@@ -142,13 +163,14 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Clientes Activos
+              Compras Totales
             </CardTitle>
-            <Users className="h-4 w-4 text-green-600" />
+            <BoxIcon className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{clients.clients.length}</div>
-            <p className="text-xs text-muted-foreground">+24 nuevos este mes</p>
+            <div className="text-2xl font-bold">
+              $ {formatNumber(totalPurchases.total_purchases)}
+            </div>
           </CardContent>
         </Card>
         <Card>
