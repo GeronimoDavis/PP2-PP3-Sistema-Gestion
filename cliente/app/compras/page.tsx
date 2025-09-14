@@ -2,7 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Download,
   Plus,
@@ -90,6 +90,24 @@ interface Product {
   active: number;
 }
 
+interface PurchaseHistoryItem {
+  transaction_id: number;
+  date: string;
+  provider_name: string;
+  provider_company: string;
+  total_transaction: number;
+  items_count: number;
+}
+
+interface Provider {
+  person_id: number;
+  name: string;
+  company_name: string;
+  phone: string;
+  email: string;
+  active: boolean;
+}
+
 export default function ComprasPage() {
   const { user, token, validateToken, loading } = useAuth();
   const router = useRouter();
@@ -141,10 +159,12 @@ export default function ComprasPage() {
   const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
 
   // HISTORIAL DE COMPRAS
-  const [purchasesHistory, setPurchasesHistory] = useState<any[]>([]);
+  const [purchasesHistory, setPurchasesHistory] = useState<
+    PurchaseHistoryItem[]
+  >([]);
   // historial de compras original
   const [originalPurchasesHistory, setOriginalPurchasesHistory] = useState<
-    any[]
+    PurchaseHistoryItem[]
   >([]);
   // estado de carga de historial de compras
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
@@ -163,6 +183,8 @@ export default function ComprasPage() {
     end_date: "",
     provider_name: "",
     limit: 10 as number | undefined,
+    sort_by: "date",
+    sort_direction: "desc",
   });
 
   // Detalles de compra
@@ -171,11 +193,34 @@ export default function ComprasPage() {
   const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] =
     useState(false);
 
+  const requestPurchasesSort = (key: string) => {
+    const newDirection =
+      purchasesFilters.sort_by === key &&
+      purchasesFilters.sort_direction === "asc"
+        ? "desc"
+        : "asc";
+
+    setPurchasesFilters((prev) => ({
+      ...prev,
+      sort_by: key,
+      sort_direction: newDirection,
+    }));
+  };
+
+  const getPurchasesSortIndicator = (key: string) => {
+    if (purchasesFilters.sort_by !== key) {
+      return null;
+    }
+    return purchasesFilters.sort_direction === "asc" ? " ▲" : " ▼";
+  };
+
   // LISTADO DE PROVEEDORES
   // lista de proveedores
-  const [providersList, setProvidersList] = useState<any[]>([]);
+  const [providersList, setProvidersList] = useState<Provider[]>([]);
   // lista de proveedores original
-  const [originalProvidersList, setOriginalProvidersList] = useState<any[]>([]);
+  const [originalProvidersList, setOriginalProvidersList] = useState<
+    Provider[]
+  >([]);
   // estado de carga de proveedores
   const [isLoadingProviders, setIsLoadingProviders] = useState(false);
   // error de proveedores
@@ -202,6 +247,62 @@ export default function ComprasPage() {
   });
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
   const [providerFormError, setProviderFormError] = useState("");
+
+  const [providersSortConfig, setProvidersSortConfig] = useState<{
+    key: keyof Provider | null;
+    direction: "ascending" | "descending";
+  }>({
+    key: null,
+    direction: "ascending",
+  });
+
+  const requestProvidersSort = (key: keyof Provider) => {
+    let direction: "ascending" | "descending" = "ascending";
+    if (
+      providersSortConfig.key === key &&
+      providersSortConfig.direction === "ascending"
+    ) {
+      direction = "descending";
+    }
+    setProvidersSortConfig({ key, direction });
+  };
+
+  const getProvidersSortIndicator = (key: keyof Provider) => {
+    if (providersSortConfig.key !== key) {
+      return null;
+    }
+    return providersSortConfig.direction === "ascending" ? " ▲" : " ▼";
+  };
+
+  const sortedProviders = useMemo(() => {
+    let sortableItems = [...providersList];
+    if (providersSortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const valA = a[providersSortConfig.key!];
+        const valB = b[providersSortConfig.key!];
+
+        if (valA === null || typeof valA === "undefined") return 1;
+        if (valB === null || typeof valB === "undefined") return -1;
+
+        if (typeof valA === "boolean" && typeof valB === "boolean") {
+          if (valA === valB) return 0;
+          if (providersSortConfig.direction === "ascending") {
+            return valA ? -1 : 1;
+          }
+          return valA ? 1 : -1;
+        }
+
+        if (valA < valB) {
+          return providersSortConfig.direction === "ascending" ? -1 : 1;
+        }
+        if (valA > valB) {
+          return providersSortConfig.direction === "ascending" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [providersList, providersSortConfig]);
 
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
@@ -620,7 +721,7 @@ export default function ComprasPage() {
   const getPaginatedProviders = () => {
     const startIndex = (currentProvidersPage - 1) * providersItemsPerPage;
     const endIndex = startIndex + providersItemsPerPage;
-    return providersList.slice(startIndex, endIndex);
+    return sortedProviders.slice(startIndex, endIndex);
   };
 
   const totalProvidersPages = Math.ceil(
@@ -835,7 +936,9 @@ export default function ComprasPage() {
       start_date: "",
       end_date: "",
       provider_name: "",
-      limit: 10,
+      limit: 10 as number | undefined,
+      sort_by: "date",
+      sort_direction: "desc",
     });
     setCurrentPurchasesPage(1);
     loadPurchasesHistory();
@@ -1368,11 +1471,57 @@ export default function ComprasPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[100px]">Nº Compra</TableHead>
-                        <TableHead>Proveedor</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="text-right">Items</TableHead>
+                        <TableHead className="w-[100px]">
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              requestPurchasesSort("transaction_id")
+                            }
+                          >
+                            Nº Compra
+                            {getPurchasesSortIndicator("transaction_id")}
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              requestPurchasesSort("provider_name")
+                            }
+                          >
+                            Proveedor
+                            {getPurchasesSortIndicator("provider_name")}
+                          </Button>
+                        </TableHead>
+                        <TableHead>
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestPurchasesSort("date")}
+                          >
+                            Fecha
+                            {getPurchasesSortIndicator("date")}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              requestPurchasesSort("total_transaction")
+                            }
+                          >
+                            Total
+                            {getPurchasesSortIndicator("total_transaction")}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <Button
+                            variant="ghost"
+                            onClick={() => requestPurchasesSort("items_count")}
+                          >
+                            Items
+                            {getPurchasesSortIndicator("items_count")}
+                          </Button>
+                        </TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1573,11 +1722,46 @@ export default function ComprasPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead className="text-right">Estado</TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("name")}
+                        >
+                          Nombre{getProvidersSortIndicator("name")}
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("company_name")}
+                        >
+                          Empresa{getProvidersSortIndicator("company_name")}
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("phone")}
+                        >
+                          Teléfono{getProvidersSortIndicator("phone")}
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("email")}
+                        >
+                          Email{getProvidersSortIndicator("email")}
+                        </Button>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <Button
+                          variant="ghost"
+                          onClick={() => requestProvidersSort("active")}
+                        >
+                          Estado{getProvidersSortIndicator("active")}
+                        </Button>
+                      </TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>

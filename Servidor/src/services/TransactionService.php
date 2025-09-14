@@ -429,7 +429,28 @@ class TransactionService{
             }
 
             $query .= " GROUP BY t.transaction_id, t.date, t.is_sale, t.tax_type, t.tracking_number, p.person_id, p.name, p.company_name, p.email, p.phone, tc.name, tc.url, t.transport_id";
-            $query .= " ORDER BY t.date DESC";
+            
+            // Ordenamiento
+            $sortBy = 't.date'; // Default sort
+            if (isset($filters['sort_by'])) {
+                switch ($filters['sort_by']) {
+                    case 'transaction_id':
+                        $sortBy = 't.transaction_id';
+                        break;
+                    case 'provider_name':
+                        $sortBy = 'provider_name';
+                        break;
+                    case 'total_transaction':
+                        $sortBy = 'total_transaction';
+                        break;
+                    case 'items_count':
+                        $sortBy = 'items_count';
+                        break;
+                }
+            }
+
+            $sortDirection = isset($filters['sort_direction']) && strtoupper($filters['sort_direction']) === 'ASC' ? 'ASC' : 'DESC';
+            $query .= " ORDER BY $sortBy $sortDirection";
 
             // Aplicar limite y offset para paginacion 
             if (isset($filters['limit'])) {
@@ -588,7 +609,6 @@ class TransactionService{
         }
     }
 
-
     public function getAllSales() {
         try {
             $query = "SELECT * FROM view_ventas_detalladas";
@@ -600,6 +620,5 @@ class TransactionService{
             throw new Exception("Error al obtener todas las ventas: " . $e->getMessage());
         }
     }
-
 }
 ?>
