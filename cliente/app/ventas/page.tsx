@@ -400,6 +400,9 @@ export default function VentasPage() {
   const [editPaymentNote, setEditPaymentNote] = useState("");
   const [isProcessingEditPayment, setIsProcessingEditPayment] = useState(false);
 
+  // Estados para el modal de presupuesto
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+
   const requestSalesSort = (key: keyof SalesHistoryItem | "status") => {
     const direction =
       salesFilters.sort_by === key && salesFilters.sort_direction === "asc"
@@ -1675,7 +1678,8 @@ export default function VentasPage() {
                           </span>
                         </div>
                       )}
-                      {paymentAmount > calculateTotalWithTax() && (
+                      {/* Solo mostrar vuelto cuando se excluye el IVA */}
+                      {paymentAmount > calculateTotalWithTax() && excludeTax && (
                         <div className="flex justify-between text-sm">
                           <span>Vuelto</span>
                           <span className="font-medium text-green-600">
@@ -1686,11 +1690,17 @@ export default function VentasPage() {
                           </span>
                         </div>
                       )}
+                      {/* Mostrar mensaje cuando se incluye IVA y no hay vuelto */}
+                      {paymentAmount > calculateTotalWithTax() && !excludeTax && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500 italic">Sin vuelto (IVA incluido)</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col space-y-2">
                 <Button
                   className="w-full bg-green-600 hover:bg-green-700"
                   onClick={handleFinalizeSale}
@@ -1707,6 +1717,15 @@ export default function VentasPage() {
                       Finalizar Venta
                     </>
                   )}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => setShowBudgetModal(true)}
+                  disabled={cartItems.length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Generar Presupuesto
                 </Button>
               </CardFooter>
             </Card>
@@ -2517,6 +2536,458 @@ export default function VentasPage() {
                ) : (
                  "Actualizar Pago"
                )}
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+
+       {/* Modal de Presupuesto */}
+       <Dialog open={showBudgetModal} onOpenChange={setShowBudgetModal}>
+         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+           <DialogHeader>
+             <DialogTitle>Presupuesto de Venta</DialogTitle>
+           </DialogHeader>
+
+           <div className="space-y-6">
+             {/* Información del Cliente */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+               <div>
+                 <h3 className="font-semibold mb-2">
+                   Información del Cliente
+                 </h3>
+                 {selectedClient ? (
+                   <>
+                     <p>
+                       <strong>Nombre:</strong>{" "}
+                       {clients.find(c => c.person_id.toString() === selectedClient)?.name || "Cliente no encontrado"}
+                     </p>
+                     <p>
+                       <strong>Empresa:</strong>{" "}
+                       {clients.find(c => c.person_id.toString() === selectedClient)?.company_name || "N/A"}
+                     </p>
+                     <p>
+                       <strong>Email:</strong>{" "}
+                       {clients.find(c => c.person_id.toString() === selectedClient)?.email || "N/A"}
+                     </p>
+                     <p>
+                       <strong>Teléfono:</strong>{" "}
+                       {clients.find(c => c.person_id.toString() === selectedClient)?.phone || "N/A"}
+                     </p>
+                   </>
+                 ) : (
+                   <p className="text-gray-500 italic">No se ha seleccionado un cliente</p>
+                 )}
+               </div>
+               <div>
+                 <h3 className="font-semibold mb-2">
+                   Información del Presupuesto
+                 </h3>
+                 <p>
+                   <strong>Fecha:</strong>{" "}
+                   {new Date().toLocaleDateString("es-AR")}
+                 </p>
+                 <div className="flex items-center gap-2 mb-2">
+                   <strong>Tipo de Impuesto:</strong>
+                   <Badge 
+                     variant="default"
+                     className="bg-green-100 text-green-800 border-green-200"
+                   >
+                     Con IVA
+                   </Badge>
+                 </div>
+                 <p className="text-sm text-gray-600 mb-2">
+                   Presupuesto con IVA incluido (21%)
+                 </p>
+               </div>
+             </div>
+
+             {/* Items */}
+             <div>
+               <h3 className="font-semibold mb-3">Productos</h3>
+               <Table>
+                 <TableHeader>
+                   <TableRow>
+                     <TableHead>Código</TableHead>
+                     <TableHead>Producto</TableHead>
+                     <TableHead className="text-right">Cantidad</TableHead>
+                     <TableHead className="text-right">Precio Unit.</TableHead>
+                     <TableHead className="text-right">Total</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {cartItems.map((item) => (
+                     <TableRow key={item.id}>
+                       <TableCell className="font-medium">
+                         {item.codigo}
+                       </TableCell>
+                       <TableCell>{item.nombre}</TableCell>
+                       <TableCell className="text-right">
+                         {item.cantidad}
+                       </TableCell>
+                       <TableCell className="text-right">
+                         {formatCurrency(item.precio)}
+                       </TableCell>
+                       <TableCell className="text-right">
+                         {formatCurrency(item.total)}
+                       </TableCell>
+                     </TableRow>
+                   ))}
+                 </TableBody>
+               </Table>
+             </div>
+
+             {/* Extras */}
+             {saleExtras.length > 0 && (
+               <div>
+                 <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
+                 <Table>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead>Tipo</TableHead>
+                       <TableHead>Descripción</TableHead>
+                       <TableHead className="text-right">Monto</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                     {saleExtras.map((extra) => (
+                       <TableRow key={extra.id}>
+                         <TableCell className="font-medium">
+                           {extra.type}
+                         </TableCell>
+                         <TableCell>{extra.note}</TableCell>
+                         <TableCell
+                           className={`text-right ${
+                             extra.type === "Descuento" ? "text-green-600" : ""
+                           }`}
+                         >
+                           {extra.type === "Descuento" ? "-" : ""}
+                           {formatCurrency(extra.price)}
+                         </TableCell>
+                       </TableRow>
+                     ))}
+                   </TableBody>
+                 </Table>
+               </div>
+             )}
+
+             {/* Resumen */}
+             <div className="p-4 bg-gray-50 rounded-lg">
+               <h3 className="font-semibold mb-3">Resumen del Presupuesto</h3>
+               <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <p>
+                     <strong>Subtotal Productos:</strong>{" "}
+                     {formatCurrency(total)}
+                   </p>
+                   {totalExtras !== 0 && (
+                     <p>
+                       <strong>Cargos Adicionales:</strong>{" "}
+                       <span
+                         className={
+                           totalExtras < 0 ? "text-green-600" : ""
+                         }
+                       >
+                         {totalExtras < 0 ? "-" : ""}
+                         {formatCurrency(Math.abs(totalExtras))}
+                       </span>
+                     </p>
+                   )}
+                   <p>
+                     <strong>Subtotal:</strong>{" "}
+                     {formatCurrency(total + totalExtras)}
+                   </p>
+                   <p>
+                     <strong>IVA (21%):</strong>{" "}
+                     {formatCurrency((total + totalExtras) * 0.21)}
+                   </p>
+                   <p className="text-lg font-bold">
+                     Total: {formatCurrency((total + totalExtras) * 1.21)}
+                   </p>
+                 </div>
+                 <div>
+                   <div className="flex items-center gap-2">
+                     <Badge
+                       className="bg-green-100 text-green-800 border-green-300 font-semibold"
+                     >
+                       Incluye IVA
+                     </Badge>
+                   </div>
+                   <p className="text-sm text-gray-600 mt-2">
+                     Este presupuesto incluye IVA del 21%. El monto mostrado es el total a pagar.
+                   </p>
+                 </div>
+               </div>
+             </div>
+           </div>
+
+           <DialogFooter className="flex gap-2">
+             <Button 
+               variant="outline" 
+               onClick={() => setShowBudgetModal(false)}
+             >
+               Cerrar
+             </Button>
+             <Button 
+               className="bg-blue-600 hover:bg-blue-700"
+               onClick={() => {
+                 // Crear una ventana nueva para imprimir/descargar solo el presupuesto
+                 const printWindow = window.open('', '_blank');
+                 if (printWindow) {
+                   printWindow.document.write(`
+                       <!DOCTYPE html>
+                       <html>
+                       <head>
+                         <title>Presupuesto de Venta</title>
+                         <style>
+                           * {
+                             box-sizing: border-box;
+                           }
+                           body { 
+                             font-family: Arial, sans-serif; 
+                             margin: 10px; 
+                             padding: 10px;
+                             color: #333;
+                             font-size: 12px;
+                             line-height: 1.4;
+                           }
+                           .header { 
+                             text-align: center; 
+                             margin-bottom: 20px; 
+                             border-bottom: 2px solid #333; 
+                             padding-bottom: 15px;
+                           }
+                           .header h1 {
+                             margin: 0 0 10px 0;
+                             font-size: 24px;
+                           }
+                           .info-section { 
+                             display: flex; 
+                             justify-content: space-between; 
+                             margin-bottom: 20px; 
+                             background: #f5f5f5; 
+                             padding: 15px; 
+                             border-radius: 4px;
+                           }
+                           .info-column { 
+                             flex: 1; 
+                             margin-right: 15px;
+                           }
+                           .info-column:last-child { 
+                             margin-right: 0; 
+                           }
+                           .info-column h3 {
+                             margin: 0 0 10px 0;
+                             font-size: 14px;
+                           }
+                           .info-column p {
+                             margin: 5px 0;
+                             font-size: 11px;
+                           }
+                           table { 
+                             width: 100%; 
+                             border-collapse: collapse; 
+                             margin-bottom: 20px;
+                             font-size: 11px;
+                           }
+                           th, td { 
+                             border: 1px solid #ddd; 
+                             padding: 6px 4px; 
+                             text-align: left;
+                             word-wrap: break-word;
+                           }
+                           th { 
+                             background-color: #f2f2f2; 
+                             font-weight: bold;
+                             font-size: 10px;
+                           }
+                           .text-right { 
+                             text-align: right;
+                           }
+                           .summary { 
+                             background: #f5f5f5; 
+                             padding: 15px; 
+                             border-radius: 4px; 
+                             margin-top: 15px;
+                           }
+                           .summary h3 {
+                             margin: 0 0 10px 0;
+                             font-size: 14px;
+                           }
+                           .summary p {
+                             margin: 5px 0;
+                             font-size: 11px;
+                           }
+                           .total { 
+                             font-size: 16px; 
+                             font-weight: bold; 
+                             margin-top: 10px;
+                           }
+                           .badge { 
+                             display: inline-block; 
+                             padding: 2px 6px; 
+                             border-radius: 3px; 
+                             font-size: 10px; 
+                             font-weight: bold;
+                           }
+                           .badge-green { 
+                             background: #d4edda; 
+                             color: #155724; 
+                             border: 1px solid #c3e6cb;
+                           }
+                           .badge-red { 
+                             background: #f8d7da; 
+                             color: #721c24; 
+                             border: 1px solid #f5c6cb;
+                           }
+                           @media print {
+                             body { 
+                               margin: 0.5in; 
+                               padding: 0;
+                               font-size: 11px;
+                             }
+                             .header h1 {
+                               font-size: 20px;
+                             }
+                             .info-section {
+                               padding: 10px;
+                               margin-bottom: 15px;
+                             }
+                             .info-column p {
+                               font-size: 10px;
+                               margin: 3px 0;
+                             }
+                             table {
+                               font-size: 10px;
+                               margin-bottom: 15px;
+                             }
+                             th, td {
+                               padding: 4px 2px;
+                               font-size: 9px;
+                             }
+                             .summary {
+                               padding: 10px;
+                               margin-top: 10px;
+                             }
+                             .summary p {
+                               font-size: 10px;
+                               margin: 3px 0;
+                             }
+                             .total {
+                               font-size: 14px;
+                             }
+                             .no-print { display: none; }
+                           }
+                         </style>
+                       </head>
+                       <body>
+                         <div class="header">
+                           <h1>PRESUPUESTO DE VENTA</h1>
+                           <p>Fecha: ${new Date().toLocaleDateString("es-AR")}</p>
+                         </div>
+                         
+                         <div class="info-section">
+                           <div class="info-column">
+                             <h3>Información del Cliente</h3>
+                             ${selectedClient ? `
+                               <p><strong>Nombre:</strong> ${clients.find(c => c.person_id.toString() === selectedClient)?.name || "Cliente no encontrado"}</p>
+                               <p><strong>Empresa:</strong> ${clients.find(c => c.person_id.toString() === selectedClient)?.company_name || "N/A"}</p>
+                               <p><strong>Email:</strong> ${clients.find(c => c.person_id.toString() === selectedClient)?.email || "N/A"}</p>
+                               <p><strong>Teléfono:</strong> ${clients.find(c => c.person_id.toString() === selectedClient)?.phone || "N/A"}</p>
+                             ` : '<p>No se ha seleccionado un cliente</p>'}
+                           </div>
+                           <div class="info-column">
+                             <h3>Información del Presupuesto</h3>
+                             <p><strong>Tipo de Impuesto:</strong> 
+                               <span class="badge badge-green">
+                                 Con IVA
+                               </span>
+                             </p>
+                             <p><small>Presupuesto con IVA incluido (21%)</small></p>
+                           </div>
+                         </div>
+
+                         <h3>Productos</h3>
+                         <table>
+                           <thead>
+                             <tr>
+                               <th>Código</th>
+                               <th>Producto</th>
+                               <th class="text-right">Cantidad</th>
+                               <th class="text-right">Precio Unit.</th>
+                               <th class="text-right">Total</th>
+                             </tr>
+                           </thead>
+                           <tbody>
+                             ${cartItems.map(item => `
+                               <tr>
+                                 <td>${item.codigo}</td>
+                                 <td>${item.nombre}</td>
+                                 <td class="text-right">${item.cantidad}</td>
+                                 <td class="text-right">$${item.precio.toLocaleString("es-AR")}</td>
+                                 <td class="text-right">$${item.total.toLocaleString("es-AR")}</td>
+                               </tr>
+                             `).join('')}
+                           </tbody>
+                         </table>
+
+                         ${saleExtras.length > 0 ? `
+                           <h3>Cargos Adicionales</h3>
+                           <table>
+                             <thead>
+                               <tr>
+                                 <th>Tipo</th>
+                                 <th>Descripción</th>
+                                 <th class="text-right">Monto</th>
+                               </tr>
+                             </thead>
+                             <tbody>
+                               ${saleExtras.map(extra => `
+                                 <tr>
+                                   <td>${extra.type}</td>
+                                   <td>${extra.note}</td>
+                                   <td class="text-right ${extra.type === "Descuento" ? "text-green-600" : ""}">
+                                     ${extra.type === "Descuento" ? "-" : ""}$${extra.price.toLocaleString("es-AR")}
+                                   </td>
+                                 </tr>
+                               `).join('')}
+                             </tbody>
+                           </table>
+                         ` : ''}
+
+                         <div class="summary">
+                           <h3>Resumen del Presupuesto</h3>
+                           <p><strong>Subtotal Productos:</strong> $${total.toLocaleString("es-AR")}</p>
+                           ${totalExtras !== 0 ? `
+                             <p><strong>Cargos Adicionales:</strong> 
+                               <span class="${totalExtras < 0 ? "text-green-600" : ""}">
+                                 ${totalExtras < 0 ? "-" : ""}$${Math.abs(totalExtras).toLocaleString("es-AR")}
+                               </span>
+                             </p>
+                           ` : ''}
+                           <p><strong>Subtotal:</strong> $${(total + totalExtras).toLocaleString("es-AR")}</p>
+                           <p><strong>IVA (21%):</strong> $${((total + totalExtras) * 0.21).toLocaleString("es-AR")}</p>
+                           <p class="total">Total: $${((total + totalExtras) * 1.21).toLocaleString("es-AR")}</p>
+                           
+                           <div style="margin-top: 15px;">
+                             <span class="badge badge-green">
+                               Incluye IVA
+                             </span>
+                             <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                               Este presupuesto incluye IVA del 21%. El monto mostrado es el total a pagar.
+                             </p>
+                           </div>
+                         </div>
+                       </body>
+                       </html>
+                     `);
+                     printWindow.document.close();
+                     printWindow.print();
+                     printWindow.close();
+                 }
+               }}
+             >
+               <Download className="mr-2 h-4 w-4" />
+               Imprimir/Descargar
              </Button>
            </DialogFooter>
          </DialogContent>
