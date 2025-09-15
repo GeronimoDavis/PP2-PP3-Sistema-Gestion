@@ -402,6 +402,10 @@ export default function VentasPage() {
 
   // Estados para el modal de presupuesto
   const [showBudgetModal, setShowBudgetModal] = useState(false);
+  
+  // Estados para el modal de presupuesto de transacción completada
+  const [showTransactionBudgetModal, setShowTransactionBudgetModal] = useState(false);
+  const [completedTransaction, setCompletedTransaction] = useState<any>(null);
 
   const requestSalesSort = (key: keyof SalesHistoryItem | "status") => {
     const direction =
@@ -919,6 +923,30 @@ export default function VentasPage() {
 
       // 5. Recargar el historial de ventas
       loadSalesHistory();
+
+      // 6. Preparar datos para el presupuesto de la transacción completada
+      const completedTransactionData = {
+        transaction_id: transactionId,
+        date: new Date().toISOString().split("T")[0],
+        client: clients.find(c => c.person_id.toString() === selectedClient),
+        items: cartItems,
+        extras: saleExtras,
+        payment: paymentAmount > 0 ? {
+          amount: paymentAmount,
+          method: selectedPaymentMethod,
+          date: paymentDate,
+          note: paymentNote
+        } : null,
+        totals: {
+          subtotal: total,
+          extras: totalExtras,
+          tax: calculateTax(),
+          total: calculateTotalWithTax()
+        }
+      };
+
+      setCompletedTransaction(completedTransactionData);
+      setShowTransactionBudgetModal(true);
 
       alert("Venta finalizada exitosamente!");
     } catch (error: any) {
@@ -2988,6 +3016,510 @@ export default function VentasPage() {
              >
                <Download className="mr-2 h-4 w-4" />
                Imprimir/Descargar
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+
+       {/* Modal de Presupuesto de Transacción Completada */}
+       <Dialog open={showTransactionBudgetModal} onOpenChange={setShowTransactionBudgetModal}>
+         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+           <DialogHeader>
+             <DialogTitle>Recibo de Venta #{completedTransaction?.transaction_id}</DialogTitle>
+           </DialogHeader>
+
+           {completedTransaction && (
+             <div className="space-y-6">
+               {/* Información del Cliente */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                 <div>
+                   <h3 className="font-semibold mb-2">
+                     Información del Cliente
+                   </h3>
+                   {completedTransaction.client ? (
+                     <>
+                       <p>
+                         <strong>Nombre:</strong>{" "}
+                         {completedTransaction.client.name}
+                       </p>
+                       <p>
+                         <strong>Empresa:</strong>{" "}
+                         {completedTransaction.client.company_name || "N/A"}
+                       </p>
+                       <p>
+                         <strong>Email:</strong>{" "}
+                         {completedTransaction.client.email || "N/A"}
+                       </p>
+                       <p>
+                         <strong>Teléfono:</strong>{" "}
+                         {completedTransaction.client.phone || "N/A"}
+                       </p>
+                     </>
+                   ) : (
+                     <p className="text-gray-500 italic">Cliente no especificado</p>
+                   )}
+                 </div>
+                 <div>
+                   <h3 className="font-semibold mb-2">
+                     Información de la Venta
+                   </h3>
+                   <p>
+                     <strong>Número de Venta:</strong> #{completedTransaction.transaction_id}
+                   </p>
+                   <p>
+                     <strong>Fecha:</strong>{" "}
+                     {new Date(completedTransaction.date).toLocaleDateString("es-AR")}
+                   </p>
+                   <div className="flex items-center gap-2 mb-2">
+                     <strong>Tipo de Impuesto:</strong>
+                     <Badge 
+                       variant="default"
+                       className="bg-green-100 text-green-800 border-green-200"
+                     >
+                       Con IVA
+                     </Badge>
+                   </div>
+                   <p className="text-sm text-gray-600 mb-2">
+                     Venta con IVA incluido (21%)
+                   </p>
+                 </div>
+               </div>
+
+               {/* Items */}
+               <div>
+                 <h3 className="font-semibold mb-3">Productos</h3>
+                 <Table>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead>Código</TableHead>
+                       <TableHead>Producto</TableHead>
+                       <TableHead className="text-right">Cantidad</TableHead>
+                       <TableHead className="text-right">Precio Unit.</TableHead>
+                       <TableHead className="text-right">Total</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                     {completedTransaction.items.map((item: any) => (
+                       <TableRow key={item.id}>
+                         <TableCell className="font-medium">
+                           {item.codigo}
+                         </TableCell>
+                         <TableCell>{item.nombre}</TableCell>
+                         <TableCell className="text-right">
+                           {item.cantidad}
+                         </TableCell>
+                         <TableCell className="text-right">
+                           {formatCurrency(item.precio)}
+                         </TableCell>
+                         <TableCell className="text-right">
+                           {formatCurrency(item.total)}
+                         </TableCell>
+                       </TableRow>
+                     ))}
+                   </TableBody>
+                 </Table>
+               </div>
+
+               {/* Extras */}
+               {completedTransaction.extras.length > 0 && (
+                 <div>
+                   <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
+                   <Table>
+                     <TableHeader>
+                       <TableRow>
+                         <TableHead>Tipo</TableHead>
+                         <TableHead>Descripción</TableHead>
+                         <TableHead className="text-right">Monto</TableHead>
+                       </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                       {completedTransaction.extras.map((extra: any) => (
+                         <TableRow key={extra.id}>
+                           <TableCell className="font-medium">
+                             {extra.type}
+                           </TableCell>
+                           <TableCell>{extra.note}</TableCell>
+                           <TableCell
+                             className={`text-right ${
+                               extra.type === "Descuento" ? "text-green-600" : ""
+                             }`}
+                           >
+                             {extra.type === "Descuento" ? "-" : ""}
+                             {formatCurrency(extra.price)}
+                           </TableCell>
+                         </TableRow>
+                       ))}
+                     </TableBody>
+                   </Table>
+                 </div>
+               )}
+
+               {/* Información de Pago */}
+               {completedTransaction.payment && (
+                 <div>
+                   <h3 className="font-semibold mb-3">Información de Pago</h3>
+                   <div className="p-4 bg-blue-50 rounded-lg">
+                     <div className="grid grid-cols-2 gap-4">
+                       <div>
+                         <p><strong>Método de Pago:</strong> {completedTransaction.payment.method}</p>
+                         <p><strong>Fecha de Pago:</strong> {new Date(completedTransaction.payment.date).toLocaleDateString("es-AR")}</p>
+                       </div>
+                       <div>
+                         <p><strong>Monto Pagado:</strong> {formatCurrency(completedTransaction.payment.amount)}</p>
+                         {completedTransaction.payment.note && (
+                           <p><strong>Nota:</strong> {completedTransaction.payment.note}</p>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               )}
+
+               {/* Resumen */}
+               <div className="p-4 bg-gray-50 rounded-lg">
+                 <h3 className="font-semibold mb-3">Resumen de la Venta</h3>
+                 <div className="grid grid-cols-2 gap-4">
+                   <div>
+                     <p>
+                       <strong>Subtotal Productos:</strong>{" "}
+                       {formatCurrency(completedTransaction.totals.subtotal)}
+                     </p>
+                     {completedTransaction.totals.extras !== 0 && (
+                       <p>
+                         <strong>Cargos Adicionales:</strong>{" "}
+                         <span
+                           className={
+                             completedTransaction.totals.extras < 0 ? "text-green-600" : ""
+                           }
+                         >
+                           {completedTransaction.totals.extras < 0 ? "-" : ""}
+                           {formatCurrency(Math.abs(completedTransaction.totals.extras))}
+                         </span>
+                       </p>
+                     )}
+                     <p>
+                       <strong>Subtotal:</strong>{" "}
+                       {formatCurrency(completedTransaction.totals.subtotal + completedTransaction.totals.extras)}
+                     </p>
+                     <p>
+                       <strong>IVA (21%):</strong>{" "}
+                       {formatCurrency(completedTransaction.totals.tax)}
+                     </p>
+                     <p className="text-lg font-bold">
+                       Total: {formatCurrency(completedTransaction.totals.total)}
+                     </p>
+                   </div>
+                   <div>
+                     <div className="flex items-center gap-2">
+                       <Badge
+                         className="bg-green-100 text-green-800 border-green-300 font-semibold"
+                       >
+                         Venta Completada
+                       </Badge>
+                       <Badge
+                         className="bg-green-100 text-green-800 border-green-300 font-semibold"
+                       >
+                         Incluye IVA
+                       </Badge>
+                     </div>
+                     <p className="text-sm text-gray-600 mt-2">
+                       Esta venta ha sido completada exitosamente. El monto mostrado incluye IVA del 21%.
+                     </p>
+                   </div>
+                 </div>
+               </div>
+             </div>
+           )}
+
+           <DialogFooter className="flex gap-2">
+             <Button 
+               variant="outline" 
+               onClick={() => setShowTransactionBudgetModal(false)}
+             >
+               Cerrar
+             </Button>
+             <Button 
+               className="bg-green-600 hover:bg-green-700"
+               onClick={() => {
+                 // Crear una ventana nueva para imprimir/descargar el recibo
+                 const printWindow = window.open('', '_blank');
+                 if (printWindow && completedTransaction) {
+                   printWindow.document.write(`
+                     <!DOCTYPE html>
+                     <html>
+                     <head>
+                       <title>Recibo de Venta #${completedTransaction.transaction_id}</title>
+                       <style>
+                         * {
+                           box-sizing: border-box;
+                         }
+                         body { 
+                           font-family: Arial, sans-serif; 
+                           margin: 10px; 
+                           padding: 10px;
+                           color: #333;
+                           font-size: 12px;
+                           line-height: 1.4;
+                         }
+                         .header { 
+                           text-align: center; 
+                           margin-bottom: 20px; 
+                           border-bottom: 2px solid #333; 
+                           padding-bottom: 15px;
+                         }
+                         .header h1 {
+                           margin: 0 0 10px 0;
+                           font-size: 24px;
+                         }
+                         .info-section { 
+                           display: flex; 
+                           justify-content: space-between; 
+                           margin-bottom: 20px; 
+                           background: #f5f5f5; 
+                           padding: 15px; 
+                           border-radius: 4px;
+                         }
+                         .info-column { 
+                           flex: 1; 
+                           margin-right: 15px;
+                         }
+                         .info-column:last-child { 
+                           margin-right: 0; 
+                         }
+                         .info-column h3 {
+                           margin: 0 0 10px 0;
+                           font-size: 14px;
+                         }
+                         .info-column p {
+                           margin: 5px 0;
+                           font-size: 11px;
+                         }
+                         table { 
+                           width: 100%; 
+                           border-collapse: collapse; 
+                           margin-bottom: 20px;
+                           font-size: 11px;
+                         }
+                         th, td { 
+                           border: 1px solid #ddd; 
+                           padding: 6px 4px; 
+                           text-align: left;
+                           word-wrap: break-word;
+                         }
+                         th { 
+                           background-color: #f2f2f2; 
+                           font-weight: bold;
+                           font-size: 10px;
+                         }
+                         .text-right { 
+                           text-align: right;
+                         }
+                         .summary { 
+                           background: #f5f5f5; 
+                           padding: 15px; 
+                           border-radius: 4px; 
+                           margin-top: 15px;
+                         }
+                         .summary h3 {
+                           margin: 0 0 10px 0;
+                           font-size: 14px;
+                         }
+                         .summary p {
+                           margin: 5px 0;
+                           font-size: 11px;
+                         }
+                         .total { 
+                           font-size: 16px; 
+                           font-weight: bold; 
+                           margin-top: 10px;
+                         }
+                         .badge { 
+                           display: inline-block; 
+                           padding: 2px 6px; 
+                           border-radius: 3px; 
+                           font-size: 10px; 
+                           font-weight: bold;
+                         }
+                         .badge-green { 
+                           background: #d4edda; 
+                           color: #155724; 
+                           border: 1px solid #c3e6cb;
+                         }
+                         .payment-info {
+                           background: #e3f2fd;
+                           padding: 15px;
+                           border-radius: 4px;
+                           margin: 15px 0;
+                         }
+                         @media print {
+                           body { 
+                             margin: 0.5in; 
+                             padding: 0;
+                             font-size: 11px;
+                           }
+                           .header h1 {
+                             font-size: 20px;
+                           }
+                           .info-section {
+                             padding: 10px;
+                             margin-bottom: 15px;
+                           }
+                           .info-column p {
+                             font-size: 10px;
+                             margin: 3px 0;
+                           }
+                           table {
+                             font-size: 10px;
+                             margin-bottom: 15px;
+                           }
+                           th, td {
+                             padding: 4px 2px;
+                             font-size: 9px;
+                           }
+                           .summary {
+                             padding: 10px;
+                             margin-top: 10px;
+                           }
+                           .summary p {
+                             font-size: 10px;
+                             margin: 3px 0;
+                           }
+                           .total {
+                             font-size: 14px;
+                           }
+                           .no-print { display: none; }
+                         }
+                       </style>
+                     </head>
+                     <body>
+                       <div class="header">
+                         <h1>RECIBO DE VENTA</h1>
+                         <p>Número: #${completedTransaction.transaction_id}</p>
+                         <p>Fecha: ${new Date(completedTransaction.date).toLocaleDateString("es-AR")}</p>
+                       </div>
+                       
+                       <div class="info-section">
+                         <div class="info-column">
+                           <h3>Información del Cliente</h3>
+                           ${completedTransaction.client ? `
+                             <p><strong>Nombre:</strong> ${completedTransaction.client.name}</p>
+                             <p><strong>Empresa:</strong> ${completedTransaction.client.company_name || "N/A"}</p>
+                             <p><strong>Email:</strong> ${completedTransaction.client.email || "N/A"}</p>
+                             <p><strong>Teléfono:</strong> ${completedTransaction.client.phone || "N/A"}</p>
+                           ` : '<p>Cliente no especificado</p>'}
+                         </div>
+                         <div class="info-column">
+                           <h3>Información de la Venta</h3>
+                           <p><strong>Tipo de Impuesto:</strong> 
+                             <span class="badge badge-green">
+                               Con IVA
+                             </span>
+                           </p>
+                           <p><small>Venta con IVA incluido (21%)</small></p>
+                         </div>
+                       </div>
+
+                       <h3>Productos</h3>
+                       <table>
+                         <thead>
+                           <tr>
+                             <th>Código</th>
+                             <th>Producto</th>
+                             <th class="text-right">Cantidad</th>
+                             <th class="text-right">Precio Unit.</th>
+                             <th class="text-right">Total</th>
+                           </tr>
+                         </thead>
+                         <tbody>
+                           ${completedTransaction.items.map((item: any) => `
+                             <tr>
+                               <td>${item.codigo}</td>
+                               <td>${item.nombre}</td>
+                               <td class="text-right">${item.cantidad}</td>
+                               <td class="text-right">$${item.precio.toLocaleString("es-AR")}</td>
+                               <td class="text-right">$${item.total.toLocaleString("es-AR")}</td>
+                             </tr>
+                           `).join('')}
+                         </tbody>
+                       </table>
+
+                       ${completedTransaction.extras.length > 0 ? `
+                         <h3>Cargos Adicionales</h3>
+                         <table>
+                           <thead>
+                             <tr>
+                               <th>Tipo</th>
+                               <th>Descripción</th>
+                               <th class="text-right">Monto</th>
+                             </tr>
+                           </thead>
+                           <tbody>
+                             ${completedTransaction.extras.map((extra: any) => `
+                               <tr>
+                                 <td>${extra.type}</td>
+                                 <td>${extra.note}</td>
+                                 <td class="text-right ${extra.type === "Descuento" ? "text-green-600" : ""}">
+                                   ${extra.type === "Descuento" ? "-" : ""}$${extra.price.toLocaleString("es-AR")}
+                                 </td>
+                               </tr>
+                             `).join('')}
+                           </tbody>
+                         </table>
+                       ` : ''}
+
+                       ${completedTransaction.payment ? `
+                         <div class="payment-info">
+                           <h3>Información de Pago</h3>
+                           <div style="display: flex; justify-content: space-between;">
+                             <div>
+                               <p><strong>Método:</strong> ${completedTransaction.payment.method}</p>
+                               <p><strong>Fecha:</strong> ${new Date(completedTransaction.payment.date).toLocaleDateString("es-AR")}</p>
+                             </div>
+                             <div>
+                               <p><strong>Monto Pagado:</strong> $${completedTransaction.payment.amount.toLocaleString("es-AR")}</p>
+                               ${completedTransaction.payment.note ? `<p><strong>Nota:</strong> ${completedTransaction.payment.note}</p>` : ''}
+                             </div>
+                           </div>
+                         </div>
+                       ` : ''}
+
+                       <div class="summary">
+                         <h3>Resumen de la Venta</h3>
+                         <p><strong>Subtotal Productos:</strong> $${completedTransaction.totals.subtotal.toLocaleString("es-AR")}</p>
+                         ${completedTransaction.totals.extras !== 0 ? `
+                           <p><strong>Cargos Adicionales:</strong> 
+                             <span class="${completedTransaction.totals.extras < 0 ? "text-green-600" : ""}">
+                               ${completedTransaction.totals.extras < 0 ? "-" : ""}$${Math.abs(completedTransaction.totals.extras).toLocaleString("es-AR")}
+                             </span>
+                           </p>
+                         ` : ''}
+                         <p><strong>Subtotal:</strong> $${(completedTransaction.totals.subtotal + completedTransaction.totals.extras).toLocaleString("es-AR")}</p>
+                         <p><strong>IVA (21%):</strong> $${completedTransaction.totals.tax.toLocaleString("es-AR")}</p>
+                         <p class="total">Total: $${completedTransaction.totals.total.toLocaleString("es-AR")}</p>
+                         
+                         <div style="margin-top: 15px;">
+                           <span class="badge badge-green">
+                             Venta Completada
+                           </span>
+                           <span class="badge badge-green" style="margin-left: 10px;">
+                             Incluye IVA
+                           </span>
+                           <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                             Esta venta ha sido completada exitosamente. El monto mostrado incluye IVA del 21%.
+                           </p>
+                         </div>
+                       </div>
+                     </body>
+                     </html>
+                   `);
+                   printWindow.document.close();
+                   printWindow.print();
+                   printWindow.close();
+                 }
+               }}
+             >
+               <Download className="mr-2 h-4 w-4" />
+               Imprimir Recibo
              </Button>
            </DialogFooter>
          </DialogContent>
