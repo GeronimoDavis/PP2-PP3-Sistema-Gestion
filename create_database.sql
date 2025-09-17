@@ -96,7 +96,7 @@ create table payments(
 	payment_id int primary key auto_increment,
 	transaction_id int,
 	amount mediumint,
-	note VARCHAR(255) DEFAULT ''
+	note VARCHAR(255) DEFAULT '',
 	type enum(
 		 'Efectivo',
     'Transferencia', 
