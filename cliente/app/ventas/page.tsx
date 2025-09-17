@@ -2333,9 +2333,304 @@ export default function VentasPage() {
             </div>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
             <Button variant="outline" onClick={() => setShowSaleDetails(false)}>
               Cerrar
+            </Button>
+            <Button 
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                if (selectedSale) {
+                  // Crear una ventana nueva para imprimir/descargar el recibo
+                  const printWindow = window.open('', '_blank');
+                  if (printWindow) {
+                    printWindow.document.write(`
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <title>Recibo de Venta #${selectedSale.transaction.transaction_id}</title>
+                        <style>
+                          * {
+                            box-sizing: border-box;
+                          }
+                          body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 10px; 
+                            padding: 10px;
+                            color: #333;
+                            font-size: 12px;
+                            line-height: 1.4;
+                          }
+                          .header { 
+                            text-align: center; 
+                            margin-bottom: 20px; 
+                            border-bottom: 2px solid #333; 
+                            padding-bottom: 15px;
+                          }
+                          .header h1 {
+                            margin: 0 0 10px 0;
+                            font-size: 24px;
+                          }
+                          .info-section { 
+                            display: flex; 
+                            justify-content: space-between; 
+                            margin-bottom: 20px; 
+                            background: #f5f5f5; 
+                            padding: 15px; 
+                            border-radius: 4px;
+                          }
+                          .info-column { 
+                            flex: 1; 
+                            margin-right: 15px;
+                          }
+                          .info-column:last-child { 
+                            margin-right: 0; 
+                          }
+                          .info-column h3 {
+                            margin: 0 0 10px 0;
+                            font-size: 14px;
+                          }
+                          .info-column p {
+                            margin: 5px 0;
+                            font-size: 11px;
+                          }
+                          table { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                            margin-bottom: 20px;
+                            font-size: 11px;
+                          }
+                          th, td { 
+                            border: 1px solid #ddd; 
+                            padding: 6px 4px; 
+                            text-align: left;
+                            word-wrap: break-word;
+                          }
+                          th { 
+                            background-color: #f2f2f2; 
+                            font-weight: bold;
+                            font-size: 10px;
+                          }
+                          .text-right { 
+                            text-align: right;
+                          }
+                          .summary { 
+                            background: #f5f5f5; 
+                            padding: 15px; 
+                            border-radius: 4px; 
+                            margin-top: 15px;
+                          }
+                          .summary h3 {
+                            margin: 0 0 10px 0;
+                            font-size: 14px;
+                          }
+                          .summary p {
+                            margin: 5px 0;
+                            font-size: 11px;
+                          }
+                          .total { 
+                            font-size: 16px; 
+                            font-weight: bold; 
+                            margin-top: 10px;
+                          }
+                          .badge { 
+                            display: inline-block; 
+                            padding: 2px 6px; 
+                            border-radius: 3px; 
+                            font-size: 10px; 
+                            font-weight: bold;
+                          }
+                          .badge-green { 
+                            background: #d4edda; 
+                            color: #155724; 
+                            border: 1px solid #c3e6cb;
+                          }
+                          .badge-red { 
+                            background: #f8d7da; 
+                            color: #721c24; 
+                            border: 1px solid #f5c6cb;
+                          }
+                          .payment-info {
+                            background: #e3f2fd;
+                            padding: 15px;
+                            border-radius: 4px;
+                            margin: 15px 0;
+                          }
+                          @media print {
+                            body { 
+                              margin: 0.5in; 
+                              padding: 0;
+                              font-size: 11px;
+                            }
+                            .header h1 {
+                              font-size: 20px;
+                            }
+                            .info-section {
+                              padding: 10px;
+                              margin-bottom: 15px;
+                            }
+                            .info-column p {
+                              font-size: 10px;
+                              margin: 3px 0;
+                            }
+                            table {
+                              font-size: 10px;
+                              margin-bottom: 15px;
+                            }
+                            th, td {
+                              padding: 4px 2px;
+                              font-size: 9px;
+                            }
+                            .summary {
+                              padding: 10px;
+                              margin-top: 10px;
+                            }
+                            .summary p {
+                              font-size: 10px;
+                              margin: 3px 0;
+                            }
+                            .total {
+                              font-size: 14px;
+                            }
+                            .no-print { display: none; }
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="header">
+                          <h1>RECIBO DE VENTA</h1>
+                          <p>Número: #${selectedSale.transaction.transaction_id}</p>
+                          <p>Fecha: ${formatDate(selectedSale.transaction.date)}</p>
+                        </div>
+                        
+                        <div class="info-section">
+                          <div class="info-column">
+                            <h3>Información del Cliente</h3>
+                            <p><strong>Nombre:</strong> ${selectedSale.transaction.client_name}</p>
+                            <p><strong>Empresa:</strong> ${selectedSale.transaction.client_company || "N/A"}</p>
+                            <p><strong>Email:</strong> ${selectedSale.transaction.client_email || "N/A"}</p>
+                            <p><strong>Teléfono:</strong> ${selectedSale.transaction.client_phone || "N/A"}</p>
+                          </div>
+                          <div class="info-column">
+                            <h3>Información de la Venta</h3>
+                            <p><strong>Tipo de Impuesto:</strong> 
+                              <span class="badge ${hasIVA(selectedSale.transaction.tax_type) ? 'badge-green' : 'badge-red'}">
+                                ${hasIVA(selectedSale.transaction.tax_type) ? 'Con IVA' : 'Sin IVA'}
+                              </span>
+                            </p>
+                            <p><small>${getIVADescription(selectedSale.transaction.tax_type)}</small></p>
+                          </div>
+                        </div>
+
+                        <h3>Productos</h3>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Código</th>
+                              <th>Producto</th>
+                              <th class="text-right">Cantidad</th>
+                              <th class="text-right">Precio Unit.</th>
+                              <th class="text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${selectedSale.items.map((item: any) => `
+                              <tr>
+                                <td>${item.product_code}</td>
+                                <td>${item.product_name}</td>
+                                <td class="text-right">${item.quantity}</td>
+                                <td class="text-right">$${item.price.toLocaleString("es-AR")}</td>
+                                <td class="text-right">$${(item.quantity * item.price).toLocaleString("es-AR")}</td>
+                              </tr>
+                            `).join('')}
+                          </tbody>
+                        </table>
+
+                        ${selectedSale.extras.length > 0 ? `
+                          <h3>Cargos Adicionales</h3>
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Tipo</th>
+                                <th>Descripción</th>
+                                <th class="text-right">Monto</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              ${selectedSale.extras.map((extra: any) => `
+                                <tr>
+                                  <td>${extra.type}</td>
+                                  <td>${extra.note}</td>
+                                  <td class="text-right ${extra.type === "Descuento" ? "text-green-600" : ""}">
+                                    ${extra.type === "Descuento" ? "-" : ""}$${extra.price.toLocaleString("es-AR")}
+                                  </td>
+                                </tr>
+                              `).join('')}
+                            </tbody>
+                          </table>
+                        ` : ''}
+
+                        ${selectedSale.payments.length > 0 ? `
+                          <div class="payment-info">
+                            <h3>Información de Pagos</h3>
+                            ${selectedSale.payments.map((payment: any) => `
+                              <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 4px;">
+                                <div style="display: flex; justify-content: space-between;">
+                                  <div>
+                                    <p><strong>Método:</strong> ${payment.type}</p>
+                                    <p><strong>Fecha:</strong> ${formatDate(payment.date)}</p>
+                                  </div>
+                                  <div>
+                                    <p><strong>Monto:</strong> $${payment.amount.toLocaleString("es-AR")}</p>
+                                    ${payment.note ? `<p><strong>Nota:</strong> ${payment.note}</p>` : ''}
+                                  </div>
+                                </div>
+                              </div>
+                            `).join('')}
+                          </div>
+                        ` : ''}
+
+                        <div class="summary">
+                          <h3>Resumen de la Venta</h3>
+                          <p><strong>Subtotal Productos:</strong> $${selectedSale.totals.items.toLocaleString("es-AR")}</p>
+                          ${selectedSale.totals.extras !== 0 ? `
+                            <p><strong>Cargos Adicionales:</strong> 
+                              <span class="${selectedSale.totals.extras < 0 ? "text-green-600" : ""}">
+                                ${selectedSale.totals.extras < 0 ? "-" : ""}$${Math.abs(selectedSale.totals.extras).toLocaleString("es-AR")}
+                              </span>
+                            </p>
+                          ` : ''}
+                          <p><strong>Total Venta:</strong> $${selectedSale.totals.transaction.toLocaleString("es-AR")}</p>
+                          <p><strong>Total Pagado:</strong> $${selectedSale.totals.paid.toLocaleString("es-AR")}</p>
+                          <p><strong>Pendiente:</strong> $${selectedSale.totals.pending.toLocaleString("es-AR")}</p>
+                          
+                          <div style="margin-top: 15px;">
+                            <span class="badge ${hasIVA(selectedSale.transaction.tax_type) ? 'badge-green' : 'badge-red'}">
+                              ${hasIVA(selectedSale.transaction.tax_type) ? 'Incluye IVA' : 'No incluye IVA'}
+                            </span>
+                            <span class="badge ${getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).status === 'Pagado' ? 'badge-green' : getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).status === 'Parcial' ? 'badge-yellow' : 'badge-red'}" style="margin-left: 10px;">
+                              ${getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).status}
+                            </span>
+                            <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                              ${hasIVA(selectedSale.transaction.tax_type) 
+                                ? 'Esta venta incluye IVA del 21%.'
+                                : 'Esta venta no incluye IVA.'
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                    printWindow.print();
+                    printWindow.close();
+                  }
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Imprimir Recibo
             </Button>
           </DialogFooter>
         </DialogContent>
