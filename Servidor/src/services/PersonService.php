@@ -198,5 +198,41 @@ class PersonService {
             throw new Exception("Error fetching all active providers: " . $e->getMessage());
         }
     }
+
+    
+    public function getAllDeleted()
+    {
+        try {
+            $query = "SELECT * FROM person WHERE active = 0 ORDER BY person_id";
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $persons = [];
+            foreach ($rows as $row) {
+                $persons[] = new Person($row);
+            }
+            return $persons;
+        } catch (PDOException $e) {
+            throw new Exception("Error fetching deleted persons: " . $e->getMessage());
+        }
+    }
+
+    
+    public function restore($id)
+    {
+        try {
+            $stmt = $this->pdo->prepare("UPDATE person SET active = 1 WHERE person_id = ? AND active = 0");
+            $stmt->execute([$id]);
+            
+            if ($stmt->rowCount() === 0) {
+                throw new Exception("No se encontró una persona eliminada con ID: $id");
+            }
+            
+            return true;
+        } catch (PDOException $e) {
+            throw new Exception("Error restoring person: " . $e->getMessage());
+        }
+    }
 }
 ?>
