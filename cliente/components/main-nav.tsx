@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   Truck,
   Users,
+  Trash2,
 } from "lucide-react";
 import VerDolar from "./VerDolar";
 
@@ -64,6 +65,15 @@ export function MainNav() {
         <div className="flex items-center">
           <BarChart3 className="mr-2 h-4 w-4" />
           Reportes
+        </div>
+      </Link>
+      <Link
+        href="/papelera"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        <div className="flex items-center">
+          <Trash2 className="mr-2 h-4 w-4" />
+          Papelera
         </div>
       </Link>
     </nav>

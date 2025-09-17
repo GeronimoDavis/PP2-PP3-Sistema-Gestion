@@ -266,6 +266,48 @@ class ProductService{
         }
     }
 
+   // Obtiene todos los productos eliminados 
+    
+    public function getAllDeleted()
+    {
+        try {
+            $query = "SELECT product.*, category.name as category_name FROM product 
+                     JOIN category ON product.category_id = category.category_id 
+                     WHERE product.active = 0 
+                     ORDER BY product.product_id";
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $products = [];
+            foreach ($rows as $row) {
+                $products[] = new Product($row);
+            }
+            return $products;
+        } catch (PDOException $e) {
+            throw new Exception("Error fetching deleted products: " . $e->getMessage());
+        }
+    }
+
+    
+    // Restaura un producto eliminado (solo cambia active de 0 a 1)
+     
+    public function restore($id)
+    {
+        try {
+            $stmt = $this->pdo->prepare("UPDATE product SET active = 1 WHERE product_id = ? AND active = 0");
+            $stmt->execute([$id]);
+            
+            if ($stmt->rowCount() === 0) {
+                throw new Exception("No se encontró un producto eliminado con ID: $id");
+            }
+            
+            return true;
+        } catch (PDOException $e) {
+            throw new Exception("Error restoring product: " . $e->getMessage());
+        }
+    }
+
 }
 
 
