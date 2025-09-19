@@ -163,5 +163,33 @@ class PersonController {
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
+
+    // Obtiene todas las personas eliminadas (papelera)
+    public function getAllDeletedPersons(Request $request, Response $response): Response
+    {
+        try {
+            $persons = $this->personService->getAllDeleted();
+            $personsArray = array_map(fn($p) => $p->toArray(), $persons);
+            $response->getBody()->write(json_encode(['persons' => $personsArray]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Throwable $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error fetching deleted persons: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+
+    // Restaura una persona eliminada
+    public function restorePerson(Request $request, Response $response, $args): Response
+    {
+        try {
+            $id = $args['id'];
+            $this->personService->restore($id);
+            $response->getBody()->write(json_encode(['message' => 'Person restored successfully']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Throwable $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error restoring person: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
 }
 ?>

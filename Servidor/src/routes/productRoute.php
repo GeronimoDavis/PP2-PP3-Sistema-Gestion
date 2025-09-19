@@ -21,5 +21,7 @@ $app->group('/product', function(RouteCollectorProxy $group) use ($productContro
     $group->put('/updateStatus/{id}', [$productController, 'updateProductStatus']);
     $group->put('/updateStock/{id}', [$productController, 'updateProductStock']);
     $group->put('/updateStockForPurchase/{id}', [$productController, 'updateProductStockForPurchase']);
+    $group->get('/deleted', [$productController, 'getAllDeletedProducts']);
+    $group->put('/restore/{id}', [$productController, 'restoreProduct']);
 
 })->add(new AuthMiddleware());

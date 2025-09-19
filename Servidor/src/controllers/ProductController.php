@@ -225,6 +225,32 @@ class ProductController
         }
     }
 
+   
+    public function getAllDeletedProducts(Request $request, Response $response): Response
+    {
+        try {
+            $products = $this->productService->getAllDeleted();
+            $productsArray = array_map(fn($p) => $p->toArray(), $products);
+            $response->getBody()->write(json_encode(['products' => $productsArray]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Throwable $e) {
+            throw new Exception("Error fetching deleted products: " . $e->getMessage());
+        }
+    }
+
+  
+    public function restoreProduct(Request $request, Response $response, $args): Response
+    {
+        try {
+            $id = $args['id'];
+            $this->productService->restore($id);
+            $response->getBody()->write(json_encode(['message' => 'Product restored successfully']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Throwable $e) {
+            throw new Exception("Error restoring product: " . $e->getMessage());
+        }
+    }
+
 }
 
     
