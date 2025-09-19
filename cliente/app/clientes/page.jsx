@@ -648,10 +648,10 @@ export default function ClientesPage() {
                       <TableCell className="text-right">
                         <Badge
                           className={`${
-                            client.provider ? "bg-green-500" : "bg-red-500"
+                            client.provider ? "bg-yellow-500" : "bg-teal-500"
                           }`}
                         >
-                          {client.provider ? "Activo" : "Inactivo"}
+                          {client.provider ? "Proveedor" : "Cliente"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
