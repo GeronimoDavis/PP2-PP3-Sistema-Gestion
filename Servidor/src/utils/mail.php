@@ -20,7 +20,7 @@ function enviarCorreo($cuerpo, $asunto, $destinatario)
         $mail->Username = $_ENV['MAIL_USERNAME'];
         $mail->Password = $_ENV['MAIL_PASSWORD'];
         $mail->SMTPSecure = 'tls';
-        $mail->charset = 'UTF-8';
+        $mail->CharSet = 'UTF-8';
         $mail->SMTPOptions = array(
             'ssl' => array(
                 'verify_peer' => false,
@@ -36,7 +36,7 @@ function enviarCorreo($cuerpo, $asunto, $destinatario)
         $mail->isHTML(true);
         $mail->Subject = $asunto;
         $mail->Body = $cuerpo;
-        $mail->verify_peer = false;
+        //$mail->Verify_peer = false;
 
         var_dump($mail);
 

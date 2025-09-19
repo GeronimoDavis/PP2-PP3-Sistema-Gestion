@@ -2,7 +2,7 @@
 
 namespace Controllers;
 
-require_once __DIR__.'/../../config/mailer.php';
+require_once __DIR__.'/../utils/mail.php';
 
 use Services\UserService;
 use Entities\User;
@@ -120,7 +120,7 @@ class UserController
             ";
             
             try {
-                enviarCorreo($cuerpoMail, utf8_decode('Recuperación de contraseña'), "agusmigliorero@gmail.com");
+                enviarCorreo($cuerpoMail, utf8_decode('Recuperación de contraseña'), $_ENV['MAIL_FROM']);
                 $response->getBody()->write(json_encode(['message' => 'Contraseña recuperada con éxito y enviada por correo']));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
             } catch (Exception $mailException) {
@@ -132,6 +132,41 @@ class UserController
             
         } catch (Exception $e) {
             $response->getBody()->write(json_encode(['Error: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    }
+
+    public function updatePass(Request $request, Response $response, $args)
+    {
+        try {
+            $data = $request->getParsedBody();
+            $newPassword = $data['newPassword'];
+            $username = $data['username'];
+
+            // validacion de username y password
+            if (!isset($newPassword) || empty(trim($newPassword))) {
+                $response->getBody()->write(json_encode(['error' => 'Nueva contraseña invalida o faltante']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            }
+
+            $user = $this->userService->findByUsername($username);
+            if (!$user) {
+                $response->getBody()->write(json_encode(['error' => 'Usuario no encontrado']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            }
+
+            if (!password_verify($data['oldPassword'], $user->password)) {
+                $response->getBody()->write(json_encode(['error' => 'Contraseña actual incorrecta']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            }
+
+            $hashedNewPassword = password_hash($newPassword , PASSWORD_DEFAULT);
+            $this->userService->updatePassword($username, $hashedNewPassword);
+
+            $response->getBody()->write(json_encode(['message' => 'Contraseña actualizada con éxito']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Exception $e) {
+            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
         }
     }

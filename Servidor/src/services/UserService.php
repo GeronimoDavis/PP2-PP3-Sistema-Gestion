@@ -75,4 +75,16 @@ class UserService
             throw new Exception("Error al recuperar contraseña: " . $e->getMessage());
         }
     }
+
+    public function updatePassword($username, $newHashedPassword)
+    {
+        try {
+            $stmt = $this->db->prepare("UPDATE users SET password = :password WHERE username = :username");
+            $stmt->bindParam(':password', $newHashedPassword, PDO::PARAM_STR);
+            $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+            $stmt->execute();
+        } catch (PDOException $e) {
+            throw new Exception("Error al actualizar contraseña: " . $e->getMessage());
+        }
+    }
 }
