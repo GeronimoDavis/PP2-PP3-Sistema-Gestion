@@ -69,6 +69,7 @@ create table transaction(
 	"Monotributo",
 	"Consumidor Final"
 	),
+	has_tax BOOLEAN DEFAULT TRUE,
 	foreign key(person_id) references person(person_id),
 	foreign key(transport_id) references transport_companies(company_id)	
 );

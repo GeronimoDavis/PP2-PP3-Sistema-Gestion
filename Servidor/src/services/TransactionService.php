@@ -92,14 +92,15 @@ class TransactionService{
 
     public function create(Transaction $transaction){
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO transaction (date, is_sale, person_id, transport_id, tracking_number, tax_type) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO transaction (date, is_sale, person_id, transport_id, tracking_number, tax_type, has_tax) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $transaction->date,
                 $transaction->is_sale,
                 $transaction->person_id,
                 $transaction->transport_id,
                 $transaction->tracking_number,
-                $transaction->tax_type
+                $transaction->tax_type,
+                $transaction->has_tax
             ]);
 
             $transaction->transaction_id = $this->pdo->lastInsertId();
@@ -111,7 +112,7 @@ class TransactionService{
 
     public function update(Transaction $transaction){
         try {
-            $stmt = $this->pdo->prepare("UPDATE transaction SET date = ?, is_sale = ?, person_id = ?, transport_id = ?, tracking_number = ?, tax_type = ? WHERE transaction_id = ?");
+            $stmt = $this->pdo->prepare("UPDATE transaction SET date = ?, is_sale = ?, person_id = ?, transport_id = ?, tracking_number = ?, tax_type = ?, has_tax = ? WHERE transaction_id = ?");
             $stmt->execute([
                 $transaction->date,
                 $transaction->is_sale,
@@ -119,6 +120,7 @@ class TransactionService{
                 $transaction->transport_id,
                 $transaction->tracking_number,
                 $transaction->tax_type,
+                $transaction->has_tax,
                 $transaction->transaction_id
             ]);
 
@@ -317,21 +319,28 @@ class TransactionService{
 
     public function getSaleDetailsById(int $transactionId) {
         try {
-            // Obtener informacion basica de la transaccion
+            // Obtener informacion basica de la transaccion desde la vista
             $transactionQuery = "
                 SELECT 
-                    t.*,
-                    p.name as client_name,
-                    p.company_name as client_company,
-                    p.email as client_email,
-                    p.phone as client_phone,
-                    p.tax_id as client_tax_id,
-                    tc.name as transport_company,
-                    tc.url as transport_url
-                FROM transaction t
-                LEFT JOIN person p ON t.person_id = p.person_id
-                LEFT JOIN transport_companies tc ON t.transport_id = tc.company_id
-                WHERE t.transaction_id = ? AND t.is_sale = 1
+                    transaction_id,
+                    date,
+                    tracking_number,
+                    tax_type,
+                    person_id,
+                    person_name as client_name,
+                    company_name as client_company,
+                    email as client_email,
+                    phone as client_phone,
+                    transport_company,
+                    transport_id,
+                    total_items,
+                    total_extras,
+                    total_descuentos,
+                    total_a_pagar,
+                    total_pagado,
+                    saldo_restante
+                FROM view_ventas_detalladas
+                WHERE transaction_id = ?
             ";
             
             $stmt = $this->pdo->prepare($transactionQuery);
@@ -370,7 +379,7 @@ class TransactionService{
             $stmt->execute([$transactionId]);
             $extras = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                // Obtener pagos de la transaccion
+            // Obtener pagos de la transaccion
             $paymentsQuery = "
                 SELECT * FROM payments 
                 WHERE transaction_id = ?
@@ -381,23 +390,18 @@ class TransactionService{
             $stmt->execute([$transactionId]);
             $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Calcular totales
-            $totalItems = array_sum(array_map(fn($item) => $item['quantity'] * $item['price'], $items));
-            $totalExtras = array_sum(array_map(fn($extra) => $extra['price'], $extras));
-            $totalTransaction = $totalItems + $totalExtras;
-            $totalPaid = array_sum(array_map(fn($payment) => $payment['amount'], $payments));
-
+            // Usar los totales de la vista en lugar de calcularlos manualmente
             return [
                 'transaction' => $transaction,
                 'items' => $items,
                 'extras' => $extras,
                 'payments' => $payments,
                 'totals' => [
-                    'items' => $totalItems,
-                    'extras' => $totalExtras,
-                    'transaction' => $totalTransaction,
-                    'paid' => $totalPaid,
-                    'pending' => $totalTransaction - $totalPaid
+                    'items' => $transaction['total_items'],
+                    'extras' => $transaction['total_extras'],
+                    'transaction' => $transaction['total_a_pagar'],
+                    'paid' => $transaction['total_pagado'],
+                    'pending' => $transaction['saldo_restante']
                 ]
             ];
         } catch (PDOException $e) {
@@ -578,21 +582,28 @@ class TransactionService{
 
     public function getPurchaseDetailsById(int $transactionId) {
         try {
-            // Obtener informacion basica de la transaccion
+            // Obtener informacion basica de la transaccion desde la vista
             $transactionQuery = "
                 SELECT 
-                    t.*,
-                    p.name as provider_name,
-                    p.company_name as provider_company,
-                    p.email as provider_email,
-                    p.phone as provider_phone,
-                    p.tax_id as provider_tax_id,
-                    tc.name as transport_company,
-                    tc.url as transport_url
-                FROM transaction t
-                LEFT JOIN person p ON t.person_id = p.person_id
-                LEFT JOIN transport_companies tc ON t.transport_id = tc.company_id
-                WHERE t.transaction_id = ? AND t.is_sale = 0
+                    transaction_id,
+                    date,
+                    tracking_number,
+                    tax_type,
+                    person_id,
+                    person_name as provider_name,
+                    company_name as provider_company,
+                    email as provider_email,
+                    phone as provider_phone,
+                    transport_company,
+                    transport_id,
+                    total_items,
+                    total_extras,
+                    total_descuentos,
+                    total_a_pagar,
+                    total_pagado,
+                    saldo_restante
+                FROM view_compras_detalladas
+                WHERE transaction_id = ?
             ";
             
             $stmt = $this->pdo->prepare($transactionQuery);
@@ -642,23 +653,18 @@ class TransactionService{
             $stmt->execute([$transactionId]);
             $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Calcular totales
-            $totalItems = array_sum(array_map(fn($item) => $item['quantity'] * $item['price'], $items));
-            $totalExtras = array_sum(array_map(fn($extra) => $extra['price'], $extras));
-            $totalTransaction = $totalItems + $totalExtras;
-            $totalPaid = array_sum(array_map(fn($payment) => $payment['amount'], $payments));
-
+            // Usar los totales de la vista en lugar de calcularlos manualmente
             return [
                 'transaction' => $transaction,
                 'items' => $items,
                 'extras' => $extras,
                 'payments' => $payments,
                 'totals' => [
-                    'items' => $totalItems,
-                    'extras' => $totalExtras,
-                    'transaction' => $totalTransaction,
-                    'paid' => $totalPaid,
-                    'pending' => $totalTransaction - $totalPaid
+                    'items' => $transaction['total_items'],
+                    'extras' => $transaction['total_extras'],
+                    'transaction' => $transaction['total_a_pagar'],
+                    'paid' => $transaction['total_pagado'],
+                    'pending' => $transaction['saldo_restante']
                 ]
             ];
         } catch (PDOException $e) {

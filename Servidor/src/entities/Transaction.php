@@ -10,6 +10,7 @@ class Transaction{
     public ?int $transport_id;
     public ?string $tracking_number;
     public string $tax_type;
+    public bool $has_tax;
 
     public function __construct(array $data) {
         $this->transaction_id = $data['transaction_id'] ?? null;
@@ -19,6 +20,7 @@ class Transaction{
         $this->transport_id = $data['transport_id'] ?? null;
         $this->tracking_number = $data['tracking_number'] ?? null;
         $this->tax_type = $data['tax_type'];
+        $this->has_tax = $data['has_tax'] ?? true; // Por defecto TRUE si no se especifica
     }
 
       public function toArray(): array {
@@ -29,7 +31,8 @@ class Transaction{
             'person_id' => $this->person_id,
             'transport_id' => $this->transport_id,
             'tracking_number' => $this->tracking_number,
-            'tax_type' => $this->tax_type
+            'tax_type' => $this->tax_type,
+            'has_tax' => $this->has_tax
         ];
     }
 

@@ -2,7 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   Download,
   Plus,
@@ -324,6 +324,13 @@ export default function VentasPage() {
       cartItems.reduce((sum, item) => sum + item.total, 0) + totalExtras;
     const tax = excludeTax ? 0 : subtotal * 0.21; // 21% IVA
     return subtotal + tax;
+  };
+
+  // calculo del total real (lo que se va a guardar en la base de datos)
+  const calculateRealTotal = () => {
+    const subtotal =
+      cartItems.reduce((sum, item) => sum + item.total, 0) + totalExtras;
+    return subtotal; // Siempre el subtotal, porque el IVA se calcula solo en la interfaz
   };
 
   //CLIENTES
@@ -858,6 +865,7 @@ export default function VentasPage() {
         person_id: parseInt(selectedClient),
         transport_id: null,
         tax_type: "Consumidor Final",
+        has_tax: !excludeTax, // TRUE si tiene IVA, FALSE si no
         tracking_number: null,
       };
 
@@ -872,7 +880,7 @@ export default function VentasPage() {
           transaction_id: transactionId,
           product_id: item.id, // Usar el id del item como product_id
           quantity: item.cantidad,
-          price: excludeTax ? item.precio : item.precio * 1.21,
+          price: item.precio, // Guardar precio sin IVA (el IVA se calcula en la interfaz)
         };
 
         await createItem(itemData);
@@ -886,7 +894,7 @@ export default function VentasPage() {
         const extraData = {
           transaction_id: transactionId,
           type: extra.type,
-          price: extra.price,
+          price: extra.price, // Guardar precio sin IVA (el IVA se calcula en la interfaz)
           note: extra.note,
         };
 
@@ -1099,6 +1107,27 @@ export default function VentasPage() {
   useEffect(() => {
     loadSalesHistory();
   }, [salesFilters, currentPage, itemsPerPage]);
+
+  // Ref para rastrear el valor anterior del IVA
+  const prevExcludeTax = useRef(excludeTax);
+
+  // Actualizar el monto a pagar cuando cambie el estado del IVA
+  useEffect(() => {
+    // Solo actualizar si hay un monto establecido y el estado del IVA cambió
+    if (paymentAmount > 0 && prevExcludeTax.current !== excludeTax) {
+      let newAmount;
+      if (excludeTax) {
+        // Si se excluye el IVA, dividir por 1.21 para obtener el monto sin IVA
+        newAmount = paymentAmount / 1.21;
+      } else {
+        // Si se incluye el IVA, multiplicar por 1.21 para obtener el monto con IVA
+        newAmount = paymentAmount * 1.21;
+      }
+      setPaymentAmount(Math.round(newAmount * 100) / 100); // Redondear a 2 decimales
+    }
+    // Actualizar el ref con el valor actual
+    prevExcludeTax.current = excludeTax;
+  }, [excludeTax, paymentAmount]);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -1580,7 +1609,12 @@ export default function VentasPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setPaymentAmount(calculateTotalWithTax())}
+                      onClick={() => {
+                        // Si el IVA está excluido, usar el subtotal sin IVA
+                        // Si el IVA está incluido, usar el total con IVA
+                        const total = excludeTax ? calculateRealTotal() : calculateTotalWithTax();
+                        setPaymentAmount(total);
+                      }}
                       className="text-xs"
                     >
                       Total

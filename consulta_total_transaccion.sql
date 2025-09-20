@@ -12,33 +12,57 @@ SELECT
     t.transaction_id,
     t.date,
     t.is_sale,
+    t.has_tax,
     CASE 
         WHEN t.is_sale = 1 THEN 'Venta'
         ELSE 'Compra'
     END AS tipo_transaccion,
     p.company_name AS cliente_proveedor,
     
-    -- Total de items (cantidad * precio)
+    -- Total de items (cantidad * precio) - SIN IVA
     COALESCE(SUM(i.quantity * i.price), 0) AS total_items,
     
-    -- Total de extras
+    -- Total de extras - SIN IVA
     COALESCE(SUM(e.price), 0) AS total_extras,
     
-    -- Total calculado (items + extras) - ESTA ES LA FUENTE DE VERDAD
-    COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0) AS total_transaccion,
+    -- Subtotal (items + extras) - SIN IVA
+    COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0) AS subtotal,
+    
+    -- IVA (21% del subtotal si has_tax = TRUE)
+    CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) * 0.21
+        ELSE 0 
+    END AS iva,
+    
+    -- Total calculado (subtotal + IVA) - ESTA ES LA FUENTE DE VERDAD
+    CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) * 1.21
+        ELSE 
+            COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)
+    END AS total_transaccion,
     
     -- Total pagado
     COALESCE(SUM(pa.amount), 0) AS total_pagado,
     
-    -- Saldo pendiente
-    COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0) - COALESCE(SUM(pa.amount), 0) AS saldo_pendiente,
+    -- Saldo pendiente (total_transaccion - total_pagado)
+    CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) * 1.21 - COALESCE(SUM(pa.amount), 0)
+        ELSE 
+            COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0) - COALESCE(SUM(pa.amount), 0)
+    END AS saldo_pendiente,
     
     -- Estado del pago
     CASE 
         WHEN COALESCE(SUM(pa.amount), 0) = 0 THEN 'Sin pagos'
-        WHEN COALESCE(SUM(pa.amount), 0) < (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) THEN 'Pago parcial'
-        WHEN COALESCE(SUM(pa.amount), 0) = (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) THEN 'Pagado completo'
-        WHEN COALESCE(SUM(pa.amount), 0) > (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) THEN 'Sobrepago'
+        WHEN t.has_tax = TRUE AND COALESCE(SUM(pa.amount), 0) < (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) * 1.21 THEN 'Pago parcial'
+        WHEN t.has_tax = FALSE AND COALESCE(SUM(pa.amount), 0) < (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) THEN 'Pago parcial'
+        WHEN t.has_tax = TRUE AND COALESCE(SUM(pa.amount), 0) = (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) * 1.21 THEN 'Pagado completo'
+        WHEN t.has_tax = FALSE AND COALESCE(SUM(pa.amount), 0) = (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) THEN 'Pagado completo'
+        WHEN t.has_tax = TRUE AND COALESCE(SUM(pa.amount), 0) > (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) * 1.21 THEN 'Sobrepago'
+        WHEN t.has_tax = FALSE AND COALESCE(SUM(pa.amount), 0) > (COALESCE(SUM(i.quantity * i.price), 0) + COALESCE(SUM(e.price), 0)) THEN 'Sobrepago'
     END AS estado_pago
 
 FROM transaction t
