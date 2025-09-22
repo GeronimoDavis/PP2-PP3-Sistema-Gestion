@@ -8,4 +8,14 @@ const loginUser = async (username, password) => {
   return response.data;
 };
 
-export { loginUser };
+const updatePassword = async (username, oldPassword, newPassword) => {
+  const response = await api.post("/user/update-pass", {
+    username,
+    oldPassword,
+    newPassword,
+  });
+  return response.data;
+};
+
+
+export { loginUser, updatePassword };

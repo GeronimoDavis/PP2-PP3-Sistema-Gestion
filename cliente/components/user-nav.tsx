@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import Link from "next/dist/client/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { User } from "lucide-react";
 
 export function UserNav() {
+  const { user } = useAuth();
   const { logout } = useAuth();
   const router = useRouter();
 
@@ -36,7 +39,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Admin</p>
+            <p className="text-sm font-medium leading-none">{user?.username ?? ""}</p>
             <p className="text-xs leading-none text-muted-foreground">
               admin@agronomia.com
             </p>
@@ -45,7 +48,9 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem>Perfil</DropdownMenuItem>
-          <DropdownMenuItem>Configuración</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/user">Cambiar Contraseña</Link>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>

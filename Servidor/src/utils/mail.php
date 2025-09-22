@@ -14,12 +14,12 @@ function enviarCorreo($cuerpo, $asunto, $destinatario)
 
     try {
         $mail->isSMTP();
-        $mail->SMTPDebug = 0;
+        //$mail->SMTPDebug = 0;
         $mail->Host = $_ENV['MAIL_HOST'];
         $mail->SMTPAuth = true;
         $mail->Username = $_ENV['MAIL_USERNAME'];
         $mail->Password = $_ENV['MAIL_PASSWORD'];
-        $mail->SMTPSecure = 'tls';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->CharSet = 'UTF-8';
         $mail->SMTPOptions = array(
             'ssl' => array(
@@ -38,7 +38,7 @@ function enviarCorreo($cuerpo, $asunto, $destinatario)
         $mail->Body = $cuerpo;
         //$mail->Verify_peer = false;
 
-        var_dump($mail);
+        //var_dump($mail);
 
         $mail->send();
         return true;

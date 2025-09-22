@@ -120,7 +120,7 @@ class UserController
             ";
             
             try {
-                enviarCorreo($cuerpoMail, utf8_decode('Recuperación de contraseña'), $_ENV['MAIL_FROM']);
+                enviarCorreo($cuerpoMail, utf8_decode('Recuperación de contraseña'), 'st_juanma@hotmail.com');
                 $response->getBody()->write(json_encode(['message' => 'Contraseña recuperada con éxito y enviada por correo']));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
             } catch (Exception $mailException) {
@@ -156,7 +156,7 @@ class UserController
             }
 
             if (!password_verify($data['oldPassword'], $user->password)) {
-                $response->getBody()->write(json_encode(['error' => 'Contraseña actual incorrecta']));
+                $response->getBody()->write(json_encode(['error' => 'Contraseña actual incorrecta ❌']));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
             }
 
