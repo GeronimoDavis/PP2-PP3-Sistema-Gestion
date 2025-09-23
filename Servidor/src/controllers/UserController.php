@@ -2,7 +2,7 @@
 
 namespace Controllers;
 
-require_once __DIR__.'/../../config/mailer.php';
+require_once __DIR__.'/../utils/mail.php';
 
 use Services\UserService;
 use Entities\User;
@@ -105,7 +105,17 @@ class UserController
 
         try {
             $data = $request->getParsedBody();
-            $username = $data['username'];            
+            $username = $data['username'];
+            if (!isset($username) || empty(trim($username)) || !$this->userService->findByUsername($username)) {
+                $response->getBody()->write(json_encode(['error' => 'Nombre de usuario invalido o faltante']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            } else {
+                // $user = $this->userService->findByUsername($username);
+                // if (!$user) {
+                //     $response->getBody()->write(json_encode(['message' => 'Si el usuario existe, se ha enviado un correo para recuperar la contraseña.']));
+                //     return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+                // }
+                
             $newPassword = $this->generateRandomPassword();
             $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
             $this->userService->recoverPass($username, $hashedPassword);
@@ -120,7 +130,7 @@ class UserController
             ";
             
             try {
-                enviarCorreo($cuerpoMail, utf8_decode('Recuperación de contraseña'), "agusmigliorero@gmail.com");
+                enviarCorreo($cuerpoMail, utf8_decode('Recuperación de contraseña'), 'st_juanma@hotmail.com');
                 $response->getBody()->write(json_encode(['message' => 'Contraseña recuperada con éxito y enviada por correo']));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
             } catch (Exception $mailException) {
@@ -129,9 +139,44 @@ class UserController
                 ]));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
             }
-            
+            }
         } catch (Exception $e) {
             $response->getBody()->write(json_encode(['Error: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    }
+
+    public function updatePass(Request $request, Response $response, $args)
+    {
+        try {
+            $data = $request->getParsedBody();
+            $newPassword = $data['newPassword'];
+            $username = $data['username'];
+
+            // validacion de username y password
+            if (!isset($newPassword) || empty(trim($newPassword))) {
+                $response->getBody()->write(json_encode(['error' => 'Nueva contraseña invalida o faltante']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            }
+
+            $user = $this->userService->findByUsername($username);
+            if (!$user) {
+                $response->getBody()->write(json_encode(['error' => 'Usuario no encontrado']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            }
+
+            if (!password_verify($data['oldPassword'], $user->password)) {
+                $response->getBody()->write(json_encode(['error' => 'Contraseña actual incorrecta ❌']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+            }
+
+            $hashedNewPassword = password_hash($newPassword , PASSWORD_DEFAULT);
+            $this->userService->updatePassword($username, $hashedNewPassword);
+
+            $response->getBody()->write(json_encode(['message' => 'Contraseña actualizada con éxito']));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        } catch (Exception $e) {
+            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
         }
     }

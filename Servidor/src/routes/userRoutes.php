@@ -8,4 +8,5 @@ $app->group('/user', function (RouteCollectorProxy $group) use ($userController)
     $group->post('/register', [$userController, 'register']);
     $group->post('/login', [$userController, 'login']);
     $group->post('/recover-pass', [$userController, 'recoverPass']);
+    $group->post('/update-pass', [$userController, 'updatePass']);
 }); 
