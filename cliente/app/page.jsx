@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { loginUser } from "@/api/loginApi";
+import { recoverPassword } from "@/api/loginApi";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+
 
 function Login() {
   // username y password son los estados del input de username y password
@@ -50,6 +53,19 @@ function Login() {
     }
   };
 
+  const handleRecoverPassword = async () => {
+    if (!username) {
+      setError("Por favor, ingresa tu nombre de usuario para recuperar la contraseña.");
+      return;
+    }
+
+    try {
+      await recoverPassword(username.trim());
+      setError("Se ha enviado un correo para recuperar la contraseña.");
+    } catch (error) {
+      setError("Error al recuperar la contraseña. Intente nuevamente.");
+    }
+  };
   return (
     <div
       style={{
@@ -173,6 +189,11 @@ function Login() {
             Iniciar Sesión
           </button>
         </form>
+        <div>
+          <button type="button" className="text-blue-600 hover:underline" onClick={handleRecoverPassword}>
+            Recuperar contraseña
+          </button>
+        </div>
       </div>
     </div>
   );

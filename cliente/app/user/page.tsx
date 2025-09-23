@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { updatePassword } from "@/api/loginApi";
-//import Home from "../../public/home.svg";
 import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
 
 

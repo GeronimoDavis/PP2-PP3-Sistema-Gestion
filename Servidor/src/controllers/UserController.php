@@ -105,7 +105,17 @@ class UserController
 
         try {
             $data = $request->getParsedBody();
-            $username = $data['username'];            
+            $username = $data['username'];
+            if (!isset($username) || empty(trim($username)) || !$this->userService->findByUsername($username)) {
+                $response->getBody()->write(json_encode(['error' => 'Nombre de usuario invalido o faltante']));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            } else {
+                // $user = $this->userService->findByUsername($username);
+                // if (!$user) {
+                //     $response->getBody()->write(json_encode(['message' => 'Si el usuario existe, se ha enviado un correo para recuperar la contraseña.']));
+                //     return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+                // }
+                
             $newPassword = $this->generateRandomPassword();
             $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
             $this->userService->recoverPass($username, $hashedPassword);
@@ -129,7 +139,7 @@ class UserController
                 ]));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
             }
-            
+            }
         } catch (Exception $e) {
             $response->getBody()->write(json_encode(['Error: ' . $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);

@@ -17,5 +17,11 @@ const updatePassword = async (username, oldPassword, newPassword) => {
   return response.data;
 };
 
+const recoverPassword = async (username) => {
+  const response = await api.post("/user/recover-pass", {
+    username,
+  });
+  return response.data;
+};
 
-export { loginUser, updatePassword };
+export { loginUser, updatePassword, recoverPassword };
