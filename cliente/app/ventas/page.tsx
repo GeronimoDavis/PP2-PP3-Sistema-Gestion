@@ -1129,6 +1129,15 @@ export default function VentasPage() {
     prevExcludeTax.current = excludeTax;
   }, [excludeTax, paymentAmount]);
 
+  // Actualizar el monto a pagar cuando cambien los extras
+  useEffect(() => {
+    // Solo actualizar si hay un monto establecido y hay cambios en los extras
+    if (paymentAmount > 0) {
+      const newTotal = calculateTotalWithTax();
+      setPaymentAmount(newTotal);
+    }
+  }, [saleExtras, cartItems, excludeTax]);
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
