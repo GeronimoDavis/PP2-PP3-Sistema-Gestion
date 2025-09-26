@@ -46,6 +46,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import PresupuestoHistory from "@/components/PresupuestoHistory";
 import {
   Dialog,
   DialogContent,
@@ -413,6 +414,45 @@ export default function VentasPage() {
   // Estados para el modal de presupuesto de transacción completada
   const [showTransactionBudgetModal, setShowTransactionBudgetModal] = useState(false);
   const [completedTransaction, setCompletedTransaction] = useState<any>(null);
+
+  // Estados para el historial de presupuestos
+  const [savedBudgets, setSavedBudgets] = useState<any[]>([]);
+
+  // Función para guardar presupuesto en el historial
+  const saveBudgetToHistory = (budgetData: any) => {
+    const newBudget = {
+      id: `PRES-${Date.now()}`,
+      fecha: new Date().toISOString().split('T')[0],
+      cliente: selectedClient ? 
+        clients.find(c => c.person_id.toString() === selectedClient)?.name || "Cliente no encontrado" 
+        : "Sin cliente",
+      total: (total + totalExtras) * 1.21, // Total con IVA
+      items: cartItems.map(item => ({
+        producto: item.nombre,
+        cantidad: item.cantidad,
+        precio: item.precio,
+        subtotal: item.total
+      })),
+      extras: saleExtras.map(extra => ({
+        tipo: extra.type,
+        descripcion: extra.note,
+        monto: extra.price
+      })),
+      estado: 'pendiente',
+      subtotal: total,
+      totalExtras: totalExtras,
+      iva: (total + totalExtras) * 0.21,
+      clienteInfo: selectedClient ? clients.find(c => c.person_id.toString() === selectedClient) : null
+    };
+
+    // Guardar en el estado local
+    setSavedBudgets(prev => [newBudget, ...prev]);
+
+    // TODO: Aquí se podría implementar la llamada a la API para guardar en el servidor
+    console.log('Presupuesto guardado:', newBudget);
+    
+    return newBudget;
+  };
 
   const requestSalesSort = (key: keyof SalesHistoryItem | "status") => {
     const direction =
@@ -1145,9 +1185,10 @@ export default function VentasPage() {
       </div>
 
       <Tabs defaultValue="nueva" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="nueva">Nueva Venta</TabsTrigger>
           <TabsTrigger value="historial">Historial de Ventas</TabsTrigger>
+          <TabsTrigger value="presupuestos">Historial de Presupuestos</TabsTrigger>
         </TabsList>
         <TabsContent value="nueva">
           <div className="grid gap-4 md:grid-cols-12">
@@ -2116,6 +2157,9 @@ export default function VentasPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="presupuestos">
+          <PresupuestoHistory presupuestos={savedBudgets} />
         </TabsContent>
       </Tabs>
 
@@ -3094,8 +3138,25 @@ export default function VentasPage() {
                Cerrar
              </Button>
              <Button 
+               variant="outline"
+               className="border-green-200 text-green-700 hover:bg-green-50"
+               onClick={() => {
+                 // Guardar el presupuesto en el historial
+                 const savedBudget = saveBudgetToHistory({});
+                 alert(`Presupuesto guardado con ID: ${savedBudget.id}`);
+                 // Cerrar el modal después de guardar
+                 setShowBudgetModal(false);
+               }}
+             >
+               <Download className="mr-2 h-4 w-4" />
+               Guardar Presupuesto
+             </Button>
+             <Button 
                className="bg-blue-600 hover:bg-blue-700"
                onClick={() => {
+                 // Guardar el presupuesto en el historial
+                 const savedBudget = saveBudgetToHistory({});
+                 
                  // Crear una ventana nueva para imprimir/descargar solo el presupuesto
                  const printWindow = window.open('', '_blank');
                  if (printWindow) {
