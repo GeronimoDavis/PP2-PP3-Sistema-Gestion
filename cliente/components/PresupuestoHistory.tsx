@@ -275,13 +275,12 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
         </div>
 
         {/* Modal para ver detalles del presupuesto */}
-        <Dialog open={!!selectedPresupuesto} onOpenChange={() => setSelectedPresupuesto(null)}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Presupuesto #{selectedPresupuesto?.id}</DialogTitle>
-            </DialogHeader>
-
-            {selectedPresupuesto && (
+        {selectedPresupuesto && (
+          <Dialog open={true} onOpenChange={() => setSelectedPresupuesto(null)}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Presupuesto #{selectedPresupuesto.id}</DialogTitle>
+              </DialogHeader>
               <div className="space-y-6">
                 {/* Información del Cliente */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
@@ -452,7 +451,6 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
                   </div>
                 </div>
               </div>
-            )}
 
             <DialogFooter className="flex gap-2">
               <Button 
@@ -471,6 +469,7 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </CardContent>
     </Card>
   );
