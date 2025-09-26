@@ -10,7 +10,7 @@ create table if not EXISTS person (
 	email varchar(30) not null,
 	phone varchar(15) not null,
 	notes tinytext,
-	address varchar(20) not null,
+	address varchar(50) not null,
 	provider bool not null,
 	tax_type enum("R.I",
 	"Exento",
@@ -24,9 +24,10 @@ create table if not EXISTS person (
 
 create TABLE users (
 	user_id int primary key auto_increment unique,
-	username varchar(20) not null unique,
+	username varchar(50) not null unique,
+	name varchar(50) not null unique,
 	password varchar(255) not null,
-	role enum("Administrador", "Contador") not null,
+	role enum("Administrador", "Empleado") not null,
 	active BOOLEAN DEFAULT TRUE
 	);
 

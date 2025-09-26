@@ -21,6 +21,7 @@ SELECT
     t.date,
     t.tracking_number,
     t.tax_type,
+    t.has_tax,
     
     -- Cliente
     p.person_id,
@@ -42,19 +43,48 @@ SELECT
     -- Descuentos (restan) (calculado por separado para evitar duplicación)
     COALESCE(extras_totals.total_descuentos, 0) AS total_descuentos,
     
-    -- Total a pagar (items + extras - descuentos)
+    -- Subtotal (items + extras - descuentos) - SIN IVA
     COALESCE(items_totals.total_items, 0) +
     COALESCE(extras_totals.total_extras, 0) -
-    COALESCE(extras_totals.total_descuentos, 0) AS total_a_pagar,
+    COALESCE(extras_totals.total_descuentos, 0) AS subtotal,
+    
+    -- IVA (21% del subtotal si has_tax = TRUE)
+    CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(items_totals.total_items, 0) + 
+             COALESCE(extras_totals.total_extras, 0) - 
+             COALESCE(extras_totals.total_descuentos, 0)) * 0.21
+        ELSE 0 
+    END AS iva,
+    
+    -- Total a pagar (subtotal + IVA)
+    CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(items_totals.total_items, 0) + 
+             COALESCE(extras_totals.total_extras, 0) - 
+             COALESCE(extras_totals.total_descuentos, 0)) * 1.21
+        ELSE 
+            COALESCE(items_totals.total_items, 0) + 
+            COALESCE(extras_totals.total_extras, 0) - 
+            COALESCE(extras_totals.total_descuentos, 0)
+    END AS total_a_pagar,
     
     -- Pagos realizados (calculado por separado para evitar duplicación)
     COALESCE(payments_totals.total_pagado, 0) AS total_pagado,
     
-    -- Saldo restante
-    COALESCE(items_totals.total_items, 0) +
-    COALESCE(extras_totals.total_extras, 0) -
-    COALESCE(extras_totals.total_descuentos, 0) -
-    COALESCE(payments_totals.total_pagado, 0) AS saldo_restante
+    -- Saldo restante (total_a_pagar - total_pagado)
+    CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(items_totals.total_items, 0) + 
+             COALESCE(extras_totals.total_extras, 0) - 
+             COALESCE(extras_totals.total_descuentos, 0)) * 1.21 - 
+            COALESCE(payments_totals.total_pagado, 0)
+        ELSE 
+            COALESCE(items_totals.total_items, 0) + 
+            COALESCE(extras_totals.total_extras, 0) - 
+            COALESCE(extras_totals.total_descuentos, 0) - 
+            COALESCE(payments_totals.total_pagado, 0)
+    END AS saldo_restante
     
 FROM transaction t
 LEFT JOIN person p ON t.person_id = p.person_id
@@ -101,6 +131,7 @@ SELECT
     t.date,
     t.tracking_number,
     t.tax_type,
+    t.has_tax,
     
     -- Proveedor
     p.person_id,
@@ -121,20 +152,49 @@ SELECT
     
     -- Descuentos (restan) (calculado por separado para evitar duplicación)
     COALESCE(extras_totals.total_descuentos, 0) AS total_descuentos,
-    
-    -- Total a pagar (items + extras - descuentos)
+
+    -- Subtotal (items + extras - descuentos) - SIN IVA
     COALESCE(items_totals.total_items, 0) +
     COALESCE(extras_totals.total_extras, 0) -
-    COALESCE(extras_totals.total_descuentos, 0) AS total_a_pagar,
+    COALESCE(extras_totals.total_descuentos, 0) AS subtotal,
+    
+    -- IVA (21% del subtotal si has_tax = TRUE)
+    CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(items_totals.total_items, 0) + 
+             COALESCE(extras_totals.total_extras, 0) - 
+             COALESCE(extras_totals.total_descuentos, 0)) * 0.21
+        ELSE 0 
+    END AS iva,
+
+    -- Total a pagar (subtotal + IVA)
+    CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(items_totals.total_items, 0) + 
+             COALESCE(extras_totals.total_extras, 0) - 
+             COALESCE(extras_totals.total_descuentos, 0)) * 1.21
+        ELSE 
+            COALESCE(items_totals.total_items, 0) + 
+            COALESCE(extras_totals.total_extras, 0) - 
+            COALESCE(extras_totals.total_descuentos, 0)
+    END AS total_a_pagar,
     
     -- Pagos realizados (calculado por separado para evitar duplicación)
     COALESCE(payments_totals.total_pagado, 0) AS total_pagado,
     
-    -- Saldo restante
-    COALESCE(items_totals.total_items, 0) +
-    COALESCE(extras_totals.total_extras, 0) -
-    COALESCE(extras_totals.total_descuentos, 0) -
-    COALESCE(payments_totals.total_pagado, 0) AS saldo_restante
+    -- Saldo restante (total_a_pagar - total_pagado)
+     CASE 
+        WHEN t.has_tax = TRUE THEN 
+            (COALESCE(items_totals.total_items, 0) + 
+             COALESCE(extras_totals.total_extras, 0) - 
+             COALESCE(extras_totals.total_descuentos, 0)) * 1.21 - 
+            COALESCE(payments_totals.total_pagado, 0)
+        ELSE 
+            COALESCE(items_totals.total_items, 0) + 
+            COALESCE(extras_totals.total_extras, 0) - 
+            COALESCE(extras_totals.total_descuentos, 0) - 
+            COALESCE(payments_totals.total_pagado, 0)
+    END AS saldo_restante
     
 FROM transaction t
 LEFT JOIN person p ON t.person_id = p.person_id
@@ -178,14 +238,16 @@ WHERE t.is_sale = FALSE;
 -- VERIFICACIÓN DE LA CORRECCIÓN
 -- =============================================
 
--- Consulta para verificar que los totales ahora son correctos
+-- Consulta para verificar que los totales ahora son correctos en ventas
 -- Esta consulta debe mostrar que los totales ya no se duplican
 SELECT 
-    'VERIFICACIÓN DE CORRECCIÓN' AS titulo,
+    'VERIFICACIÓN DE CORRECCIÓN VENTAS' AS titulo,
     transaction_id,
     total_items,
     total_extras,
     total_descuentos,
+    subtotal,
+    iva,
     total_a_pagar,
     total_pagado,
     saldo_restante,
@@ -199,5 +261,28 @@ FROM view_ventas_detalladas
 ORDER BY transaction_id DESC
 LIMIT 10;
 
+-- Consulta para verificar que los totales ahora son correctos en compras
+SELECT 
+    'VERIFICACIÓN DE CORRECCIÓN COMPRAS' AS titulo,
+    transaction_id,
+    total_items,
+    total_extras,
+    total_descuentos,
+    subtotal,
+    iva,
+    total_a_pagar,
+    total_pagado,
+    saldo_restante,
+    CASE 
+        WHEN total_pagado = 0 THEN 'Sin pagos'
+        WHEN total_pagado < total_a_pagar THEN 'Pago parcial'
+        WHEN total_pagado = total_a_pagar THEN 'Pagado completo'
+        WHEN total_pagado > total_a_pagar THEN 'Sobrepago'
+    END AS estado_pago
+FROM view_compras_detalladas
+ORDER BY transaction_id DESC
+LIMIT 10;
+
+
 -- Mensaje de confirmación
-SELECT 'Vistas actualizadas correctamente. El problema de duplicación de pagos ha sido resuelto.' AS mensaje;
+SELECT 'Vistas actualizadas correctamente. El problema de duplicación de pagos ha sido resuelto y se ha añadido la lógica de impuestos a ambas vistas.' AS mensaje;
