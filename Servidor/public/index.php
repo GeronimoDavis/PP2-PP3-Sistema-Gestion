@@ -14,15 +14,15 @@ $app = AppFactory::create();
 $app->addBodyParsingMiddleware();
 $app->add(new CorsMiddleware());
 
-require __DIR__ . '/../src/routes/personRoutes.php';
-require __DIR__ . '/../src/routes/categoryRoutes.php';
-require __DIR__ . '/../src/routes/productRoute.php';
-require __DIR__ . '/../src/routes/transportServiceRoute.php';
-require __DIR__ . '/../src/routes/itemRoute.php';
-require __DIR__ . '/../src/routes/transactionRoutes.php';
-require __DIR__ . '/../src/routes/extrasRoute.php';
-require __DIR__ . '/../src/routes/paymentsRoute.php';
-require __DIR__ . '/../src/routes/userRoutes.php';
+require __DIR__ . '/../src/routes/PersonRoutes.php';
+require __DIR__ . '/../src/routes/CategoryRoutes.php';
+require __DIR__ . '/../src/routes/ProductRoute.php';
+require __DIR__ . '/../src/routes/TransportServiceRoute.php';
+require __DIR__ . '/../src/routes/ItemRoute.php';
+require __DIR__ . '/../src/routes/TransactionRoutes.php';
+require __DIR__ . '/../src/routes/ExtrasRoute.php';
+require __DIR__ . '/../src/routes/PaymentsRoute.php';
+require __DIR__ . '/../src/routes/UserRoutes.php';
 require __DIR__ . '/../src/routes/DashboardRoutes.php';
 require __DIR__ . '/../src/routes/CSVRoutes.php';
 

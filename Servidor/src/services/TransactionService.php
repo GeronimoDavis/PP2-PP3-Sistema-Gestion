@@ -95,13 +95,13 @@ class TransactionService{
             $stmt = $this->pdo->prepare("INSERT INTO transaction (date, is_sale, person_id, transport_id, tracking_number, tax_type, has_tax, is_budget) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $transaction->date,
-                $transaction->is_sale,
+                $transaction->is_sale ? 1 : 0,
                 $transaction->person_id,
                 $transaction->transport_id,
                 $transaction->tracking_number,
                 $transaction->tax_type,
-                $transaction->has_tax,
-                $transaction->is_budget ?? false
+                $transaction->has_tax ? 1 : 0,
+                $transaction->is_budget ? 1 : 0
             ]);
 
             $transaction->transaction_id = $this->pdo->lastInsertId();
@@ -116,13 +116,13 @@ class TransactionService{
             $stmt = $this->pdo->prepare("UPDATE transaction SET date = ?, is_sale = ?, person_id = ?, transport_id = ?, tracking_number = ?, tax_type = ?, has_tax = ?, is_budget = ? WHERE transaction_id = ?");
             $stmt->execute([
                 $transaction->date,
-                $transaction->is_sale,
+                $transaction->is_sale ? 1 : 0,
                 $transaction->person_id,
                 $transaction->transport_id,
                 $transaction->tracking_number,
                 $transaction->tax_type,
-                $transaction->has_tax,
-                $transaction->is_budget ?? false,
+                $transaction->has_tax ? 1 : 0,
+                $transaction->is_budget ? 1 : 0,
                 $transaction->transaction_id
             ]);
 

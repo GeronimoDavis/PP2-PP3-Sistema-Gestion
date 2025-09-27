@@ -1697,7 +1697,7 @@ export default function VentasPage() {
                   <Input
                     type="number"
                     placeholder="0.00"
-                    value={paymentAmount.toFixed(2) || ""}
+                    value={paymentAmount > 0 ? paymentAmount.toString() : ""}
                     onChange={(e) =>
                       setPaymentAmount(parseFloat(e.target.value) || 0)
                     }
