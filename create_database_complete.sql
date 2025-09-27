@@ -1,20 +1,114 @@
 -- =============================================
--- SCRIPT PARA CORREGIR DUPLICACIÓN DE PAGOS EN VISTAS
--- =============================================
---
--- PROBLEMA IDENTIFICADO:
--- Las vistas view_ventas_detalladas y view_compras_detalladas tenían un problema
--- donde los LEFT JOINs con la tabla payments causaban que los totales de items
--- y extras se multiplicaran por el número de pagos de cada transacción.
---
--- SOLUCIÓN:
--- Usar subconsultas para calcular los totales por separado, evitando la duplicación
--- causada por los JOINs múltiples.
---
--- FECHA: $(date)
+-- SCRIPT COMPLETO PARA CREAR BASE DE DATOS
+-- Incluye todas las modificaciones para presupuestos
 -- =============================================
 
--- Actualizar vista de ventas detalladas
+CREATE DATABASE IF NOT EXISTS stockRepuestos;
+
+USE stockRepuestos;
+
+-- Tabla de personas
+CREATE TABLE IF NOT EXISTS person (
+	person_id INT AUTO_INCREMENT NOT NULL UNIQUE, 
+	tax_id VARCHAR(11) NOT NULL, 
+	company_name VARCHAR(50) NOT NULL,
+	name VARCHAR(20),
+	email VARCHAR(30) NOT NULL,
+	phone VARCHAR(15) NOT NULL,
+	notes TINYTEXT,
+	address VARCHAR(50) NOT NULL,
+	provider BOOL NOT NULL,
+	tax_type ENUM("R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"),
+	active BOOLEAN DEFAULT TRUE,
+	PRIMARY KEY(person_id)
+);
+
+-- Tabla de usuarios
+CREATE TABLE users (
+	user_id INT PRIMARY KEY AUTO_INCREMENT UNIQUE,
+	username VARCHAR(50) NOT NULL UNIQUE,
+	name VARCHAR(50) NOT NULL UNIQUE,
+	password VARCHAR(255) NOT NULL,
+	role ENUM("Administrador", "Empleado") NOT NULL,
+	active BOOLEAN DEFAULT TRUE
+);
+
+-- Tabla de categorías
+CREATE TABLE IF NOT EXISTS category(
+	category_id INT PRIMARY KEY AUTO_INCREMENT UNIQUE,
+	name VARCHAR(30),
+	active BOOLEAN DEFAULT TRUE
+);
+
+-- Tabla de productos
+CREATE TABLE IF NOT EXISTS product(
+	product_id INT PRIMARY KEY AUTO_INCREMENT UNIQUE,
+	name VARCHAR(50),
+	code VARCHAR(20) NOT NULL UNIQUE,
+	stock MEDIUMINT,
+	sell_price FLOAT,
+	purchase_price FLOAT,
+	category_id INT,
+	active BOOLEAN DEFAULT TRUE,
+	FOREIGN KEY(category_id) REFERENCES category(category_id)
+);
+
+-- Tabla de empresas de transporte
+CREATE TABLE transport_companies(
+	company_id INT PRIMARY KEY AUTO_INCREMENT UNIQUE,
+	name VARCHAR(30),
+	url VARCHAR(40),
+	active BOOLEAN DEFAULT TRUE
+);
+
+-- Tabla de transacciones (CON CAMPO is_budget INCLUIDO)
+CREATE TABLE transaction(
+	transaction_id INT PRIMARY KEY AUTO_INCREMENT UNIQUE,
+	date DATE,
+	is_sale BOOL,
+	person_id INT,
+	transport_id INT NULL,	 
+	tracking_number VARCHAR(20),
+	tax_type ENUM("R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"),
+	has_tax BOOLEAN DEFAULT TRUE,
+	is_budget BOOLEAN DEFAULT FALSE,
+	FOREIGN KEY(person_id) REFERENCES person(person_id),
+	FOREIGN KEY(transport_id) REFERENCES transport_companies(company_id)	
+);
+
+-- Tabla de items
+CREATE TABLE items(
+	item_id INT PRIMARY KEY AUTO_INCREMENT,
+	transaction_id INT,
+	product_id INT,
+	quantity MEDIUMINT,
+	price FLOAT,
+	FOREIGN KEY(transaction_id) REFERENCES transaction(transaction_id),
+	FOREIGN KEY(product_id) REFERENCES product(product_id)
+);
+
+-- Tabla de extras
+CREATE TABLE extras(
+	extra_id INT PRIMARY KEY AUTO_INCREMENT,
+	transaction_id INT NOT NULL,
+	price FLOAT,
+	note VARCHAR(50),
+	type ENUM("Mano de obra", "Envio", "Descuento"),
+	FOREIGN KEY(transaction_id) REFERENCES transaction(transaction_id)
+);
+
+-- Tabla de pagos
+CREATE TABLE payments(
+	payment_id INT PRIMARY KEY AUTO_INCREMENT,
+	transaction_id INT,
+	amount MEDIUMINT,
+	note VARCHAR(255) DEFAULT '',
+	type ENUM('Efectivo', 'Transferencia', 'Tarjeta', 'Cheque', 'Credito30', 'Credito60', 'Credito90', 'Otro'),
+	date DATETIME,
+	FOREIGN KEY(transaction_id) REFERENCES transaction(transaction_id)
+);
+
+-- Vista de ventas detalladas (CON CAMPO is_budget INCLUIDO)
 CREATE OR REPLACE VIEW view_ventas_detalladas AS
 SELECT
     t.transaction_id,
@@ -126,7 +220,7 @@ LEFT JOIN (
 WHERE t.is_sale = TRUE
 ORDER BY t.date DESC;
 
--- Actualizar vista de compras detalladas
+-- Vista de compras detalladas (CON CAMPO is_budget INCLUIDO)
 CREATE OR REPLACE VIEW view_compras_detalladas AS
 SELECT
     t.transaction_id,

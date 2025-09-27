@@ -65,7 +65,7 @@ import { createPayment, updatePayment, deletePayment } from "@/api/paymentsApi";
 import { getPersons } from "@/api/personsApi";
 import { createItem } from "@/api/itemsApi";
 import { createExtra } from "@/api/extrasApi";
-import { getSalesHistory, getSaleDetails } from "@/api/transactionsApi";
+import { getSalesHistory, getSaleDetails, getBudgetsHistory, getBudgetDetails } from "@/api/transactionsApi";
 import { format } from "date-fns";
 
 // Interfaces TypeScript para los tipos de datos
@@ -417,41 +417,58 @@ export default function VentasPage() {
 
   // Estados para el historial de presupuestos
   const [savedBudgets, setSavedBudgets] = useState<any[]>([]);
+  const [budgetsLoading, setBudgetsLoading] = useState(false);
+  const [budgetsError, setBudgetsError] = useState("");
+
+  // Función para cargar historial de presupuestos
+  const loadBudgetsHistory = async () => {
+    try {
+      setBudgetsLoading(true);
+      setBudgetsError("");
+      
+      const response = await getBudgetsHistory({});
+      setSavedBudgets(response.budgets || []);
+    } catch (error: any) {
+      console.error("Error al cargar historial de presupuestos:", error.message);
+      setBudgetsError("Error al cargar el historial de presupuestos");
+    } finally {
+      setBudgetsLoading(false);
+    }
+  };
 
   // Función para guardar presupuesto en el historial
-  const saveBudgetToHistory = (budgetData: any) => {
-    const newBudget = {
-      id: `PRES-${Date.now()}`,
-      fecha: new Date().toISOString().split('T')[0],
-      cliente: selectedClient ? 
-        clients.find(c => c.person_id.toString() === selectedClient)?.name || "Cliente no encontrado" 
-        : "Sin cliente",
-      total: (total + totalExtras) * 1.21, // Total con IVA
-      items: cartItems.map(item => ({
-        producto: item.nombre,
-        cantidad: item.cantidad,
-        precio: item.precio,
-        subtotal: item.total
-      })),
-      extras: saleExtras.map(extra => ({
-        tipo: extra.type,
-        descripcion: extra.note,
-        monto: extra.price
-      })),
-      estado: 'pendiente',
-      subtotal: total,
-      totalExtras: totalExtras,
-      iva: (total + totalExtras) * 0.21,
-      clienteInfo: selectedClient ? clients.find(c => c.person_id.toString() === selectedClient) : null
-    };
+  const saveBudgetToHistory = async (budgetData: any) => {
+    try {
+      // Crear la transacción como presupuesto
+      const transactionData = {
+        person_id: selectedClient || null,
+        date: new Date().toISOString().split('T')[0],
+        is_sale: true, // Es una venta/presupuesto
+        tax_type: 'Consumidor Final', // Usar un tipo válido
+        is_budget: true, // Campo adicional para distinguir presupuestos
+        items: cartItems.map(item => ({
+          product_id: item.id,
+          quantity: item.cantidad,
+          price: item.precio
+        })),
+        extras: saleExtras.map(extra => ({
+          type: extra.type,
+          price: extra.price,
+          note: extra.note
+        }))
+      };
 
-    // Guardar en el estado local
-    setSavedBudgets(prev => [newBudget, ...prev]);
-
-    // TODO: Aquí se podría implementar la llamada a la API para guardar en el servidor
-    console.log('Presupuesto guardado:', newBudget);
-    
-    return newBudget;
+      // Llamar a la API para crear la transacción
+      const response = await createTransaction(transactionData);
+      
+      // Recargar el historial de presupuestos
+      loadBudgetsHistory();
+      
+      return response;
+    } catch (error) {
+      console.error('Error al guardar presupuesto:', error);
+      throw error;
+    }
   };
 
   const requestSalesSort = (key: keyof SalesHistoryItem | "status") => {
@@ -1140,6 +1157,13 @@ export default function VentasPage() {
   useEffect(() => {
     if (salesHistory.length === 0 && !loading && token) {
       loadSalesHistory();
+    }
+  }, [loading, token, user]);
+
+  // Cargar historial de presupuestos cuando se abre el tab
+  useEffect(() => {
+    if (savedBudgets.length === 0 && !loading && token) {
+      loadBudgetsHistory();
     }
   }, [loading, token, user]);
 
@@ -2159,7 +2183,7 @@ export default function VentasPage() {
           </Card>
         </TabsContent>
         <TabsContent value="presupuestos">
-          <PresupuestoHistory presupuestos={savedBudgets} />
+          <PresupuestoHistory />
         </TabsContent>
       </Tabs>
 
@@ -3140,12 +3164,17 @@ export default function VentasPage() {
              <Button 
                variant="outline"
                className="border-green-200 text-green-700 hover:bg-green-50"
-               onClick={() => {
-                 // Guardar el presupuesto en el historial
-                 const savedBudget = saveBudgetToHistory({});
-                 alert(`Presupuesto guardado con ID: ${savedBudget.id}`);
-                 // Cerrar el modal después de guardar
-                 setShowBudgetModal(false);
+               onClick={async () => {
+                 try {
+                   // Guardar el presupuesto en el historial
+                   const savedBudget = await saveBudgetToHistory({});
+                   alert(`Presupuesto guardado con ID: ${savedBudget.transaction_id || 'N/A'}`);
+                   // Cerrar el modal después de guardar
+                   setShowBudgetModal(false);
+                 } catch (error) {
+                   alert('Error al guardar el presupuesto');
+                   console.error('Error:', error);
+                 }
                }}
              >
                <Download className="mr-2 h-4 w-4" />
@@ -3153,11 +3182,12 @@ export default function VentasPage() {
              </Button>
              <Button 
                className="bg-blue-600 hover:bg-blue-700"
-               onClick={() => {
-                 // Guardar el presupuesto en el historial
-                 const savedBudget = saveBudgetToHistory({});
-                 
-                 // Crear una ventana nueva para imprimir/descargar solo el presupuesto
+               onClick={async () => {
+                 try {
+                   // Guardar el presupuesto en el historial
+                   await saveBudgetToHistory({});
+                   
+                   // Crear una ventana nueva para imprimir/descargar solo el presupuesto
                  const printWindow = window.open('', '_blank');
                  if (printWindow) {
                    printWindow.document.write(`
@@ -3410,6 +3440,10 @@ export default function VentasPage() {
                      printWindow.document.close();
                      printWindow.print();
                      printWindow.close();
+                 }
+                 } catch (error) {
+                   alert('Error al guardar el presupuesto');
+                   console.error('Error:', error);
                  }
                }}
              >

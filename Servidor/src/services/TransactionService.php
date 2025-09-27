@@ -92,7 +92,7 @@ class TransactionService{
 
     public function create(Transaction $transaction){
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO transaction (date, is_sale, person_id, transport_id, tracking_number, tax_type, has_tax) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO transaction (date, is_sale, person_id, transport_id, tracking_number, tax_type, has_tax, is_budget) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $transaction->date,
                 $transaction->is_sale,
@@ -100,7 +100,8 @@ class TransactionService{
                 $transaction->transport_id,
                 $transaction->tracking_number,
                 $transaction->tax_type,
-                $transaction->has_tax
+                $transaction->has_tax,
+                $transaction->is_budget ?? false
             ]);
 
             $transaction->transaction_id = $this->pdo->lastInsertId();
@@ -112,7 +113,7 @@ class TransactionService{
 
     public function update(Transaction $transaction){
         try {
-            $stmt = $this->pdo->prepare("UPDATE transaction SET date = ?, is_sale = ?, person_id = ?, transport_id = ?, tracking_number = ?, tax_type = ?, has_tax = ? WHERE transaction_id = ?");
+            $stmt = $this->pdo->prepare("UPDATE transaction SET date = ?, is_sale = ?, person_id = ?, transport_id = ?, tracking_number = ?, tax_type = ?, has_tax = ?, is_budget = ? WHERE transaction_id = ?");
             $stmt->execute([
                 $transaction->date,
                 $transaction->is_sale,
@@ -121,6 +122,7 @@ class TransactionService{
                 $transaction->tracking_number,
                 $transaction->tax_type,
                 $transaction->has_tax,
+                $transaction->is_budget ?? false,
                 $transaction->transaction_id
             ]);
 
@@ -193,6 +195,12 @@ class TransactionService{
             if (isset($filters['transaction_id'])) {
                 $query .= " AND transaction_id = ?";
                 $params[] = $filters['transaction_id'];
+            }
+
+            // Filtro por is_budget
+            if (isset($filters['is_budget'])) {
+                $query .= " AND is_budget = ?";
+                $params[] = $filters['is_budget'] ? 1 : 0;
             }
 
             // Ordenamiento
@@ -298,6 +306,12 @@ class TransactionService{
             if (isset($filters['transaction_id'])) {
                 $query .= " AND transaction_id = ?";
                 $params[] = $filters['transaction_id'];
+            }
+
+            // Filtro por is_budget
+            if (isset($filters['is_budget'])) {
+                $query .= " AND is_budget = ?";
+                $params[] = $filters['is_budget'] ? 1 : 0;
             }
 
             $stmt = $this->pdo->prepare($query);

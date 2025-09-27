@@ -1,3 +1,7 @@
+-- =============================================
+-- VISTA DE COMPRAS DETALLADAS
+-- =============================================
+
 CREATE OR REPLACE VIEW view_compras_detalladas AS
 SELECT
     t.transaction_id,
@@ -5,6 +9,7 @@ SELECT
     t.tracking_number,
     t.tax_type,
     t.has_tax,
+    t.is_budget,
     
     -- Proveedor
     p.person_id,
@@ -39,7 +44,7 @@ SELECT
              COALESCE(extras_totals.total_descuentos, 0)) * 0.21
         ELSE 0 
     END AS iva,
-    
+
     -- Total a pagar (subtotal + IVA)
     CASE 
         WHEN t.has_tax = TRUE THEN 
@@ -56,13 +61,13 @@ SELECT
     COALESCE(payments_totals.total_pagado, 0) AS total_pagado,
     
     -- Saldo restante (total_a_pagar - total_pagado)
-    CASE 
+     CASE 
         WHEN t.has_tax = TRUE THEN 
             (COALESCE(items_totals.total_items, 0) + 
              COALESCE(extras_totals.total_extras, 0) - 
              COALESCE(extras_totals.total_descuentos, 0)) * 1.21 - 
             COALESCE(payments_totals.total_pagado, 0)
-        ELSE 
+        ELSE
             COALESCE(items_totals.total_items, 0) + 
             COALESCE(extras_totals.total_extras, 0) - 
             COALESCE(extras_totals.total_descuentos, 0) - 
@@ -105,4 +110,5 @@ LEFT JOIN (
     GROUP BY transaction_id
 ) payments_totals ON t.transaction_id = payments_totals.transaction_id
 
-WHERE t.is_sale = FALSE;
+WHERE t.is_sale = FALSE
+ORDER BY t.date DESC;

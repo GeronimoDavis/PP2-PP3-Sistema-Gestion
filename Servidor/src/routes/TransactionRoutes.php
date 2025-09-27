@@ -10,6 +10,8 @@ $app->group("/transaction", function(RouteCollectorProxy $group) use ($transacti
     $group->get("/show/{id}", [$transactionController, "getTransactionById"]);
     $group->get("/sales", [$transactionController, "getSalesHistory"]);
     $group->get("/sales/{id}", [$transactionController, "getSaleDetails"]);
+    $group->get("/budgets", [$transactionController, "getBudgetsHistory"]);
+    $group->get("/budgets/{id}", [$transactionController, "getBudgetDetails"]);
     $group->get("/purchases", [$transactionController, "getPurchasesHistory"]);
     $group->get("/purchases/{id}", [$transactionController, "getPurchaseDetails"]);
     $group->post("/create", [$transactionController, "createTransaction"]);

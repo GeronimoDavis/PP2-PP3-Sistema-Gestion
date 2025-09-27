@@ -71,6 +71,7 @@ create table transaction(
 	"Consumidor Final"
 	),
 	has_tax BOOLEAN DEFAULT TRUE,
+	is_budget BOOLEAN DEFAULT FALSE,
 	foreign key(person_id) references person(person_id),
 	foreign key(transport_id) references transport_companies(company_id)	
 );

@@ -72,6 +72,32 @@ const getPurchaseDetails = async (id) => {
   }
 };
 
+const getBudgetsHistory = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+        params.append(key, filters[key]);
+      }
+    });
+    
+    const url = `/transaction/budgets?${params.toString()}`;
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const getBudgetDetails = async (id) => {
+  try {
+    const response = await api.get(`/transaction/budgets/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 const createTransaction = async (transactionData) => {
   try {
     const response = await api.post("/transaction/create", transactionData);
@@ -116,6 +142,8 @@ export {
   getTransactionById,
   getSalesHistory,
   getSaleDetails,
+  getBudgetsHistory,
+  getBudgetDetails,
   getPurchasesHistory,
   getPurchaseDetails,
   createTransaction,

@@ -13,13 +13,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CalendarIcon, Search, Filter, Download, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getBudgetsHistory, getBudgetDetails } from '@/api/transactionsApi';
 
 interface Presupuesto {
-  id: string;
-  fecha: string;
-  cliente: string;
-  total: number;
-  items: Array<{
+  transaction_id?: number;
+  id?: string;
+  date?: string;
+  fecha?: string;
+  client_name?: string;
+  cliente?: string;
+  total_transaction?: number;
+  total?: number;
+  status?: string;
+  estado?: 'pendiente' | 'aprobado' | 'rechazado' | 'convertido';
+  items?: Array<{
     producto: string;
     cantidad: number;
     precio: number;
@@ -31,7 +38,6 @@ interface Presupuesto {
     descripcion: string;
     monto: number;
   }>;
-  estado: 'pendiente' | 'aprobado' | 'rechazado' | 'convertido';
   subtotal?: number;
   totalExtras?: number;
   iva?: number;
@@ -42,13 +48,9 @@ interface Presupuesto {
   };
 }
 
-interface PresupuestoHistoryProps {
-  presupuestos?: Presupuesto[];
-}
-
-const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: presupuestosProp = [] }) => {
+const PresupuestoHistory: React.FC = () => {
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -56,21 +58,37 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<Presupuesto | null>(null);
 
-  // Cargar presupuestos cuando cambian las props
+  // Cargar presupuestos al montar el componente
   useEffect(() => {
-    setPresupuestos(presupuestosProp);
-  }, [presupuestosProp]);
+    loadPresupuestos();
+  }, []);
 
   const loadPresupuestos = async () => {
-    // Esta función se mantiene para refrescar si fuera necesario
-    setPresupuestos(presupuestosProp);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await getBudgetsHistory({});
+      setPresupuestos(response.budgets || []);
+    } catch (error) {
+      console.error('Error al cargar presupuestos:', error);
+      setError('Error al cargar el historial de presupuestos');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtrar presupuestos
   const filteredPresupuestos = presupuestos.filter(presupuesto => {
-    const matchesSearch = presupuesto.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         presupuesto.id.includes(searchTerm);
-    const matchesStatus = statusFilter === 'todos' || presupuesto.estado === statusFilter;
+    // Verificar que el presupuesto existe y tiene las propiedades necesarias
+    if (!presupuesto) return false;
+    
+    const cliente = presupuesto.client_name || presupuesto.cliente || '';
+    const id = presupuesto.transaction_id || presupuesto.id || '';
+    
+    const matchesSearch = cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         id.toString().includes(searchTerm);
+    const matchesStatus = statusFilter === 'todos' || (presupuesto.status || presupuesto.estado) === statusFilter;
     
     // TODO: Implementar filtro por fecha
     const matchesDate = true; // Por ahora siempre true
@@ -222,32 +240,32 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
               <p className="text-gray-500">No se encontraron presupuestos</p>
             </div>
           ) : (
-            filteredPresupuestos.map((presupuesto) => (
+            filteredPresupuestos.map((presupuesto, index) => (
               <div
-                key={presupuesto.id}
+                key={presupuesto.transaction_id || presupuesto.id || `presupuesto-${index}`}
                 className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
-                      <h3 className="font-semibold">Presupuesto #{presupuesto.id}</h3>
-                      <Badge variant={getStatusBadgeVariant(presupuesto.estado)}>
-                        {presupuesto.estado.charAt(0).toUpperCase() + presupuesto.estado.slice(1)}
+                      <h3 className="font-semibold">Presupuesto #{presupuesto.transaction_id || presupuesto.id}</h3>
+                      <Badge variant={getStatusBadgeVariant(presupuesto.status || presupuesto.estado || 'pendiente')}>
+                        {(presupuesto.status || presupuesto.estado || 'pendiente').charAt(0).toUpperCase() + (presupuesto.status || presupuesto.estado || 'pendiente').slice(1)}
                       </Badge>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                       <div>
-                        <span className="font-medium">Cliente:</span> {presupuesto.cliente}
+                        <span className="font-medium">Cliente:</span> {presupuesto.client_name || presupuesto.cliente || 'Sin cliente'}
                       </div>
                       <div>
-                        <span className="font-medium">Fecha:</span> {format(new Date(presupuesto.fecha), "dd/MM/yyyy", { locale: es })}
+                        <span className="font-medium">Fecha:</span> {format(new Date(presupuesto.date || presupuesto.fecha || new Date()), "dd/MM/yyyy", { locale: es })}
                       </div>
                       <div>
-                        <span className="font-medium">Total:</span> {formatCurrency(presupuesto.total)}
+                        <span className="font-medium">Total:</span> {formatCurrency(presupuesto.total_transaction || presupuesto.total || 0)}
                       </div>
                     </div>
                     <div className="mt-2">
-                      <span className="font-medium">Items:</span> {presupuesto.items.length} producto(s)
+                      <span className="font-medium">Items:</span> {presupuesto.items?.length || 0} producto(s)
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -279,7 +297,7 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
           <Dialog open={true} onOpenChange={() => setSelectedPresupuesto(null)}>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Presupuesto #{selectedPresupuesto.id}</DialogTitle>
+                <DialogTitle>Presupuesto #{selectedPresupuesto.transaction_id || selectedPresupuesto.id}</DialogTitle>
               </DialogHeader>
               <div className="space-y-6">
                 {/* Información del Cliente */}
@@ -289,7 +307,7 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
                       Información del Cliente
                     </h3>
                     <p>
-                      <strong>Nombre:</strong> {selectedPresupuesto.cliente}
+                      <strong>Nombre:</strong> {selectedPresupuesto.client_name || selectedPresupuesto.cliente || 'Sin cliente'}
                     </p>
                     {selectedPresupuesto.clienteInfo && (
                       <>
@@ -310,12 +328,12 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
                       Información del Presupuesto
                     </h3>
                     <p>
-                      <strong>Fecha:</strong> {format(new Date(selectedPresupuesto.fecha), "dd/MM/yyyy", { locale: es })}
+                      <strong>Fecha:</strong> {format(new Date(selectedPresupuesto.date || selectedPresupuesto.fecha || new Date()), "dd/MM/yyyy", { locale: es })}
                     </p>
                     <div className="flex items-center gap-2 mb-2">
                       <strong>Estado:</strong>
-                      <Badge variant={getStatusBadgeVariant(selectedPresupuesto.estado)}>
-                        {selectedPresupuesto.estado.charAt(0).toUpperCase() + selectedPresupuesto.estado.slice(1)}
+                      <Badge variant={getStatusBadgeVariant(selectedPresupuesto.status || selectedPresupuesto.estado || 'pendiente')}>
+                        {(selectedPresupuesto.status || selectedPresupuesto.estado || 'pendiente').charAt(0).toUpperCase() + (selectedPresupuesto.status || selectedPresupuesto.estado || 'pendiente').slice(1)}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
@@ -347,8 +365,8 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedPresupuesto.items.map((item, index) => (
-                        <TableRow key={index}>
+                      {(selectedPresupuesto.items || []).map((item, index) => (
+                        <TableRow key={`item-${index}-${item.producto || 'unknown'}`}>
                           <TableCell className="font-medium">
                             {item.codigo || `ITEM-${index + 1}`}
                           </TableCell>
@@ -382,7 +400,7 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
                       </TableHeader>
                       <TableBody>
                         {selectedPresupuesto.extras.map((extra, index) => (
-                          <TableRow key={index}>
+                          <TableRow key={`extra-${index}-${extra.tipo || 'unknown'}`}>
                             <TableCell className="font-medium">
                               {extra.tipo}
                             </TableCell>
@@ -433,7 +451,7 @@ const PresupuestoHistory: React.FC<PresupuestoHistoryProps> = ({ presupuestos: p
                         {formatCurrency(selectedPresupuesto.iva || 0)}
                       </p>
                       <p className="text-lg font-bold">
-                        Total: {formatCurrency(selectedPresupuesto.total)}
+                        Total: {formatCurrency(selectedPresupuesto.total_transaction || selectedPresupuesto.total || 0)}
                       </p>
                     </div>
                     <div>

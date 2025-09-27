@@ -131,6 +131,7 @@ class TransactionController{
     public function getSalesHistory(Request $request, Response $response, $args){
         try{
             $filters = $request->getQueryParams();
+            $filters['is_budget'] = false; // Excluir presupuestos del historial de ventas
             
             $sales = $this->transactionService->getSalesWithDetails($filters);
             $total = $this->transactionService->getSalesCount($filters);
@@ -188,6 +189,47 @@ class TransactionController{
             return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Throwable $e) {
             $response->getBody()->write(json_encode(['error' => 'Error fetching purchase details: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+
+    public function getBudgetsHistory(Request $request, Response $response, $args){
+        try{
+            $filters = $request->getQueryParams();
+            
+            // Agregar filtro para solo presupuestos
+            $filters['is_budget'] = true;
+            
+            $budgets = $this->transactionService->getSalesWithDetails($filters);
+            $total = $this->transactionService->getSalesCount($filters);
+            
+            $response->getBody()->write(json_encode([
+                'budgets' => $budgets,
+                'total' => $total
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }catch(Throwable $e){
+            $response->getBody()->write(json_encode([
+                'error' => 'Error fetching budgets history: ' . $e->getMessage()
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
+
+    public function getBudgetDetails(Request $request, Response $response, $args){
+        try{
+            $id = $args['id'];
+            $budget = $this->transactionService->getSaleDetails($id);
+            
+            if (!$budget) {
+                $response->getBody()->write(json_encode(['error' => 'Budget not found with ID: ' . $id]));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+            }
+            
+            $response->getBody()->write(json_encode(['budget' => $budget]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        }catch(Throwable $e){
+            $response->getBody()->write(json_encode(['error' => 'Error fetching budget details: ' . $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
         }
     }
