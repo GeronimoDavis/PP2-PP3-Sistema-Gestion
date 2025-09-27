@@ -1698,10 +1698,14 @@ export default function VentasPage() {
                     type="number"
                     placeholder="0.00"
                     value={paymentAmount > 0 ? paymentAmount.toString() : ""}
-                    onChange={(e) =>
-                      setPaymentAmount(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => {
+                      const newAmount = parseFloat(e.target.value) || 0;
+                      const maxAmount = calculateTotalWithTax();
+                      // Limitar el monto al total máximo
+                      setPaymentAmount(Math.min(newAmount, maxAmount));
+                    }}
                     min="0"
+                    max={calculateTotalWithTax()}
                     step="0.01"
                   />
                 </div>
