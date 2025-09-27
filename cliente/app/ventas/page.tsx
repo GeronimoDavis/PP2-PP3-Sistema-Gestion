@@ -1494,12 +1494,11 @@ export default function VentasPage() {
                           <Input
                             type="number"
                             value={item.cantidad}
-                            onChange={(e) =>
-                              updateQuantity(
-                                item.id,
-                                Number.parseInt(e.target.value)
-                              )
-                            }
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const newQuantity = value === "" ? 1 : parseInt(value) || 1;
+                              updateQuantity(item.id, newQuantity);
+                            }}
                             min="1"
                             className="w-16 text-right h-8"
                           />
@@ -1697,12 +1696,27 @@ export default function VentasPage() {
                   <Input
                     type="number"
                     placeholder="0.00"
-                    value={paymentAmount > 0 ? paymentAmount.toString() : ""}
+                    value={!isNaN(paymentAmount) && paymentAmount > 0 ? paymentAmount.toString() : ""}
                     onChange={(e) => {
-                      const newAmount = parseFloat(e.target.value) || 0;
-                      const maxAmount = calculateTotalWithTax();
-                      // Limitar el monto al total máximo
-                      setPaymentAmount(Math.min(newAmount, maxAmount));
+                      const value = e.target.value;
+                      
+                      // Si el input está vacío, establecer 0 (no 1)
+                      if (value === "" || value === null || value === undefined) {
+                        setPaymentAmount(0);
+                        return;
+                      }
+                      
+                      const newAmount = parseFloat(value);
+                      
+                      // Verificar que sea un número válido y no NaN
+                      if (!isNaN(newAmount) && isFinite(newAmount)) {
+                        const maxAmount = calculateTotalWithTax();
+                        // Limitar el monto al total máximo
+                        setPaymentAmount(Math.min(newAmount, maxAmount));
+                      } else {
+                        // Si no es un número válido, establecer 0
+                        setPaymentAmount(0);
+                      }
                     }}
                     min="0"
                     max={calculateTotalWithTax()}
