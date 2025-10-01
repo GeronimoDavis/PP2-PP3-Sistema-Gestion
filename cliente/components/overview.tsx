@@ -9,7 +9,7 @@ import {
   Tooltip,
 } from "recharts";
 
-export function Overview({ data }) {
+export function Overview({ data }: { data: any }) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>

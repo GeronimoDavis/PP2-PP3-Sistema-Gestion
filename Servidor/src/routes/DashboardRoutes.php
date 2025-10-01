@@ -11,4 +11,5 @@ $app->group('/dashboard', function(RouteCollectorProxy $group) use ($dashboardCo
     $group->get('/recent-transactions[/{limit}]', [$dashboardController, 'getRecentTransactions']);
     $group->get('/withoutStock', [$dashboardController, 'getProductsWithoutStock']);
     $group->get('/sales-with-pending-balance', [$dashboardController, 'getVentasConSaldoPendiente']);
+    $group->get('/sales-summary', [$dashboardController, 'getSalesSummary']);
 })->add(new AuthMiddleware());
