@@ -616,6 +616,17 @@ export default function InventarioPage() {
 
   const totalPages = Math.ceil(products.length / itemsPerPage);
 
+  // Función para determinar el estado del stock basado en la cantidad
+  const getStockStatus = (stock: number) => {
+    if (stock === 0) {
+      return { text: "Sin Stock", color: "bg-red-500 text-white" };
+    } else if (stock <= 5) {
+      return { text: "Stock Bajo", color: "bg-yellow-500 text-white" };
+    } else {
+      return { text: "En Stock", color: "bg-green-500 text-white" };
+    }
+  };
+
   //este es el que se encarga de obtener los productos y las categorias
   useEffect(() => {
     //llamamo a la api para obtener todos los productos
@@ -1102,21 +1113,17 @@ export default function InventarioPage() {
                       {product.sell_price || "N/A"}
                     </TableCell>
                     <TableCell className="text-center">
-                      {product.active ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-green-500 text-white"
-                        >
-                          Activo
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="bg-red-500 text-white"
-                        >
-                          Inactivo
-                        </Badge>
-                      )}
+                      {(() => {
+                        const stockStatus = getStockStatus(product.stock);
+                        return (
+                          <Badge
+                            variant="outline"
+                            className={stockStatus.color}
+                          >
+                            {stockStatus.text}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-center">
                       <DropdownMenu>

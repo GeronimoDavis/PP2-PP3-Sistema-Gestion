@@ -80,14 +80,14 @@ const PresupuestoHistory: React.FC = () => {
   // Filtrar presupuestos
   const filteredPresupuestos = presupuestos
     .filter(presupuesto => {
-      // Verificar que el presupuesto existe y tiene las propiedades necesarias
-      if (!presupuesto) return false;
-      
-      const cliente = presupuesto.client_name || presupuesto.cliente || '';
-      const id = presupuesto.transaction_id || presupuesto.id || '';
-      
-      const matchesSearch = cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           id.toString().includes(searchTerm);
+    // Verificar que el presupuesto existe y tiene las propiedades necesarias
+    if (!presupuesto) return false;
+    
+    const cliente = presupuesto.client_name || presupuesto.cliente || '';
+    const id = presupuesto.transaction_id || presupuesto.id || '';
+    
+    const matchesSearch = cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         id.toString().includes(searchTerm);
       
       // Filtro por fecha
       let matchesDate = true;
@@ -113,7 +113,7 @@ const PresupuestoHistory: React.FC = () => {
       const idA = a.transaction_id || a.id || 0;
       const idB = b.transaction_id || b.id || 0;
       return idA - idB; // Ordenar por ID ascendente
-    });
+  });
 
   const getStatusBadgeVariant = (estado: string) => {
     switch (estado) {
