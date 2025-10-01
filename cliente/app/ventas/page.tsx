@@ -381,7 +381,7 @@ export default function VentasPage() {
     end_date: "",
     client_name: "",
     limit: 10 as number | undefined,
-    sort_by: "date",
+    sort_by: "transaction_id",
     sort_direction: "desc",
   });
 
@@ -852,7 +852,7 @@ export default function VentasPage() {
       end_date: "",
       client_name: "",
       limit: 10,
-      sort_by: "date",
+      sort_by: "transaction_id",
       sort_direction: "desc",
     });
     setCurrentPage(1);
@@ -2058,15 +2058,20 @@ export default function VentasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {salesHistory.map((sale) => {
+                      {salesHistory.map((sale, index) => {
                         const paymentStatus = getPaymentStatus(
                           sale.total_transaction,
                           sale.total_paid
                         );
+                        // Calcular el número de venta: la más reciente tiene el número más alto
+                        const saleNumber = totalSales - ((currentPage - 1) * itemsPerPage + index);
                         return (
                           <TableRow key={sale.transaction_id}>
                             <TableCell className="font-medium">
-                              #{sale.transaction_id}
+                              <div>
+                                <div className="font-semibold">Venta #{saleNumber}</div>
+                                <div className="text-xs text-gray-500">Transacción N°{sale.transaction_id}</div>
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div>

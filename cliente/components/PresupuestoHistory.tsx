@@ -593,7 +593,10 @@ const PresupuestoHistory: React.FC = () => {
               <p className="text-gray-500">No se encontraron presupuestos</p>
             </div>
           ) : (
-            filteredPresupuestos.map((presupuesto, index) => (
+            filteredPresupuestos.map((presupuesto, index) => {
+              // Calcular el número de presupuesto: el más reciente tiene el número más alto
+              const presupuestoNumber = filteredPresupuestos.length - index;
+              return (
               <div
                 key={presupuesto.transaction_id || presupuesto.id || `presupuesto-${index}`}
                 className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
@@ -602,7 +605,7 @@ const PresupuestoHistory: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
                       <div>
-                        <h3 className="font-semibold">Presupuesto #{index + 1}</h3>
+                        <h3 className="font-semibold">Presupuesto #{presupuestoNumber}</h3>
                         <p className="text-xs text-gray-500">Transacción N°{presupuesto.transaction_id || presupuesto.id}</p>
                       </div>
                     </div>
@@ -647,7 +650,8 @@ const PresupuestoHistory: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 
