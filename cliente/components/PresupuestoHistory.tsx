@@ -56,11 +56,20 @@ const PresupuestoHistory: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<Presupuesto | null>(null);
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Cargar presupuestos al montar el componente
   useEffect(() => {
     loadPresupuestos();
   }, []);
+
+  // Resetear página cuando cambien los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFrom, dateTo]);
 
   const loadPresupuestos = async () => {
     try {
@@ -110,10 +119,10 @@ const PresupuestoHistory: React.FC = () => {
       return matchesSearch && matchesDate;
     })
     .sort((a, b) => {
-      const idA = a.transaction_id || a.id || 0;
-      const idB = b.transaction_id || b.id || 0;
+      const idA = parseInt(String(a.transaction_id || a.id || 0));
+      const idB = parseInt(String(b.transaction_id || b.id || 0));
       return idA - idB; // Ordenar por ID ascendente
-  });
+    });
 
   const getStatusBadgeVariant = (estado: string) => {
     switch (estado) {
@@ -478,6 +487,130 @@ const PresupuestoHistory: React.FC = () => {
     }).format(amount);
   };
 
+  // Función para obtener los presupuestos paginados
+  const getPaginatedPresupuestos = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredPresupuestos.slice(startIndex, endIndex);
+  };
+
+  // Calcular el total de páginas
+  const totalPages = Math.ceil(filteredPresupuestos.length / itemsPerPage);
+
+  // Función para cambiar de página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Función para cambiar elementos por página
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset a la primera página
+  };
+
+  // Componente de paginación
+  const Pagination = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    return (
+      <div className="flex items-center justify-between px-2 py-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-700">
+            Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
+            {Math.min(currentPage * itemsPerPage, filteredPresupuestos.length)} de{" "}
+            {filteredPresupuestos.length} presupuestos
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+          >
+            Primera
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+
+          {pages.map((page) => (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => handlePageChange(page)}
+            >
+              {page}
+            </Button>
+          ))}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+          >
+            Última
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // Componente selector de elementos por página
+  const ItemsPerPageSelector = () => {
+    return (
+      <div className="flex items-center space-x-2">
+        <span className="text-sm text-gray-700">Mostrar:</span>
+        <Select
+          value={itemsPerPage.toString()}
+          onValueChange={(value) => {
+            handleItemsPerPageChange(parseInt(value));
+          }}
+        >
+          <SelectTrigger className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="5">5</SelectItem>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="20">20</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-gray-700">por página</span>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <Card>
@@ -588,14 +721,14 @@ const PresupuestoHistory: React.FC = () => {
 
         {/* Lista de presupuestos */}
         <div className="space-y-4">
-          {filteredPresupuestos.length === 0 ? (
+          {getPaginatedPresupuestos().length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No se encontraron presupuestos</p>
             </div>
           ) : (
-            filteredPresupuestos.map((presupuesto, index) => {
+            getPaginatedPresupuestos().map((presupuesto, index) => {
               // Calcular el número de presupuesto: el más reciente tiene el número más alto
-              const presupuestoNumber = filteredPresupuestos.length - index;
+              const presupuestoNumber = filteredPresupuestos.length - ((currentPage - 1) * itemsPerPage + index);
               return (
               <div
                 key={presupuesto.transaction_id || presupuesto.id || `presupuesto-${index}`}
@@ -654,6 +787,14 @@ const PresupuestoHistory: React.FC = () => {
             })
           )}
         </div>
+
+        {/* Paginación */}
+        {!loading && !error && filteredPresupuestos.length > 0 && (
+          <div className="flex items-center justify-between">
+            <ItemsPerPageSelector />
+            <Pagination />
+          </div>
+        )}
 
         {/* Modal para ver detalles del presupuesto */}
         {selectedPresupuesto && (
