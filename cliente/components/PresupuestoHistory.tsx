@@ -53,7 +53,6 @@ const PresupuestoHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [selectedPresupuesto, setSelectedPresupuesto] = useState<Presupuesto | null>(null);
@@ -88,12 +87,26 @@ const PresupuestoHistory: React.FC = () => {
     
     const matchesSearch = cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          id.toString().includes(searchTerm);
-    const matchesStatus = statusFilter === 'todos' || (presupuesto.status || presupuesto.estado) === statusFilter;
     
-    // TODO: Implementar filtro por fecha
-    const matchesDate = true; // Por ahora siempre true
+    // Filtro por fecha
+    let matchesDate = true;
+    if (dateFrom || dateTo) {
+      const presupuestoDate = new Date(presupuesto.date || presupuesto.fecha || new Date());
+      
+      if (dateFrom) {
+        const fromDate = new Date(dateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        matchesDate = matchesDate && presupuestoDate >= fromDate;
+      }
+      
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        matchesDate = matchesDate && presupuestoDate <= toDate;
+      }
+    }
     
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesDate;
   });
 
   const getStatusBadgeVariant = (estado: string) => {
@@ -515,18 +528,6 @@ const PresupuestoHistory: React.FC = () => {
             </div>
           </div>
           
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los estados</SelectItem>
-              <SelectItem value="pendiente">Pendiente</SelectItem>
-              <SelectItem value="aprobado">Aprobado</SelectItem>
-              <SelectItem value="rechazado">Rechazado</SelectItem>
-              <SelectItem value="convertido">Convertido</SelectItem>
-            </SelectContent>
-          </Select>
 
           <Popover>
             <PopoverTrigger asChild>
@@ -563,6 +564,20 @@ const PresupuestoHistory: React.FC = () => {
               />
             </PopoverContent>
           </Popover>
+
+          {(dateFrom || dateTo) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setDateFrom(undefined);
+                setDateTo(undefined);
+              }}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              Limpiar fechas
+            </Button>
+          )}
         </div>
 
         {/* Lista de presupuestos */}
