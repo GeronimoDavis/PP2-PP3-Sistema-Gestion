@@ -25,6 +25,7 @@ require __DIR__ . '/../src/routes/PaymentsRoute.php';
 require __DIR__ . '/../src/routes/UserRoutes.php';
 require __DIR__ . '/../src/routes/DashboardRoutes.php';
 require __DIR__ . '/../src/routes/CSVRoutes.php';
+require __DIR__ . '/../src/routes/ReportsRoutes.php';
 
 
 $app->run();

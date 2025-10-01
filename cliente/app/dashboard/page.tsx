@@ -30,9 +30,11 @@ import {
   getRecentTransactions,
   getSalesWithPendingBalance,
   getTotalPurchases,
+  getProductsWithoutStock,
+  getSalesSummary,
 } from "@/api/dashboardApi";
-import { getProductsWithoutStock } from "@/api/dashboardApi";
 import { formatNumber } from "@/utils/numUtils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
   const [clients, setClients] = useState({ clients: [] });
@@ -45,66 +47,58 @@ export default function DashboardPage() {
     products: [],
   });
   const [salesWithPendingBalance, setSalesWithPendingBalance] = useState([]);
+  const [salesSummary, setSalesSummary] = useState([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const { user, token, validateToken, loading } = useAuth();
   const router = useRouter();
   const [date, setDate] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 29),
+    from: new Date(2020, 0, 1),
     to: new Date(),
   });
 
   useEffect(() => {
-    const fetchTotalSales = async () => {
-      const sales = await getTotalSales();
-      setTotalSales(sales);
-    };
-    fetchTotalSales();
-  }, []);
+    const fetchDashboardData = async () => {
+      if (!date?.from || !date?.to || !token) return;
+      setIsDataLoading(true);
 
-  useEffect(() => {
-    const fetchRecentTransactions = async () => {
-      const transactions = await getRecentTransactions();
-      setRecentSales(transactions);
-    };
-    fetchRecentTransactions();
-  }, []);
+      const fromDate = format(date.from, "yyyy-MM-dd");
+      const toDate = format(date.to, "yyyy-MM-dd");
 
-  useEffect(() => {
-    const fetchProductsWithoutStock = async () => {
-      const products = await getProductsWithoutStock();
-      setProductsWithoutStock(products);
-      console.log(products);
-    };
-    fetchProductsWithoutStock();
-  }, []);
-
-  useEffect(() => {
-    const fetchClients = async () => {
-      const clients = await getAllActiveClients();
-      setClients(clients);
-    };
-    fetchClients();
-  }, []);
-
-  useEffect(() => {
-    const fetchSalesWithPendingBalance = async () => {
-      const sales = await getSalesWithPendingBalance();
-      setSalesWithPendingBalance(sales);
-      console.log(sales);
-    };
-    fetchSalesWithPendingBalance();
-  }, []);
-
-  useEffect(() => {
-    const fetchTotalPurchases = async () => {
       try {
-        const purchases = await getTotalPurchases();
+        const [
+          sales,
+          purchases,
+          recent,
+          pending,
+          summary,
+          activeClients,
+          withoutStock,
+        ] = await Promise.all([
+          getTotalSales(fromDate, toDate),
+          getTotalPurchases(fromDate, toDate),
+          getRecentTransactions(fromDate, toDate),
+          getSalesWithPendingBalance(fromDate, toDate),
+          getSalesSummary(fromDate, toDate),
+          getAllActiveClients(),
+          getProductsWithoutStock(),
+        ]);
+
+        setTotalSales(sales);
         setTotalPurchases(purchases);
+        setRecentSales(recent);
+        setSalesWithPendingBalance(pending);
+        setSalesSummary(summary);
+        setClients(activeClients);
+        setProductsWithoutStock(withoutStock);
       } catch (error) {
-        console.error("Error fetching total purchases:", error);
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setIsDataLoading(false);
       }
     };
-    fetchTotalPurchases();
-  }, []);
+
+    fetchDashboardData();
+  }, [date, token]);
 
   useEffect(() => {
     if (!loading) {
@@ -144,64 +138,81 @@ export default function DashboardPage() {
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ventas Totales
-            </CardTitle>
-            <ShoppingCart className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              $ {formatNumber(totalSales.total_sales)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {/* +20.1% respecto al mes anterior */}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Compras Totales
-            </CardTitle>
-            <BoxIcon className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              $ {formatNumber(totalPurchases.total_purchases)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ventas con Saldo Pendiente
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {salesWithPendingBalance.length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Productos Agotados
-            </CardTitle>
-            <Leaf className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {productsWithoutStock.products.length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Requieren reposición urgente
-            </p>
-          </CardContent>
-        </Card>
+        {isDataLoading ? (
+          <>
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <Skeleton className="h-4 w-2/3" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-1/3" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Ventas Totales
+                </CardTitle>
+                <ShoppingCart className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  $ {formatNumber(totalSales.total_sales)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {/* +20.1% respecto al mes anterior */}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Compras Totales
+                </CardTitle>
+                <Package className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  $ {formatNumber(totalPurchases.total_purchases)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Ventas con Saldo Pendiente
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {salesWithPendingBalance.length}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Productos Agotados
+                </CardTitle>
+                <Leaf className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {productsWithoutStock.products.length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Requieren reposición urgente
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
@@ -212,7 +223,19 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
-            <Overview />
+            {isDataLoading ? (
+              <div className="h-[350px] w-full flex items-center justify-center">
+                <p className="text-muted-foreground">Cargando datos...</p>
+              </div>
+            ) : salesSummary.length > 0 ? (
+              <Overview data={salesSummary} />
+            ) : (
+              <div className="h-[350px] w-full flex items-center justify-center">
+                <p className="text-muted-foreground">
+                  No hay datos disponibles para este período.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card className="col-span-3">
@@ -222,14 +245,26 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6 overflow-y-auto max-h-[350px]">
-              {recentSales.recent_transactions.map((venta, index) => (
-                <RecentVentas
-                  key={index}
-                  nombreCliente={venta.company_name}
-                  fechaVenta={formatDate(venta.date)}
-                  montoVenta={formatNumber(venta.total_a_pagar)}
-                />
-              ))}
+              {isDataLoading ? (
+                <div className="h-[350px] w-full flex items-center justify-center">
+                  <p className="text-muted-foreground">Cargando datos...</p>
+                </div>
+              ) : recentSales.recent_transactions.length > 0 ? (
+                recentSales.recent_transactions.map((venta, index) => (
+                  <RecentVentas
+                    key={index}
+                    nombreCliente={venta.company_name}
+                    fechaVenta={formatDate(venta.date)}
+                    montoVenta={formatNumber(venta.total_a_pagar)}
+                  />
+                ))
+              ) : (
+                <div className="h-[350px] w-full flex items-center justify-center">
+                  <p className="text-muted-foreground">
+                    No hay ventas recientes en este período.
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

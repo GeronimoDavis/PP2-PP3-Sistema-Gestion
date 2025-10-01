@@ -1,16 +1,20 @@
 import api from "./api.js";
 
-const getTotalSales = async () => {
+const getTotalSales = async (from, to) => {
   try {
-    const response = await api.get("/dashboard/total-sales");
+    const response = await api.get("/dashboard/total-sales", {
+      params: { from, to },
+    });
     return response.data;
   } catch (error) {
     throw error;
   }
 };
-const getRecentTransactions = async () => {
+const getRecentTransactions = async (from, to) => {
   try {
-    const response = await api.get("/dashboard/recent-transactions/10");
+    const response = await api.get("/dashboard/recent-transactions/10", {
+      params: { from, to },
+    });
     return response.data;
   } catch (error) {
     throw error;
@@ -26,18 +30,33 @@ const getProductsWithoutStock = async () => {
   }
 };
 
-const getSalesWithPendingBalance = async () => {
+const getSalesWithPendingBalance = async (from, to) => {
   try {
-    const response = await api.get("/dashboard/sales-with-pending-balance");
+    const response = await api.get("/dashboard/sales-with-pending-balance", {
+      params: { from, to },
+    });
     return response.data;
   } catch (error) {
     throw error;
   }
 };
 
-const getTotalPurchases = async () => {
+const getTotalPurchases = async (from, to) => {
   try {
-    const response = await api.get("/dashboard/total-purchases");
+    const response = await api.get("/dashboard/total-purchases", {
+      params: { from, to },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const getSalesSummary = async (from, to) => {
+  try {
+    const response = await api.get("/dashboard/sales-summary", {
+      params: { from, to },
+    });
     return response.data;
   } catch (error) {
     throw error;
@@ -50,4 +69,5 @@ export {
   getProductsWithoutStock,
   getSalesWithPendingBalance,
   getTotalPurchases,
+  getSalesSummary,
 };
