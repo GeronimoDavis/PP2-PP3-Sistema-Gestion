@@ -72,6 +72,46 @@ class TransactionController{
 
             $transaction = new Transaction($data);
             $createdTransaction = $this->transactionService->create($transaction);
+            
+            // Procesar items si existen
+            if (isset($data['items']) && is_array($data['items'])) {
+                try {
+                    $itemService = new \Services\ItemService();
+                    foreach ($data['items'] as $itemData) {
+                        $item = new \Entities\Item([
+                            'transaction_id' => $createdTransaction->transaction_id,
+                            'product_id' => $itemData['product_id'],
+                            'quantity' => $itemData['quantity'],
+                            'price' => $itemData['price']
+                        ]);
+                        $itemService->createItem($item);
+                    }
+                } catch (Exception $e) {
+                    error_log("Error creating items: " . $e->getMessage());
+                    throw new Exception("Error creating items: " . $e->getMessage());
+                }
+            }
+            
+            // Procesar extras si existen
+            if (isset($data['extras']) && is_array($data['extras'])) {
+                try {
+                    $extrasService = new \Services\ExtrasService();
+                    foreach ($data['extras'] as $extraData) {
+                        $extra = new \Entities\Extras(
+                            0, // extra_id se asigna automáticamente
+                            $createdTransaction->transaction_id,
+                            (float)$extraData['price'],
+                            $extraData['note'],
+                            \Entities\ExtrasType::from($extraData['type'])
+                        );
+                        $extrasService->create($extra);
+                    }
+                } catch (Exception $e) {
+                    error_log("Error creating extras: " . $e->getMessage());
+                    throw new Exception("Error creating extras: " . $e->getMessage());
+                }
+            }
+            
             $response->getBody()->write(json_encode(['transaction' => $createdTransaction->toArray()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
         }catch(Throwable $e){
@@ -219,7 +259,7 @@ class TransactionController{
     public function getBudgetDetails(Request $request, Response $response, $args){
         try{
             $id = $args['id'];
-            $budget = $this->transactionService->getSaleDetails($id);
+            $budget = $this->transactionService->getSaleDetailsById($id);
             
             if (!$budget) {
                 $response->getBody()->write(json_encode(['error' => 'Budget not found with ID: ' . $id]));

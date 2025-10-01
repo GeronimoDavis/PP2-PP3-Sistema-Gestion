@@ -134,16 +134,36 @@ class TransactionService{
 
     public function delete(int $id){
         try {
+            // Iniciar transacción para asegurar consistencia
+            $this->pdo->beginTransaction();
+            
+            // Eliminar items relacionados
+            $stmt = $this->pdo->prepare("DELETE FROM items WHERE transaction_id = ?");
+            $stmt->execute([$id]);
+            
+            // Eliminar extras relacionados
+            $stmt = $this->pdo->prepare("DELETE FROM extras WHERE transaction_id = ?");
+            $stmt->execute([$id]);
+            
+            // Eliminar pagos relacionados
+            $stmt = $this->pdo->prepare("DELETE FROM payments WHERE transaction_id = ?");
+            $stmt->execute([$id]);
+            
+            // Finalmente, eliminar la transacción
             $stmt = $this->pdo->prepare("DELETE FROM transaction WHERE transaction_id = ?");
             $stmt->execute([$id]);
 
             if ($stmt->rowCount() === 0) {
                 throw new Exception("Transaction not found with ID: $id");
             }
+            
+            // Confirmar la transacción
+            $this->pdo->commit();
         } catch (PDOException $e) {
+            // Revertir la transacción en caso de error
+            $this->pdo->rollBack();
             throw new Exception("Error deleting transaction: " . $e->getMessage());
         }
-
     }
 
     public function getSalesWithDetails(array $filters = []) {

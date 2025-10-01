@@ -439,6 +439,12 @@ export default function VentasPage() {
   // Función para guardar presupuesto en el historial
   const saveBudgetToHistory = async (budgetData: any) => {
     try {
+      // Calcular totales
+      const subtotal = total;
+      const totalConExtras = total + totalExtras;
+      const iva = totalConExtras * 0.21;
+      const totalFinal = totalConExtras + iva;
+
       // Crear la transacción como presupuesto
       const transactionData = {
         person_id: selectedClient || null,
@@ -446,6 +452,7 @@ export default function VentasPage() {
         is_sale: true, // Es una venta/presupuesto
         tax_type: 'Consumidor Final', // Usar un tipo válido
         is_budget: true, // Campo adicional para distinguir presupuestos
+        has_tax: true, // Incluir IVA
         items: cartItems.map(item => ({
           product_id: item.id,
           quantity: item.cantidad,
@@ -455,8 +462,15 @@ export default function VentasPage() {
           type: extra.type,
           price: extra.price,
           note: extra.note
-        }))
+        })),
+        // Agregar totales calculados
+        subtotal: subtotal,
+        total_extras: totalExtras,
+        iva: iva,
+        total: totalFinal
       };
+
+      console.log('Datos del presupuesto a guardar:', transactionData);
 
       // Llamar a la API para crear la transacción
       const response = await createTransaction(transactionData);
@@ -3185,7 +3199,7 @@ export default function VentasPage() {
                onClick={async () => {
                  try {
                    // Guardar el presupuesto en el historial
-                   const savedBudget = await saveBudgetToHistory({});
+                   const savedBudget = await saveBudgetToHistory();
                    alert(`Presupuesto guardado con ID: ${savedBudget.transaction_id || 'N/A'}`);
                    // Cerrar el modal después de guardar
                    setShowBudgetModal(false);
@@ -3203,7 +3217,7 @@ export default function VentasPage() {
                onClick={async () => {
                  try {
                    // Guardar el presupuesto en el historial
-                   await saveBudgetToHistory({});
+                   await saveBudgetToHistory();
                    
                    // Crear una ventana nueva para imprimir/descargar solo el presupuesto
                  const printWindow = window.open('', '_blank');
