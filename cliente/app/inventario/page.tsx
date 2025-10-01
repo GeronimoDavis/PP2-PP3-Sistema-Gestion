@@ -352,7 +352,7 @@ export default function InventarioPage() {
       stock: product.stock.toString(),
       purchase_price: product.purchase_price.toString(),
       sell_price: product.sell_price?.toString() || "",
-      category_id: product.category_id,
+      category_id: product.category_id.toString(),
       category_name: product.category_name,
     });
     setIsEditDialogOpen(true);
@@ -664,7 +664,22 @@ export default function InventarioPage() {
         <div className="flex items-center space-x-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-green-600 hover:bg-green-700">
+              <Button 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => {
+                  setProductData({
+                    name: "",
+                    code: "",
+                    stock: "",
+                    purchase_price: "",
+                    sell_price: "",
+                    category_id: "",
+                    category_name: "",
+                  });
+                  setCodeError("");
+                  setNameError("");
+                }}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar Producto
               </Button>
