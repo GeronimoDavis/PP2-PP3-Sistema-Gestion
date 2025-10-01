@@ -1038,17 +1038,17 @@ export default function InventarioPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">
+                  <TableHead className="w-[100px] text-center">
                     <Button variant="ghost" onClick={() => requestSort("code")}>
                       Código{getSortIndicator("code")}
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-center">
                     <Button variant="ghost" onClick={() => requestSort("name")}>
                       Nombre{getSortIndicator("name")}
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-center">
                     <Button
                       variant="ghost"
                       onClick={() => requestSort("category_name")}
@@ -1056,7 +1056,7 @@ export default function InventarioPage() {
                       Categoría{getSortIndicator("category_name")}
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-center">
                     <Button
                       variant="ghost"
                       onClick={() => requestSort("stock")}
@@ -1064,7 +1064,7 @@ export default function InventarioPage() {
                       Stock{getSortIndicator("stock")}
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-center">
                     <Button
                       variant="ghost"
                       onClick={() => requestSort("purchase_price")}
@@ -1072,7 +1072,7 @@ export default function InventarioPage() {
                       Precio Compra{getSortIndicator("purchase_price")}
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-center">
                     <Button
                       variant="ghost"
                       onClick={() => requestSort("sell_price")}
@@ -1080,7 +1080,7 @@ export default function InventarioPage() {
                       Precio Venta{getSortIndicator("sell_price")}
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="text-center">
                     <Button
                       variant="ghost"
                       onClick={() => requestSort("active")}
