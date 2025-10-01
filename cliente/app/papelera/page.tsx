@@ -34,6 +34,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import {
+  getDeletedProducts,
+  getDeletedPersons,
+  restoreProduct,
+  restorePerson,
+} from "@/api/papeleraApi";
 
 // Interfaces
 interface DeletedProduct {
@@ -68,7 +74,9 @@ export default function PapeleraPage() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [loadingPersons, setLoadingPersons] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "products" | "persons">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "products" | "persons">(
+    "all"
+  );
   const [restoreDialog, setRestoreDialog] = useState<{
     isOpen: boolean;
     type: "product" | "person" | null;
@@ -98,16 +106,8 @@ export default function PapeleraPage() {
   const loadDeletedProducts = async () => {
     setLoadingProducts(true);
     try {
-      const response = await fetch("http://localhost:8000/product/deleted", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setDeletedProducts(data.products || []);
-      }
+      const data = await getDeletedProducts();
+      setDeletedProducts(data.products || []);
     } catch (error) {
       console.error("Error cargando productos eliminados:", error);
     } finally {
@@ -118,16 +118,8 @@ export default function PapeleraPage() {
   const loadDeletedPersons = async () => {
     setLoadingPersons(true);
     try {
-      const response = await fetch("http://localhost:8000/person/deleted", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setDeletedPersons(data.persons || []);
-      }
+      const data = await getDeletedPersons();
+      setDeletedPersons(data.persons || []);
     } catch (error) {
       console.error("Error cargando personas eliminadas:", error);
     } finally {
@@ -153,49 +145,42 @@ export default function PapeleraPage() {
     if (!restoreDialog.id || !restoreDialog.type) return;
 
     try {
-      const endpoint = restoreDialog.type === "product" 
-        ? `http://localhost:8000/product/restore/${restoreDialog.id}`
-        : `http://localhost:8000/person/restore/${restoreDialog.id}`;
-
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        // Recargar datos
-        if (restoreDialog.type === "product") {
-          loadDeletedProducts();
-        } else {
-          loadDeletedPersons();
-        }
-        setRestoreDialog({ isOpen: false, type: null, id: null, name: "" });
+      if (restoreDialog.type === "product") {
+        await restoreProduct(restoreDialog.id);
+        await loadDeletedProducts();
+      } else {
+        await restorePerson(restoreDialog.id);
+        await loadDeletedPersons();
       }
+      setRestoreDialog({ isOpen: false, type: null, id: null, name: "" });
     } catch (error) {
       console.error("Error restaurando elemento:", error);
     }
   };
 
   // Filtrar datos
-  const filteredProducts = deletedProducts.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProducts = deletedProducts.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredPersons = deletedPersons.filter((person) =>
-    person.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    getPersonType(person.provider).toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPersons = deletedPersons.filter(
+    (person) =>
+      person.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      person.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getPersonType(person.provider)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
   );
 
   // Función para obtener el color del badge
   const getPersonTypeColor = (provider: boolean) => {
-    return provider ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800";
+    return provider
+      ? "bg-blue-100 text-blue-800"
+      : "bg-green-100 text-green-800";
   };
 
   if (loading) {
@@ -286,7 +271,9 @@ export default function PapeleraPage() {
                   <TableBody>
                     {filteredProducts.map((product) => (
                       <TableRow key={product.product_id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {product.name}
+                        </TableCell>
                         <TableCell>{product.code}</TableCell>
                         <TableCell>{product.category_name}</TableCell>
                         <TableCell>{product.stock}</TableCell>
@@ -338,7 +325,9 @@ export default function PapeleraPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[200px]">Nombre/Empresa</TableHead>
+                      <TableHead className="w-[200px]">
+                        Nombre/Empresa
+                      </TableHead>
                       <TableHead className="w-[200px]">Email</TableHead>
                       <TableHead className="w-[150px]">Teléfono</TableHead>
                       <TableHead className="w-[120px]">Tipo</TableHead>
@@ -354,7 +343,9 @@ export default function PapeleraPage() {
                         <TableCell>{person.email}</TableCell>
                         <TableCell>{person.phone}</TableCell>
                         <TableCell>
-                          <Badge className={getPersonTypeColor(person.provider)}>
+                          <Badge
+                            className={getPersonTypeColor(person.provider)}
+                          >
                             {getPersonType(person.provider)}
                           </Badge>
                         </TableCell>
@@ -417,7 +408,9 @@ export default function PapeleraPage() {
                   <TableBody>
                     {filteredProducts.map((product) => (
                       <TableRow key={product.product_id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {product.name}
+                        </TableCell>
                         <TableCell>{product.code}</TableCell>
                         <TableCell>{product.category_name}</TableCell>
                         <TableCell>{product.stock}</TableCell>
@@ -486,7 +479,9 @@ export default function PapeleraPage() {
                         <TableCell>{person.email}</TableCell>
                         <TableCell>{person.phone}</TableCell>
                         <TableCell>
-                          <Badge className={getPersonTypeColor(person.provider)}>
+                          <Badge
+                            className={getPersonTypeColor(person.provider)}
+                          >
                             {getPersonType(person.provider)}
                           </Badge>
                         </TableCell>
@@ -518,9 +513,12 @@ export default function PapeleraPage() {
       </Tabs>
 
       {/* Dialog de confirmación para restaurar */}
-      <Dialog open={restoreDialog.isOpen} onOpenChange={(open) => 
-        setRestoreDialog({ ...restoreDialog, isOpen: open })
-      }>
+      <Dialog
+        open={restoreDialog.isOpen}
+        onOpenChange={(open) =>
+          setRestoreDialog({ ...restoreDialog, isOpen: open })
+        }
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Restauración</DialogTitle>
@@ -535,12 +533,17 @@ export default function PapeleraPage() {
             <Button
               variant="outline"
               onClick={() =>
-                setRestoreDialog({ isOpen: false, type: null, id: null, name: "" })
+                setRestoreDialog({
+                  isOpen: false,
+                  type: null,
+                  id: null,
+                  name: "",
+                })
               }
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
               className="bg-green-600 hover:bg-green-700"
               onClick={handleRestore}
             >
