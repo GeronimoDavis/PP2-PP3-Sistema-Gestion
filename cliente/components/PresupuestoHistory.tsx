@@ -78,36 +78,42 @@ const PresupuestoHistory: React.FC = () => {
   };
 
   // Filtrar presupuestos
-  const filteredPresupuestos = presupuestos.filter(presupuesto => {
-    // Verificar que el presupuesto existe y tiene las propiedades necesarias
-    if (!presupuesto) return false;
-    
-    const cliente = presupuesto.client_name || presupuesto.cliente || '';
-    const id = presupuesto.transaction_id || presupuesto.id || '';
-    
-    const matchesSearch = cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         id.toString().includes(searchTerm);
-    
-    // Filtro por fecha
-    let matchesDate = true;
-    if (dateFrom || dateTo) {
-      const presupuestoDate = new Date(presupuesto.date || presupuesto.fecha || new Date());
+  const filteredPresupuestos = presupuestos
+    .filter(presupuesto => {
+      // Verificar que el presupuesto existe y tiene las propiedades necesarias
+      if (!presupuesto) return false;
       
-      if (dateFrom) {
-        const fromDate = new Date(dateFrom);
-        fromDate.setHours(0, 0, 0, 0);
-        matchesDate = matchesDate && presupuestoDate >= fromDate;
+      const cliente = presupuesto.client_name || presupuesto.cliente || '';
+      const id = presupuesto.transaction_id || presupuesto.id || '';
+      
+      const matchesSearch = cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           id.toString().includes(searchTerm);
+      
+      // Filtro por fecha
+      let matchesDate = true;
+      if (dateFrom || dateTo) {
+        const presupuestoDate = new Date(presupuesto.date || presupuesto.fecha || new Date());
+        
+        if (dateFrom) {
+          const fromDate = new Date(dateFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          matchesDate = matchesDate && presupuestoDate >= fromDate;
+        }
+        
+        if (dateTo) {
+          const toDate = new Date(dateTo);
+          toDate.setHours(23, 59, 59, 999);
+          matchesDate = matchesDate && presupuestoDate <= toDate;
+        }
       }
       
-      if (dateTo) {
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        matchesDate = matchesDate && presupuestoDate <= toDate;
-      }
-    }
-    
-    return matchesSearch && matchesDate;
-  });
+      return matchesSearch && matchesDate;
+    })
+    .sort((a, b) => {
+      const idA = a.transaction_id || a.id || 0;
+      const idB = b.transaction_id || b.id || 0;
+      return idA - idB; // Ordenar por ID ascendente
+    });
 
   const getStatusBadgeVariant = (estado: string) => {
     switch (estado) {
@@ -595,10 +601,10 @@ const PresupuestoHistory: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
-                      <h3 className="font-semibold">Presupuesto #{presupuesto.transaction_id || presupuesto.id}</h3>
-                      <Badge variant={getStatusBadgeVariant(presupuesto.status || presupuesto.estado || 'pendiente')}>
-                        {(presupuesto.status || presupuesto.estado || 'pendiente').charAt(0).toUpperCase() + (presupuesto.status || presupuesto.estado || 'pendiente').slice(1)}
-                      </Badge>
+                      <div>
+                        <h3 className="font-semibold">Presupuesto #{index + 1}</h3>
+                        <p className="text-xs text-gray-500">Transacción N°{presupuesto.transaction_id || presupuesto.id}</p>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                       <div>
@@ -610,9 +616,6 @@ const PresupuestoHistory: React.FC = () => {
                       <div>
                         <span className="font-medium">Total:</span> {formatCurrency(presupuesto.total_transaction || presupuesto.total || 0)}
                       </div>
-                    </div>
-                    <div className="mt-2">
-                      <span className="font-medium">Items:</span> {presupuesto.items?.length || 0} producto(s)
                     </div>
                   </div>
                   <div className="flex gap-2">
