@@ -57,7 +57,11 @@ import {
   createProduct,
   updateProduct,
 } from "@/api/productsApi";
-import { getCategories } from "@/api/categoriesApi";
+import { 
+  getCategories, 
+  createCategory, 
+  updateCategory 
+} from "@/api/categoriesApi";
 
 export default function InventarioPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -102,6 +106,17 @@ export default function InventarioPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Estados para gestión de categorías
+  const [isCategoriesDialogOpen, setIsCategoriesDialogOpen] = useState(false);
+  const [isCreateCategoryDialogOpen, setIsCreateCategoryDialogOpen] = useState(false);
+  const [isEditCategoryDialogOpen, setIsEditCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [categoryData, setCategoryData] = useState({
+    name: "",
+  });
+  const [categoryNameError, setCategoryNameError] = useState("");
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -183,6 +198,97 @@ export default function InventarioPage() {
       setCategories(response.categories);
     } catch (error) {
       console.error("Error al obtener las categorías:", error);
+    }
+  };
+
+  // Funciones para gestión de categorías
+  const handleCreateCategory = async () => {
+    try {
+      setCategoryNameError("");
+      
+      if (!categoryData.name.trim()) {
+        setCategoryNameError("El nombre de la categoría es obligatorio");
+        return;
+      }
+
+      // Validar nombre único
+      const existingCategory = categories.find(
+        (cat) => cat.name.toLowerCase() === categoryData.name.toLowerCase()
+      );
+
+      if (existingCategory) {
+        setCategoryNameError("Ya existe una categoría con este nombre");
+        return;
+      }
+
+      await createCategory(categoryData);
+      await handleGetCategories(); // Recargar categorías
+      setIsCreateCategoryDialogOpen(false);
+      setCategoryData({ name: "" });
+    } catch (error: any) {
+      console.error("Error al crear categoría:", error);
+      alert("Error al crear la categoría: " + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleEditCategory = (category: any) => {
+    setEditingCategory(category);
+    setCategoryData({
+      name: category.name,
+    });
+    setIsEditCategoryDialogOpen(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    try {
+      setCategoryNameError("");
+      
+      if (!categoryData.name.trim()) {
+        setCategoryNameError("El nombre de la categoría es obligatorio");
+        return;
+      }
+
+      // Validar nombre único (excluyendo la categoría actual)
+      const existingCategory = categories.find(
+        (cat) => 
+          cat.name.toLowerCase() === categoryData.name.toLowerCase() &&
+          cat.category_id !== editingCategory.category_id
+      );
+
+      if (existingCategory) {
+        setCategoryNameError("Ya existe una categoría con este nombre");
+        return;
+      }
+
+      await updateCategory(editingCategory.category_id, categoryData);
+      await handleGetCategories(); // Recargar categorías
+      setIsEditCategoryDialogOpen(false);
+      setEditingCategory(null);
+      setCategoryData({ name: "" });
+    } catch (error: any) {
+      console.error("Error al actualizar categoría:", error);
+      alert("Error al actualizar la categoría: " + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleCategoryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setCategoryData({ ...categoryData, name: newName });
+    
+    if (newName.length > 0) {
+      const existingCategory = categories.find(
+        (cat) => 
+          cat.name.toLowerCase() === newName.toLowerCase() &&
+          (!editingCategory || cat.category_id !== editingCategory.category_id)
+      );
+      
+      if (existingCategory) {
+        setCategoryNameError("Ya existe una categoría con este nombre");
+      } else {
+        setCategoryNameError("");
+      }
+    } else {
+      setCategoryNameError("");
     }
   };
 
@@ -964,6 +1070,13 @@ export default function InventarioPage() {
             </DialogContent>
           </Dialog>
 
+          <Button 
+            variant="outline"
+            onClick={() => setIsCategoriesDialogOpen(true)}
+          >
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
+            Categorías
+          </Button>
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Exportar
@@ -1185,6 +1298,163 @@ export default function InventarioPage() {
           <Pagination />
         </div>
       )}
+
+      {/* Modal de Gestión de Categorías */}
+      <Dialog open={isCategoriesDialogOpen} onOpenChange={setIsCategoriesDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Gestionar Categorías</DialogTitle>
+            <DialogDescription>
+              Administra las categorías de productos. Puedes crear, editar y eliminar categorías.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium">Categorías Existentes</h3>
+              <Button
+                onClick={() => {
+                  setCategoryData({ name: "" });
+                  setCategoryNameError("");
+                  setIsCreateCategoryDialogOpen(true);
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Categoría
+              </Button>
+            </div>
+            <div className="max-h-60 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categories.map((category) => (
+                    <TableRow key={category.category_id}>
+                      <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditCategory(category)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCategoriesDialogOpen(false)}
+            >
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Crear Categoría */}
+      <Dialog open={isCreateCategoryDialogOpen} onOpenChange={setIsCreateCategoryDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Nueva Categoría</DialogTitle>
+            <DialogDescription>
+              Crea una nueva categoría para organizar tus productos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category-name" className="text-right">
+                Nombre
+              </Label>
+              <Input
+                id="category-name"
+                className="col-span-3"
+                value={categoryData.name}
+                onChange={handleCategoryNameChange}
+                placeholder="Nombre de la categoría"
+              />
+            </div>
+            {categoryNameError && (
+              <div className="col-span-4 text-red-500 text-sm mt-1">
+                {categoryNameError}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateCategoryDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleCreateCategory}
+            >
+              Crear Categoría
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Editar Categoría */}
+      <Dialog open={isEditCategoryDialogOpen} onOpenChange={setIsEditCategoryDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Categoría</DialogTitle>
+            <DialogDescription>
+              Modifica los datos de la categoría seleccionada.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-category-name" className="text-right">
+                Nombre
+              </Label>
+              <Input
+                id="edit-category-name"
+                className="col-span-3"
+                value={categoryData.name}
+                onChange={handleCategoryNameChange}
+                placeholder="Nombre de la categoría"
+              />
+            </div>
+            {categoryNameError && (
+              <div className="col-span-4 text-red-500 text-sm mt-1">
+                {categoryNameError}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditCategoryDialogOpen(false);
+                setEditingCategory(null);
+                setCategoryData({ name: "" });
+                setCategoryNameError("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleUpdateCategory}
+            >
+              Actualizar Categoría
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
