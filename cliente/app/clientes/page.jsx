@@ -204,8 +204,15 @@ export default function ClientesPage() {
         setError("El CUIT/CUIL debe tener 11 dígitos");
         return;
       }
+      
+      // Asegurar que provider sea un booleano
+      const dataToSend = {
+        ...clientData,
+        provider: Boolean(clientData.provider)
+      };
+      
       //crear el cliente
-      const newClient = await createPerson(clientData);
+      const newClient = await createPerson(dataToSend);
       setClients([...clients, newClient.person]);
       setIsDialogOpen(false);
       setClientData({
@@ -230,7 +237,6 @@ export default function ClientesPage() {
   //este es el que se encarga de actualizar el estado de un cliente
   const handleUpdatePersonStatus = async (id) => {
     try {
-      console.log("id", id);
       await updatePersonStatus(id);
       // Recargar la lista completa para mostrar solo personas activas
       await loadClients();
@@ -497,17 +503,17 @@ export default function ClientesPage() {
                     Cliente/Proveedor
                   </Label>
                   <Select
-                    value={clientData.provider}
+                    value={clientData.provider ? "true" : "false"}
                     onValueChange={(value) =>
-                      setClientData({ ...clientData, provider: value })
+                      setClientData({ ...clientData, provider: value === "true" })
                     }
                   >
                     <SelectTrigger className="col-span-3">
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={true}>Proveedor</SelectItem>
-                      <SelectItem value={false}>Cliente</SelectItem>
+                      <SelectItem value="true">Proveedor</SelectItem>
+                      <SelectItem value="false">Cliente</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

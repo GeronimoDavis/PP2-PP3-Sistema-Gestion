@@ -15,7 +15,7 @@ $app->group("/person", function(RouteCollectorProxy $group) use ($personControll
     $group->put("/update/{id}", [$personController, "updatePerson"]);
     $group->get("/deleted", [$personController, "getAllDeletedPersons"]);
     $group->put("/restore/{id}", [$personController, "restorePerson"]);
-})
-->add(new AuthMiddleware());
+});
+//->add(new AuthMiddleware());
 
 ?>

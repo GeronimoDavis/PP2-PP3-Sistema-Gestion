@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS person (
 	tax_id VARCHAR(11) NOT NULL, 
 	company_name VARCHAR(50) NOT NULL,
 	name VARCHAR(20),
-	email VARCHAR(30) NOT NULL,
+	email VARCHAR(255) NOT NULL,
 	phone VARCHAR(15) NOT NULL,
 	notes TINYTEXT,
 	address VARCHAR(50) NOT NULL,

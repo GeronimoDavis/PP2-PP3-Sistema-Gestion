@@ -26,7 +26,7 @@ class Person {
         $this->address = $data['address'];
         $this->provider = isset($data['provider']) ? (bool)$data['provider'] : false;
         $this->tax_type = $data['tax_type'];
-        $this->active = isset($data['active']) ? (bool)$data['active'] : false;
+        $this->active = isset($data['active']) ? (bool)$data['active'] : true;
     }
 
     public function toArray(): array

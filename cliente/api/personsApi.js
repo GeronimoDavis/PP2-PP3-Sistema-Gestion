@@ -20,6 +20,7 @@ const getPersonById = async (id) => {
 
 const createPerson = async (personData) => {
   try {
+    
     const response = await api.post("/person/create", personData);
     return response.data;
   } catch (error) {

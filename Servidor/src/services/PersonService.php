@@ -95,7 +95,7 @@ class PersonService {
     public function create(Person $person)
     {
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO person (tax_id, company_name, name, email, phone, notes, address, provider, tax_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO person (tax_id, company_name, name, email, phone, notes, address, provider, tax_type, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $person->tax_id,
                 $person->company_name,
@@ -104,8 +104,9 @@ class PersonService {
                 $person->phone,
                 $person->notes,
                 $person->address,
-                $person->provider,
-                $person->tax_type
+                $person->provider ? 1 : 0,
+                $person->tax_type,
+                $person->active ? 1 : 0
             ]);
 
             $person->person_id = $this->pdo->lastInsertId();

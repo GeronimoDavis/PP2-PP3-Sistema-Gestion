@@ -45,10 +45,10 @@ class PersonController {
 
     public function createPerson(Request $request, Response $response, $args)
     {
+         
         try {
             $data = $request->getParsedBody();
             //validaciones
-
             if (!isset($data["email"]) || !filter_var($data["email"], FILTER_VALIDATE_EMAIL)) {
                 throw new Exception("Invalid email format");
             }
