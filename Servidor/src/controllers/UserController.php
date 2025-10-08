@@ -76,6 +76,7 @@ class UserController
             $payload = [
                 'user_id' => $user->user_id,
                 'username' => $user->username,
+                'name' => $user->name,
                 'role' => $user->role,
                 'exp' => time() + 60 * 60 * 24 // tiempo de validez
             ];
