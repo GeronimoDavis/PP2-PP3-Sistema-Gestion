@@ -277,7 +277,7 @@ export default function ClientesPage() {
           <span className="text-sm text-gray-700">
             Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
             {Math.min(currentPage * itemsPerPage, clients.length)} de{" "}
-            {clients.length} clientes
+            {clients.length} personas
           </span>
         </div>
 
@@ -361,7 +361,7 @@ export default function ClientesPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Clientes</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Personas</h2>
         <div className="flex items-center space-x-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -543,7 +543,7 @@ export default function ClientesPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-1 items-center space-x-2">
           <Input
-            placeholder="Buscar clientes..."
+            placeholder="Buscar personas..."
             className="h-9 w-[150px] lg:w-[250px]"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -565,7 +565,7 @@ export default function ClientesPage() {
           <CardContent className="p-8">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Cargando clientes...</p>
+              <p className="mt-2 text-gray-600">Cargando personas...</p>
             </div>
           </CardContent>
         </Card>

@@ -55,7 +55,7 @@ export function MainNav() {
       >
         <div className="flex items-center">
           <Users className="mr-2 h-4 w-4" />
-          Clientes
+          Personas
         </div>
       </Link>
       <Link
