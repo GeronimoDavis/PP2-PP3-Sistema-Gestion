@@ -618,6 +618,9 @@ export default function ComprasPage() {
       setSearchResults([]);
       setShowSearchResults(false);
 
+      // Recargar el historial de compras para mostrar la nueva compra
+      await loadPurchasesHistory();
+
       alert("¡Compra confirmada exitosamente!");
     } catch (error: any) {
       console.error("Error al confirmar la compra:", error);
