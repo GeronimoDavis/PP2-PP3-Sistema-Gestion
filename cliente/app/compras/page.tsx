@@ -495,6 +495,7 @@ export default function ComprasPage() {
         transport_id: null, // Por ahora sin transporte
         tracking_number: null,
         tax_type: excludeTax ? "Exento" : "R.I", // Responsable Inscripto o Exento
+        has_tax: !excludeTax, // true si NO se excluye el IVA, false si se excluye
       };
 
       const transactionResponse = await createPurchase(transactionData);
