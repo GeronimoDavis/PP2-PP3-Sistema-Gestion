@@ -1,19 +1,54 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CalendarIcon, Search, Filter, Download, Eye, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { getBudgetsHistory, getBudgetDetails, deleteTransaction } from '@/api/transactionsApi';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  CalendarIcon,
+  Search,
+  Filter,
+  Download,
+  Eye,
+  Trash2,
+} from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import {
+  getBudgetsHistory,
+  getBudgetDetails,
+  deleteTransaction,
+} from "@/api/transactionsApi";
+import { useNotification } from "@/hooks/use-notification";
 
 interface Presupuesto {
   transaction_id?: number;
@@ -25,7 +60,7 @@ interface Presupuesto {
   total_transaction?: number;
   total?: number;
   status?: string;
-  estado?: 'pendiente' | 'aprobado' | 'rechazado' | 'convertido';
+  estado?: "pendiente" | "aprobado" | "rechazado" | "convertido";
   items?: Array<{
     producto: string;
     cantidad: number;
@@ -49,14 +84,16 @@ interface Presupuesto {
 }
 
 const PresupuestoHistory: React.FC = () => {
+  const notification = useNotification();
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [selectedPresupuesto, setSelectedPresupuesto] = useState<Presupuesto | null>(null);
-  
+  const [selectedPresupuesto, setSelectedPresupuesto] =
+    useState<Presupuesto | null>(null);
+
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -75,12 +112,12 @@ const PresupuestoHistory: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await getBudgetsHistory({});
       setPresupuestos(response.budgets || []);
     } catch (error) {
-      console.error('Error al cargar presupuestos:', error);
-      setError('Error al cargar el historial de presupuestos');
+      console.error("Error al cargar presupuestos:", error);
+      setError("Error al cargar el historial de presupuestos");
     } finally {
       setLoading(false);
     }
@@ -88,34 +125,37 @@ const PresupuestoHistory: React.FC = () => {
 
   // Filtrar presupuestos
   const filteredPresupuestos = presupuestos
-    .filter(presupuesto => {
-    // Verificar que el presupuesto existe y tiene las propiedades necesarias
-    if (!presupuesto) return false;
-    
-    const cliente = presupuesto.client_name || presupuesto.cliente || '';
-    const id = presupuesto.transaction_id || presupuesto.id || '';
-    
-    const matchesSearch = cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         id.toString().includes(searchTerm);
-      
+    .filter((presupuesto) => {
+      // Verificar que el presupuesto existe y tiene las propiedades necesarias
+      if (!presupuesto) return false;
+
+      const cliente = presupuesto.client_name || presupuesto.cliente || "";
+      const id = presupuesto.transaction_id || presupuesto.id || "";
+
+      const matchesSearch =
+        cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        id.toString().includes(searchTerm);
+
       // Filtro por fecha
       let matchesDate = true;
       if (dateFrom || dateTo) {
-        const presupuestoDate = new Date(presupuesto.date || presupuesto.fecha || new Date());
-        
+        const presupuestoDate = new Date(
+          presupuesto.date || presupuesto.fecha || new Date()
+        );
+
         if (dateFrom) {
           const fromDate = new Date(dateFrom);
           fromDate.setHours(0, 0, 0, 0);
           matchesDate = matchesDate && presupuestoDate >= fromDate;
         }
-        
+
         if (dateTo) {
           const toDate = new Date(dateTo);
           toDate.setHours(23, 59, 59, 999);
           matchesDate = matchesDate && presupuestoDate <= toDate;
         }
       }
-      
+
       return matchesSearch && matchesDate;
     })
     .sort((a, b) => {
@@ -126,16 +166,16 @@ const PresupuestoHistory: React.FC = () => {
 
   const getStatusBadgeVariant = (estado: string) => {
     switch (estado) {
-      case 'pendiente':
-        return 'secondary';
-      case 'aprobado':
-        return 'default';
-      case 'rechazado':
-        return 'destructive';
-      case 'convertido':
-        return 'outline';
+      case "pendiente":
+        return "secondary";
+      case "aprobado":
+        return "default";
+      case "rechazado":
+        return "destructive";
+      case "convertido":
+        return "outline";
       default:
-        return 'secondary';
+        return "secondary";
     }
   };
 
@@ -145,10 +185,10 @@ const PresupuestoHistory: React.FC = () => {
       const budgetId = presupuesto.transaction_id || presupuesto.id;
       if (budgetId) {
         const details = await getBudgetDetails(budgetId);
-        console.log('Datos recibidos del backend:', details);
+        console.log("Datos recibidos del backend:", details);
         const budgetData = details.budget || details;
-        console.log('Budget data:', budgetData);
-        
+        console.log("Budget data:", budgetData);
+
         // Transformar los datos para que coincidan con la interfaz esperada
         const transformedBudget: Presupuesto = {
           transaction_id: budgetData.transaction?.transaction_id,
@@ -159,39 +199,44 @@ const PresupuestoHistory: React.FC = () => {
           cliente: budgetData.transaction?.client_name,
           total_transaction: budgetData.totals?.transaction,
           total: budgetData.totals?.transaction,
-          status: 'pendiente', // Los presupuestos siempre están pendientes por defecto
-          estado: 'pendiente',
-          items: budgetData.items?.map((item: any) => ({
-            producto: item.product_name,
-            cantidad: item.quantity,
-            precio: item.price,
-            subtotal: item.quantity * item.price,
-            codigo: item.product_code
-          })) || [],
-          extras: budgetData.extras?.map((extra: any) => ({
-            tipo: extra.type,
-            descripcion: extra.note,
-            monto: extra.price
-          })) || [],
+          status: "pendiente", // Los presupuestos siempre están pendientes por defecto
+          estado: "pendiente",
+          items:
+            budgetData.items?.map((item: any) => ({
+              producto: item.product_name,
+              cantidad: item.quantity,
+              precio: item.price,
+              subtotal: item.quantity * item.price,
+              codigo: item.product_code,
+            })) || [],
+          extras:
+            budgetData.extras?.map((extra: any) => ({
+              tipo: extra.type,
+              descripcion: extra.note,
+              monto: extra.price,
+            })) || [],
           subtotal: budgetData.totals?.items || 0,
           totalExtras: budgetData.totals?.extras || 0,
-          iva: budgetData.totals?.transaction ? (budgetData.totals.transaction - (budgetData.totals.items + budgetData.totals.extras)) : 0,
+          iva: budgetData.totals?.transaction
+            ? budgetData.totals.transaction -
+              (budgetData.totals.items + budgetData.totals.extras)
+            : 0,
           clienteInfo: {
             company_name: budgetData.transaction?.client_company,
             email: budgetData.transaction?.client_email,
-            phone: budgetData.transaction?.client_phone
-          }
+            phone: budgetData.transaction?.client_phone,
+          },
         };
-        
-        console.log('Budget transformado:', transformedBudget);
+
+        console.log("Budget transformado:", transformedBudget);
         setSelectedPresupuesto(transformedBudget);
       } else {
         setSelectedPresupuesto(presupuesto);
       }
     } catch (error) {
-      console.error('Error al cargar detalles del presupuesto:', error);
+      console.error("Error al cargar detalles del presupuesto:", error);
       // Si hay error, mostrar los datos básicos que ya tenemos
-    setSelectedPresupuesto(presupuesto);
+      setSelectedPresupuesto(presupuesto);
     }
   };
 
@@ -199,7 +244,9 @@ const PresupuestoHistory: React.FC = () => {
     try {
       const budgetId = presupuesto.transaction_id || presupuesto.id;
       if (!budgetId) {
-        alert('No se puede eliminar el presupuesto: ID no encontrado');
+        notification.error(
+          "No se puede eliminar el presupuesto: ID no encontrado"
+        );
         return;
       }
 
@@ -210,11 +257,11 @@ const PresupuestoHistory: React.FC = () => {
       if (confirmed) {
         await deleteTransaction(budgetId);
         await loadPresupuestos();
-        alert('Presupuesto eliminado correctamente');
+        notification.success("Presupuesto eliminado correctamente");
       }
     } catch (error) {
-      console.error('Error al eliminar presupuesto:', error);
-      alert('Error al eliminar el presupuesto');
+      console.error("Error al eliminar presupuesto:", error);
+      notification.error("Error al eliminar el presupuesto");
     }
   };
 
@@ -223,12 +270,12 @@ const PresupuestoHistory: React.FC = () => {
       // Primero cargar los detalles completos del presupuesto
       const budgetId = presupuesto.transaction_id || presupuesto.id;
       let presupuestoCompleto = presupuesto;
-      
+
       if (budgetId) {
         try {
           const details = await getBudgetDetails(budgetId);
           const budgetData = details.budget || details;
-          
+
           // Transformar los datos para que coincidan con la interfaz esperada
           presupuestoCompleto = {
             transaction_id: budgetData.transaction?.transaction_id,
@@ -239,43 +286,50 @@ const PresupuestoHistory: React.FC = () => {
             cliente: budgetData.transaction?.client_name,
             total_transaction: budgetData.totals?.transaction,
             total: budgetData.totals?.transaction,
-            status: 'pendiente',
-            estado: 'pendiente',
-            items: budgetData.items?.map((item: any) => ({
-              producto: item.product_name,
-              cantidad: item.quantity,
-              precio: item.price,
-              subtotal: item.quantity * item.price,
-              codigo: item.product_code
-            })) || [],
-            extras: budgetData.extras?.map((extra: any) => ({
-              tipo: extra.type,
-              descripcion: extra.note,
-              monto: extra.price
-            })) || [],
+            status: "pendiente",
+            estado: "pendiente",
+            items:
+              budgetData.items?.map((item: any) => ({
+                producto: item.product_name,
+                cantidad: item.quantity,
+                precio: item.price,
+                subtotal: item.quantity * item.price,
+                codigo: item.product_code,
+              })) || [],
+            extras:
+              budgetData.extras?.map((extra: any) => ({
+                tipo: extra.type,
+                descripcion: extra.note,
+                monto: extra.price,
+              })) || [],
             subtotal: budgetData.totals?.items || 0,
             totalExtras: budgetData.totals?.extras || 0,
-            iva: budgetData.totals?.transaction ? (budgetData.totals.transaction - (budgetData.totals.items + budgetData.totals.extras)) : 0,
+            iva: budgetData.totals?.transaction
+              ? budgetData.totals.transaction -
+                (budgetData.totals.items + budgetData.totals.extras)
+              : 0,
             clienteInfo: {
               company_name: budgetData.transaction?.client_company,
               email: budgetData.transaction?.client_email,
-              phone: budgetData.transaction?.client_phone
-            }
+              phone: budgetData.transaction?.client_phone,
+            },
           };
         } catch (error) {
-          console.error('Error al cargar detalles para impresión:', error);
+          console.error("Error al cargar detalles para impresión:", error);
           // Continuar con los datos básicos si hay error
         }
       }
 
       // Crear una ventana nueva para imprimir/descargar el presupuesto
-      const printWindow = window.open('', '_blank');
+      const printWindow = window.open("", "_blank");
       if (printWindow) {
         printWindow.document.write(`
           <!DOCTYPE html>
           <html>
           <head>
-            <title>Presupuesto #${presupuestoCompleto.transaction_id || presupuestoCompleto.id}</title>
+            <title>Presupuesto #${
+              presupuestoCompleto.transaction_id || presupuestoCompleto.id
+            }</title>
             <style>
               * {
                 box-sizing: border-box;
@@ -374,23 +428,60 @@ const PresupuestoHistory: React.FC = () => {
           <body>
             <div class="header">
               <h1>PRESUPUESTO DE VENTA</h1>
-              <p>Presupuesto #${presupuestoCompleto.transaction_id || presupuestoCompleto.id}</p>
+              <p>Presupuesto #${
+                presupuestoCompleto.transaction_id || presupuestoCompleto.id
+              }</p>
             </div>
 
             <div class="info-section">
               <div class="info-column">
                 <h3>Información del Cliente</h3>
-                <p><strong>Nombre:</strong> ${presupuestoCompleto.client_name || presupuestoCompleto.cliente || 'Sin cliente'}</p>
-                ${presupuestoCompleto.clienteInfo ? `
-                  <p><strong>Empresa:</strong> ${presupuestoCompleto.clienteInfo.company_name || "N/A"}</p>
-                  <p><strong>Email:</strong> ${presupuestoCompleto.clienteInfo.email || "N/A"}</p>
-                  <p><strong>Teléfono:</strong> ${presupuestoCompleto.clienteInfo.phone || "N/A"}</p>
-                ` : ''}
+                <p><strong>Nombre:</strong> ${
+                  presupuestoCompleto.client_name ||
+                  presupuestoCompleto.cliente ||
+                  "Sin cliente"
+                }</p>
+                ${
+                  presupuestoCompleto.clienteInfo
+                    ? `
+                  <p><strong>Empresa:</strong> ${
+                    presupuestoCompleto.clienteInfo.company_name || "N/A"
+                  }</p>
+                  <p><strong>Email:</strong> ${
+                    presupuestoCompleto.clienteInfo.email || "N/A"
+                  }</p>
+                  <p><strong>Teléfono:</strong> ${
+                    presupuestoCompleto.clienteInfo.phone || "N/A"
+                  }</p>
+                `
+                    : ""
+                }
               </div>
               <div class="info-column">
                 <h3>Información del Presupuesto</h3>
-                <p><strong>Fecha:</strong> ${format(new Date(presupuestoCompleto.date || presupuestoCompleto.fecha || new Date()), "dd/MM/yyyy", { locale: es })}</p>
-                <p><strong>Estado:</strong> <span class="badge">${(presupuestoCompleto.status || presupuestoCompleto.estado || 'pendiente').charAt(0).toUpperCase() + (presupuestoCompleto.status || presupuestoCompleto.estado || 'pendiente').slice(1)}</span></p>
+                <p><strong>Fecha:</strong> ${format(
+                  new Date(
+                    presupuestoCompleto.date ||
+                      presupuestoCompleto.fecha ||
+                      new Date()
+                  ),
+                  "dd/MM/yyyy",
+                  { locale: es }
+                )}</p>
+                <p><strong>Estado:</strong> <span class="badge">${
+                  (
+                    presupuestoCompleto.status ||
+                    presupuestoCompleto.estado ||
+                    "pendiente"
+                  )
+                    .charAt(0)
+                    .toUpperCase() +
+                  (
+                    presupuestoCompleto.status ||
+                    presupuestoCompleto.estado ||
+                    "pendiente"
+                  ).slice(1)
+                }</span></p>
                 <p><strong>Tipo de Impuesto:</strong> <span class="badge">Con IVA</span></p>
                 <p style="font-size: 10px; color: #666;">Presupuesto con IVA incluido (21%)</p>
               </div>
@@ -407,7 +498,9 @@ const PresupuestoHistory: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                ${(presupuestoCompleto.items || []).map((item, index) => `
+                ${(presupuestoCompleto.items || [])
+                  .map(
+                    (item, index) => `
                   <tr>
                     <td>${item.codigo || `ITEM-${index + 1}`}</td>
                     <td>${item.producto}</td>
@@ -415,11 +508,16 @@ const PresupuestoHistory: React.FC = () => {
                     <td class="text-right">${formatCurrency(item.precio)}</td>
                     <td class="text-right">${formatCurrency(item.subtotal)}</td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join("")}
               </tbody>
             </table>
 
-            ${(presupuestoCompleto.extras && presupuestoCompleto.extras.length > 0) ? `
+            ${
+              presupuestoCompleto.extras &&
+              presupuestoCompleto.extras.length > 0
+                ? `
               <table>
                 <thead>
                   <tr>
@@ -429,32 +527,65 @@ const PresupuestoHistory: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  ${presupuestoCompleto.extras.map((extra, index) => `
+                  ${presupuestoCompleto.extras
+                    .map(
+                      (extra, index) => `
                     <tr>
                       <td>${extra.tipo}</td>
                       <td>${extra.descripcion}</td>
-                      <td class="text-right ${extra.tipo === "Descuento" ? "color: #4caf50;" : ""}">
-                        ${extra.tipo === "Descuento" ? "-" : ""}${formatCurrency(extra.monto)}
+                      <td class="text-right ${
+                        extra.tipo === "Descuento" ? "color: #4caf50;" : ""
+                      }">
+                        ${
+                          extra.tipo === "Descuento" ? "-" : ""
+                        }${formatCurrency(extra.monto)}
                       </td>
                     </tr>
-                  `).join('')}
+                  `
+                    )
+                    .join("")}
                 </tbody>
               </table>
-            ` : ''}
+            `
+                : ""
+            }
 
             <div class="summary">
               <h3>Resumen del Presupuesto</h3>
-              <p><strong>Subtotal Productos:</strong> ${formatCurrency(presupuestoCompleto.subtotal || 0)}</p>
-              ${(presupuestoCompleto.totalExtras || 0) !== 0 ? `
+              <p><strong>Subtotal Productos:</strong> ${formatCurrency(
+                presupuestoCompleto.subtotal || 0
+              )}</p>
+              ${
+                (presupuestoCompleto.totalExtras || 0) !== 0
+                  ? `
                 <p><strong>Cargos Adicionales:</strong> 
-                  <span style="${(presupuestoCompleto.totalExtras || 0) < 0 ? "color: #4caf50;" : ""}">
-                    ${(presupuestoCompleto.totalExtras || 0) < 0 ? "-" : ""}${formatCurrency(Math.abs(presupuestoCompleto.totalExtras || 0))}
+                  <span style="${
+                    (presupuestoCompleto.totalExtras || 0) < 0
+                      ? "color: #4caf50;"
+                      : ""
+                  }">
+                    ${
+                      (presupuestoCompleto.totalExtras || 0) < 0 ? "-" : ""
+                    }${formatCurrency(
+                      Math.abs(presupuestoCompleto.totalExtras || 0)
+                    )}
                   </span>
                 </p>
-              ` : ''}
-              <p><strong>Subtotal:</strong> ${formatCurrency((presupuestoCompleto.subtotal || 0) + (presupuestoCompleto.totalExtras || 0))}</p>
-              <p><strong>IVA (21%):</strong> ${formatCurrency(presupuestoCompleto.iva || 0)}</p>
-              <p class="total">Total: ${formatCurrency(presupuestoCompleto.total_transaction || presupuestoCompleto.total || 0)}</p>
+              `
+                  : ""
+              }
+              <p><strong>Subtotal:</strong> ${formatCurrency(
+                (presupuestoCompleto.subtotal || 0) +
+                  (presupuestoCompleto.totalExtras || 0)
+              )}</p>
+              <p><strong>IVA (21%):</strong> ${formatCurrency(
+                presupuestoCompleto.iva || 0
+              )}</p>
+              <p class="total">Total: ${formatCurrency(
+                presupuestoCompleto.total_transaction ||
+                  presupuestoCompleto.total ||
+                  0
+              )}</p>
               <div style="margin-top: 10px;">
                 <span class="badge">Incluye IVA</span>
                 <p style="font-size: 10px; color: #666; margin-top: 5px;">
@@ -465,25 +596,25 @@ const PresupuestoHistory: React.FC = () => {
           </body>
           </html>
         `);
-        
+
         printWindow.document.close();
         printWindow.focus();
-        
+
         // Esperar un momento para que se cargue el contenido y luego imprimir
         setTimeout(() => {
           printWindow.print();
         }, 500);
       }
     } catch (error) {
-      console.error('Error al generar el presupuesto:', error);
-      alert('Error al generar el presupuesto');
+      console.error("Error al generar el presupuesto:", error);
+      notification.error("Error al generar el presupuesto");
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS'
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
     }).format(amount);
   };
 
@@ -529,8 +660,8 @@ const PresupuestoHistory: React.FC = () => {
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-700">
             Mostrando {(currentPage - 1) * itemsPerPage + 1} a{" "}
-            {Math.min(currentPage * itemsPerPage, filteredPresupuestos.length)} de{" "}
-            {filteredPresupuestos.length} presupuestos
+            {Math.min(currentPage * itemsPerPage, filteredPresupuestos.length)}{" "}
+            de {filteredPresupuestos.length} presupuestos
           </span>
         </div>
 
@@ -666,11 +797,13 @@ const PresupuestoHistory: React.FC = () => {
               />
             </div>
           </div>
-          
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[200px] justify-start text-left font-normal">
+              <Button
+                variant="outline"
+                className="w-[200px] justify-start text-left font-normal"
+              >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Fecha desde"}
               </Button>
@@ -688,7 +821,10 @@ const PresupuestoHistory: React.FC = () => {
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[200px] justify-start text-left font-normal">
+              <Button
+                variant="outline"
+                className="w-[200px] justify-start text-left font-normal"
+              >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateTo ? format(dateTo, "dd/MM/yyyy") : "Fecha hasta"}
               </Button>
@@ -728,61 +864,89 @@ const PresupuestoHistory: React.FC = () => {
           ) : (
             getPaginatedPresupuestos().map((presupuesto, index) => {
               // Calcular el número de presupuesto: el más reciente tiene el número más alto
-              const presupuestoNumber = filteredPresupuestos.length - ((currentPage - 1) * itemsPerPage + index);
+              const presupuestoNumber =
+                filteredPresupuestos.length -
+                ((currentPage - 1) * itemsPerPage + index);
               return (
-              <div
-                key={presupuesto.transaction_id || presupuesto.id || `presupuesto-${index}`}
-                className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-2">
-                      <div>
-                        <h3 className="font-semibold">Presupuesto #{presupuestoNumber}</h3>
-                        <p className="text-xs text-gray-500">Transacción N°{presupuesto.transaction_id || presupuesto.id}</p>
+                <div
+                  key={
+                    presupuesto.transaction_id ||
+                    presupuesto.id ||
+                    `presupuesto-${index}`
+                  }
+                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4 mb-2">
+                        <div>
+                          <h3 className="font-semibold">
+                            Presupuesto #{presupuestoNumber}
+                          </h3>
+                          <p className="text-xs text-gray-500">
+                            Transacción N°
+                            {presupuesto.transaction_id || presupuesto.id}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                        <div>
+                          <span className="font-medium">Cliente:</span>{" "}
+                          {presupuesto.client_name ||
+                            presupuesto.cliente ||
+                            "Sin cliente"}
+                        </div>
+                        <div>
+                          <span className="font-medium">Fecha:</span>{" "}
+                          {format(
+                            new Date(
+                              presupuesto.date ||
+                                presupuesto.fecha ||
+                                new Date()
+                            ),
+                            "dd/MM/yyyy",
+                            { locale: es }
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-medium">Total:</span>{" "}
+                          {formatCurrency(
+                            presupuesto.total_transaction ||
+                              presupuesto.total ||
+                              0
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">Cliente:</span> {presupuesto.client_name || presupuesto.cliente || 'Sin cliente'}
-                      </div>
-                      <div>
-                        <span className="font-medium">Fecha:</span> {format(new Date(presupuesto.date || presupuesto.fecha || new Date()), "dd/MM/yyyy", { locale: es })}
-                      </div>
-                      <div>
-                        <span className="font-medium">Total:</span> {formatCurrency(presupuesto.total_transaction || presupuesto.total || 0)}
-                      </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewPresupuesto(presupuesto)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadPresupuesto(presupuesto)}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Descargar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeletePresupuesto(presupuesto)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Eliminar
+                      </Button>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewPresupuesto(presupuesto)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Ver
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownloadPresupuesto(presupuesto)}
-                    >
-                      <Download className="h-4 w-4 mr-1" />
-                      Descargar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeletePresupuesto(presupuesto)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Eliminar
-                    </Button>
                   </div>
                 </div>
-              </div>
               );
             })
           )}
@@ -801,7 +965,10 @@ const PresupuestoHistory: React.FC = () => {
           <Dialog open={true} onOpenChange={() => setSelectedPresupuesto(null)}>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Presupuesto #{selectedPresupuesto.transaction_id || selectedPresupuesto.id}</DialogTitle>
+                <DialogTitle>
+                  Presupuesto #
+                  {selectedPresupuesto.transaction_id || selectedPresupuesto.id}
+                </DialogTitle>
               </DialogHeader>
 
               <div className="space-y-6">
@@ -812,18 +979,25 @@ const PresupuestoHistory: React.FC = () => {
                       Información del Cliente
                     </h3>
                     <p>
-                      <strong>Nombre:</strong> {selectedPresupuesto.client_name || selectedPresupuesto.cliente || 'Sin cliente'}
+                      <strong>Nombre:</strong>{" "}
+                      {selectedPresupuesto.client_name ||
+                        selectedPresupuesto.cliente ||
+                        "Sin cliente"}
                     </p>
                     {selectedPresupuesto.clienteInfo && (
                       <>
                         <p>
-                          <strong>Empresa:</strong> {selectedPresupuesto.clienteInfo.company_name || "N/A"}
+                          <strong>Empresa:</strong>{" "}
+                          {selectedPresupuesto.clienteInfo.company_name ||
+                            "N/A"}
                         </p>
                         <p>
-                          <strong>Email:</strong> {selectedPresupuesto.clienteInfo.email || "N/A"}
+                          <strong>Email:</strong>{" "}
+                          {selectedPresupuesto.clienteInfo.email || "N/A"}
                         </p>
                         <p>
-                          <strong>Teléfono:</strong> {selectedPresupuesto.clienteInfo.phone || "N/A"}
+                          <strong>Teléfono:</strong>{" "}
+                          {selectedPresupuesto.clienteInfo.phone || "N/A"}
                         </p>
                       </>
                     )}
@@ -833,17 +1007,43 @@ const PresupuestoHistory: React.FC = () => {
                       Información del Presupuesto
                     </h3>
                     <p>
-                      <strong>Fecha:</strong> {format(new Date(selectedPresupuesto.date || selectedPresupuesto.fecha || new Date()), "dd/MM/yyyy", { locale: es })}
+                      <strong>Fecha:</strong>{" "}
+                      {format(
+                        new Date(
+                          selectedPresupuesto.date ||
+                            selectedPresupuesto.fecha ||
+                            new Date()
+                        ),
+                        "dd/MM/yyyy",
+                        { locale: es }
+                      )}
                     </p>
                     <div className="flex items-center gap-2 mb-2">
                       <strong>Estado:</strong>
-                      <Badge variant={getStatusBadgeVariant(selectedPresupuesto.status || selectedPresupuesto.estado || 'pendiente')}>
-                        {(selectedPresupuesto.status || selectedPresupuesto.estado || 'pendiente').charAt(0).toUpperCase() + (selectedPresupuesto.status || selectedPresupuesto.estado || 'pendiente').slice(1)}
+                      <Badge
+                        variant={getStatusBadgeVariant(
+                          selectedPresupuesto.status ||
+                            selectedPresupuesto.estado ||
+                            "pendiente"
+                        )}
+                      >
+                        {(
+                          selectedPresupuesto.status ||
+                          selectedPresupuesto.estado ||
+                          "pendiente"
+                        )
+                          .charAt(0)
+                          .toUpperCase() +
+                          (
+                            selectedPresupuesto.status ||
+                            selectedPresupuesto.estado ||
+                            "pendiente"
+                          ).slice(1)}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
                       <strong>Tipo de Impuesto:</strong>
-                      <Badge 
+                      <Badge
                         variant="default"
                         className="bg-green-100 text-green-800 border-green-200"
                       >
@@ -865,13 +1065,17 @@ const PresupuestoHistory: React.FC = () => {
                         <TableHead>Código</TableHead>
                         <TableHead>Producto</TableHead>
                         <TableHead className="text-right">Cantidad</TableHead>
-                        <TableHead className="text-right">Precio Unit.</TableHead>
+                        <TableHead className="text-right">
+                          Precio Unit.
+                        </TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {(selectedPresupuesto.items || []).map((item, index) => (
-                        <TableRow key={`item-${index}-${item.producto || 'unknown'}`}>
+                        <TableRow
+                          key={`item-${index}-${item.producto || "unknown"}`}
+                        >
                           <TableCell className="font-medium">
                             {item.codigo || `ITEM-${index + 1}`}
                           </TableCell>
@@ -892,42 +1096,49 @@ const PresupuestoHistory: React.FC = () => {
                 </div>
 
                 {/* Extras */}
-                {selectedPresupuesto.extras && selectedPresupuesto.extras.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Descripción</TableHead>
-                          <TableHead className="text-right">Monto</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedPresupuesto.extras.map((extra, index) => (
-                          <TableRow key={`extra-${index}-${extra.tipo || 'unknown'}`}>
-                            <TableCell className="font-medium">
-                              {extra.tipo}
-                            </TableCell>
-                            <TableCell>{extra.descripcion}</TableCell>
-                            <TableCell
-                              className={`text-right ${
-                                extra.tipo === "Descuento" ? "text-green-600" : ""
-                              }`}
-                            >
-                              {extra.tipo === "Descuento" ? "-" : ""}
-                              {formatCurrency(extra.monto)}
-                            </TableCell>
+                {selectedPresupuesto.extras &&
+                  selectedPresupuesto.extras.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Descripción</TableHead>
+                            <TableHead className="text-right">Monto</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
+                        </TableHeader>
+                        <TableBody>
+                          {selectedPresupuesto.extras.map((extra, index) => (
+                            <TableRow
+                              key={`extra-${index}-${extra.tipo || "unknown"}`}
+                            >
+                              <TableCell className="font-medium">
+                                {extra.tipo}
+                              </TableCell>
+                              <TableCell>{extra.descripcion}</TableCell>
+                              <TableCell
+                                className={`text-right ${
+                                  extra.tipo === "Descuento"
+                                    ? "text-green-600"
+                                    : ""
+                                }`}
+                              >
+                                {extra.tipo === "Descuento" ? "-" : ""}
+                                {formatCurrency(extra.monto)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
 
                 {/* Resumen */}
                 <div className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-semibold mb-3">Resumen del Presupuesto</h3>
+                  <h3 className="font-semibold mb-3">
+                    Resumen del Presupuesto
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p>
@@ -939,59 +1150,74 @@ const PresupuestoHistory: React.FC = () => {
                           <strong>Cargos Adicionales:</strong>{" "}
                           <span
                             className={
-                              (selectedPresupuesto.totalExtras || 0) < 0 ? "text-green-600" : ""
+                              (selectedPresupuesto.totalExtras || 0) < 0
+                                ? "text-green-600"
+                                : ""
                             }
                           >
-                            {(selectedPresupuesto.totalExtras || 0) < 0 ? "-" : ""}
-                            {formatCurrency(Math.abs(selectedPresupuesto.totalExtras || 0))}
+                            {(selectedPresupuesto.totalExtras || 0) < 0
+                              ? "-"
+                              : ""}
+                            {formatCurrency(
+                              Math.abs(selectedPresupuesto.totalExtras || 0)
+                            )}
                           </span>
                         </p>
                       )}
                       <p>
                         <strong>Subtotal:</strong>{" "}
-                        {formatCurrency((selectedPresupuesto.subtotal || 0) + (selectedPresupuesto.totalExtras || 0))}
+                        {formatCurrency(
+                          (selectedPresupuesto.subtotal || 0) +
+                            (selectedPresupuesto.totalExtras || 0)
+                        )}
                       </p>
                       <p>
                         <strong>IVA (21%):</strong>{" "}
                         {formatCurrency(selectedPresupuesto.iva || 0)}
                       </p>
                       <p className="text-lg font-bold">
-                        Total: {formatCurrency(selectedPresupuesto.total_transaction || selectedPresupuesto.total || 0)}
+                        Total:{" "}
+                        {formatCurrency(
+                          selectedPresupuesto.total_transaction ||
+                            selectedPresupuesto.total ||
+                            0
+                        )}
                       </p>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <Badge
-                          className="bg-green-100 text-green-800 border-green-300 font-semibold"
-                        >
+                        <Badge className="bg-green-100 text-green-800 border-green-300 font-semibold">
                           Incluye IVA
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-600 mt-2">
-                        Este presupuesto incluye IVA del 21%. El monto mostrado es el total a pagar.
+                        Este presupuesto incluye IVA del 21%. El monto mostrado
+                        es el total a pagar.
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
 
-            <DialogFooter className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setSelectedPresupuesto(null)}
-              >
-                Cerrar
-              </Button>
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => handleDownloadPresupuesto(selectedPresupuesto!)}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Imprimir/Descargar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedPresupuesto(null)}
+                >
+                  Cerrar
+                </Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() =>
+                    handleDownloadPresupuesto(selectedPresupuesto!)
+                  }
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Imprimir/Descargar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
       </CardContent>
     </Card>

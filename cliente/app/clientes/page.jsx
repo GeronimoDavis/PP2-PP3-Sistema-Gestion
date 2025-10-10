@@ -204,13 +204,13 @@ export default function ClientesPage() {
         setError("El CUIT/CUIL debe tener 11 dígitos");
         return;
       }
-      
+
       // Asegurar que provider sea un booleano
       const dataToSend = {
         ...clientData,
-        provider: Boolean(clientData.provider)
+        provider: Boolean(clientData.provider),
       };
-      
+
       //crear el cliente
       const newClient = await createPerson(dataToSend);
       setClients([...clients, newClient.person]);
@@ -505,7 +505,10 @@ export default function ClientesPage() {
                   <Select
                     value={clientData.provider ? "true" : "false"}
                     onValueChange={(value) =>
-                      setClientData({ ...clientData, provider: value === "true" })
+                      setClientData({
+                        ...clientData,
+                        provider: value === "true",
+                      })
                     }
                   >
                     <SelectTrigger className="col-span-3">
@@ -550,12 +553,12 @@ export default function ClientesPage() {
           />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por estado" />
+              <SelectValue placeholder="Filtrar por Cliente/Proveedor" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="true">Activos</SelectItem>
-              <SelectItem value="false">Inactivos</SelectItem>
+              <SelectItem value="true">Proveedor</SelectItem>
+              <SelectItem value="false">Cliente</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -635,7 +638,7 @@ export default function ClientesPage() {
                         variant="ghost"
                         onClick={() => requestSort("provider")}
                       >
-                        Estado{getSortIndicator("provider")}
+                        Cliente/Proveedor{getSortIndicator("provider")}
                       </Button>
                     </TableHead>
                     <TableHead className="text-right">Acciones</TableHead>

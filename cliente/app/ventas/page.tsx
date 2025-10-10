@@ -16,6 +16,7 @@ import {
   Banknote,
   Edit,
 } from "lucide-react";
+import { useNotification } from "@/hooks/use-notification";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -65,7 +66,12 @@ import { createPayment, updatePayment, deletePayment } from "@/api/paymentsApi";
 import { getPersons } from "@/api/personsApi";
 import { createItem } from "@/api/itemsApi";
 import { createExtra } from "@/api/extrasApi";
-import { getSalesHistory, getSaleDetails, getBudgetsHistory, getBudgetDetails } from "@/api/transactionsApi";
+import {
+  getSalesHistory,
+  getSaleDetails,
+  getBudgetsHistory,
+  getBudgetDetails,
+} from "@/api/transactionsApi";
 import { format } from "date-fns";
 
 // Interfaces TypeScript para los tipos de datos
@@ -171,6 +177,7 @@ interface SalesHistoryItem {
 
 export default function VentasPage() {
   const { user, token, validateToken, loading } = useAuth();
+  const notification = useNotification();
 
   const router = useRouter(); // Usar el hook useRouter
 
@@ -205,7 +212,9 @@ export default function VentasPage() {
   // Funciones para manejar extras
   const addExtra = () => {
     if (!newExtraType.trim() || newExtraPrice <= 0) {
-      alert("Por favor complete el tipo de extra y un monto válido");
+      notification.warning(
+        "Por favor complete el tipo de extra y un monto válido"
+      );
       return;
     }
 
@@ -392,16 +401,20 @@ export default function VentasPage() {
 
   // Estados para el modal de pagos
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedSaleForPayment, setSelectedSaleForPayment] = useState<SalesHistoryItem | null>(null);
+  const [selectedSaleForPayment, setSelectedSaleForPayment] =
+    useState<SalesHistoryItem | null>(null);
   const [newPaymentAmount, setNewPaymentAmount] = useState(0);
   const [newPaymentMethod, setNewPaymentMethod] = useState("");
-  const [newPaymentDate, setNewPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newPaymentDate, setNewPaymentDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [newPaymentNote, setNewPaymentNote] = useState("");
   const [isProcessingNewPayment, setIsProcessingNewPayment] = useState(false);
 
   // Estados para el modal de edición de pagos
   const [showEditPaymentModal, setShowEditPaymentModal] = useState(false);
-  const [selectedPaymentForEdit, setSelectedPaymentForEdit] = useState<SalePayment | null>(null);
+  const [selectedPaymentForEdit, setSelectedPaymentForEdit] =
+    useState<SalePayment | null>(null);
   const [editPaymentAmount, setEditPaymentAmount] = useState(0);
   const [editPaymentMethod, setEditPaymentMethod] = useState("");
   const [editPaymentDate, setEditPaymentDate] = useState("");
@@ -410,9 +423,10 @@ export default function VentasPage() {
 
   // Estados para el modal de presupuesto
   const [showBudgetModal, setShowBudgetModal] = useState(false);
-  
+
   // Estados para el modal de presupuesto de transacción completada
-  const [showTransactionBudgetModal, setShowTransactionBudgetModal] = useState(false);
+  const [showTransactionBudgetModal, setShowTransactionBudgetModal] =
+    useState(false);
   const [completedTransaction, setCompletedTransaction] = useState<any>(null);
 
   // Estados para el historial de presupuestos
@@ -425,11 +439,14 @@ export default function VentasPage() {
     try {
       setBudgetsLoading(true);
       setBudgetsError("");
-      
+
       const response = await getBudgetsHistory({});
       setSavedBudgets(response.budgets || []);
     } catch (error: any) {
-      console.error("Error al cargar historial de presupuestos:", error.message);
+      console.error(
+        "Error al cargar historial de presupuestos:",
+        error.message
+      );
       setBudgetsError("Error al cargar el historial de presupuestos");
     } finally {
       setBudgetsLoading(false);
@@ -437,7 +454,7 @@ export default function VentasPage() {
   };
 
   // Función para guardar presupuesto en el historial
-  const saveBudgetToHistory = async (budgetData: any) => {
+  const saveBudgetToHistory = async () => {
     try {
       // Calcular totales
       const subtotal = total;
@@ -448,39 +465,39 @@ export default function VentasPage() {
       // Crear la transacción como presupuesto
       const transactionData = {
         person_id: selectedClient || null,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
         is_sale: true, // Es una venta/presupuesto
-        tax_type: 'Consumidor Final', // Usar un tipo válido
+        tax_type: "Consumidor Final", // Usar un tipo válido
         is_budget: true, // Campo adicional para distinguir presupuestos
         has_tax: true, // Incluir IVA
-        items: cartItems.map(item => ({
+        items: cartItems.map((item) => ({
           product_id: item.id,
           quantity: item.cantidad,
-          price: item.precio
+          price: item.precio,
         })),
-        extras: saleExtras.map(extra => ({
+        extras: saleExtras.map((extra) => ({
           type: extra.type,
           price: extra.price,
-          note: extra.note
+          note: extra.note,
         })),
         // Agregar totales calculados
         subtotal: subtotal,
         total_extras: totalExtras,
         iva: iva,
-        total: totalFinal
+        total: totalFinal,
       };
 
-      console.log('Datos del presupuesto a guardar:', transactionData);
+      console.log("Datos del presupuesto a guardar:", transactionData);
 
       // Llamar a la API para crear la transacción
       const response = await createTransaction(transactionData);
-      
+
       // Recargar el historial de presupuestos
       loadBudgetsHistory();
-      
+
       return response;
     } catch (error) {
-      console.error('Error al guardar presupuesto:', error);
+      console.error("Error al guardar presupuesto:", error);
       throw error;
     }
   };
@@ -529,12 +546,12 @@ export default function VentasPage() {
     if (!selectedSaleForPayment) return;
 
     if (newPaymentAmount <= 0) {
-      alert("Por favor ingrese un monto válido");
+      notification.warning("Por favor ingrese un monto válido");
       return;
     }
 
     if (!newPaymentMethod) {
-      alert("Por favor seleccione un método de pago");
+      notification.warning("Por favor seleccione un método de pago");
       return;
     }
 
@@ -554,11 +571,13 @@ export default function VentasPage() {
       // Recargar el historial de ventas
       loadSalesHistory();
 
-      alert("Pago agregado exitosamente!");
+      notification.success("Pago agregado exitosamente!");
       closePaymentModal();
     } catch (error: any) {
       console.error("Error al agregar pago:", error);
-      alert("Error al agregar pago: " + (error.message || "Error desconocido"));
+      notification.error(
+        "Error al agregar pago: " + (error.message || "Error desconocido")
+      );
     } finally {
       setIsProcessingNewPayment(false);
     }
@@ -585,12 +604,12 @@ export default function VentasPage() {
     if (!selectedPaymentForEdit) return;
 
     if (editPaymentAmount <= 0) {
-      alert("Por favor ingrese un monto válido");
+      notification.warning("Por favor ingrese un monto válido");
       return;
     }
 
     if (!editPaymentMethod) {
-      alert("Por favor seleccione un método de pago");
+      notification.warning("Por favor seleccione un método de pago");
       return;
     }
 
@@ -607,18 +626,22 @@ export default function VentasPage() {
 
       // Recargar los detalles de la venta
       if (selectedSale) {
-        const response = await getSaleDetails(selectedSale.transaction.transaction_id);
+        const response = await getSaleDetails(
+          selectedSale.transaction.transaction_id
+        );
         setSelectedSale(response);
       }
 
       // Recargar el historial de ventas
       loadSalesHistory();
 
-      alert("Pago actualizado exitosamente!");
+      notification.success("Pago actualizado exitosamente!");
       closeEditPaymentModal();
     } catch (error: any) {
       console.error("Error al actualizar pago:", error);
-      alert("Error al actualizar pago: " + (error.message || "Error desconocido"));
+      notification.error(
+        "Error al actualizar pago: " + (error.message || "Error desconocido")
+      );
     } finally {
       setIsProcessingEditPayment(false);
     }
@@ -634,17 +657,21 @@ export default function VentasPage() {
 
       // Recargar los detalles de la venta
       if (selectedSale) {
-        const response = await getSaleDetails(selectedSale.transaction.transaction_id);
+        const response = await getSaleDetails(
+          selectedSale.transaction.transaction_id
+        );
         setSelectedSale(response);
       }
 
       // Recargar el historial de ventas
       loadSalesHistory();
 
-      alert("Pago eliminado exitosamente!");
+      notification.success("Pago eliminado exitosamente!");
     } catch (error: any) {
       console.error("Error al eliminar pago:", error);
-      alert("Error al eliminar pago: " + (error.message || "Error desconocido"));
+      notification.error(
+        "Error al eliminar pago: " + (error.message || "Error desconocido")
+      );
     }
   };
 
@@ -877,7 +904,7 @@ export default function VentasPage() {
       setShowSaleDetails(true);
     } catch (error: any) {
       console.error("Error al cargar detalles de la venta:", error);
-      alert("Error al cargar los detalles de la venta");
+      notification.error("Error al cargar los detalles de la venta");
     } finally {
       setIsLoadingSaleDetails(false);
     }
@@ -912,17 +939,17 @@ export default function VentasPage() {
   //finalizar venta
   const handleFinalizeSale = async () => {
     if (cartItems.length === 0) {
-      alert("El carrito está vacío");
+      notification.warning("El carrito está vacío");
       return;
     }
 
     if (paymentAmount > 0 && !selectedPaymentMethod) {
-      alert("Por favor seleccione un método de pago");
+      notification.warning("Por favor seleccione un método de pago");
       return;
     }
 
     if (!selectedClient) {
-      alert("Por favor seleccione un cliente");
+      notification.warning("Por favor seleccione un cliente");
       return;
     }
 
@@ -1007,30 +1034,33 @@ export default function VentasPage() {
       const completedTransactionData = {
         transaction_id: transactionId,
         date: new Date().toISOString().split("T")[0],
-        client: clients.find(c => c.person_id.toString() === selectedClient),
+        client: clients.find((c) => c.person_id.toString() === selectedClient),
         items: cartItems,
         extras: saleExtras,
-        payment: paymentAmount > 0 ? {
-          amount: paymentAmount,
-          method: selectedPaymentMethod,
-          date: paymentDate,
-          note: paymentNote
-        } : null,
+        payment:
+          paymentAmount > 0
+            ? {
+                amount: paymentAmount,
+                method: selectedPaymentMethod,
+                date: paymentDate,
+                note: paymentNote,
+              }
+            : null,
         totals: {
           subtotal: total,
           extras: totalExtras,
           tax: calculateTax(),
-          total: calculateTotalWithTax()
-        }
+          total: calculateTotalWithTax(),
+        },
       };
 
       setCompletedTransaction(completedTransactionData);
       setShowTransactionBudgetModal(true);
 
-      alert("Venta finalizada exitosamente!");
+      notification.success("Venta finalizada exitosamente!");
     } catch (error: any) {
       console.error("Error al finalizar la venta:", error);
-      alert(
+      notification.error(
         "Error al finalizar la venta: " + (error.message || "Error desconocido")
       );
     } finally {
@@ -1054,12 +1084,12 @@ export default function VentasPage() {
 
   const validatePayment = () => {
     if (cartItems.length === 0) {
-      alert("El carrito está vacío");
+      notification.warning("El carrito está vacío");
       return false;
     }
 
     if (paymentAmount > 0 && !selectedPaymentMethod) {
-      alert("Por favor seleccione un método de pago");
+      notification.warning("Por favor seleccione un método de pago");
       return false;
     }
 
@@ -1226,7 +1256,9 @@ export default function VentasPage() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="nueva">Nueva Venta</TabsTrigger>
           <TabsTrigger value="historial">Historial de Ventas</TabsTrigger>
-          <TabsTrigger value="presupuestos">Historial de Presupuestos</TabsTrigger>
+          <TabsTrigger value="presupuestos">
+            Historial de Presupuestos
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="nueva">
           <div className="grid gap-4 md:grid-cols-12">
@@ -1510,7 +1542,8 @@ export default function VentasPage() {
                             value={item.cantidad}
                             onChange={(e) => {
                               const value = e.target.value;
-                              const newQuantity = value === "" ? 1 : parseInt(value) || 1;
+                              const newQuantity =
+                                value === "" ? 1 : parseInt(value) || 1;
                               updateQuantity(item.id, newQuantity);
                             }}
                             min="1"
@@ -1699,7 +1732,9 @@ export default function VentasPage() {
                       onClick={() => {
                         // Si el IVA está excluido, usar el subtotal sin IVA
                         // Si el IVA está incluido, usar el total con IVA
-                        const total = excludeTax ? calculateRealTotal() : calculateTotalWithTax();
+                        const total = excludeTax
+                          ? calculateRealTotal()
+                          : calculateTotalWithTax();
                         setPaymentAmount(total);
                       }}
                       className="text-xs"
@@ -1710,18 +1745,26 @@ export default function VentasPage() {
                   <Input
                     type="number"
                     placeholder="0.00"
-                    value={!isNaN(paymentAmount) && paymentAmount > 0 ? paymentAmount.toString() : ""}
+                    value={
+                      !isNaN(paymentAmount) && paymentAmount > 0
+                        ? paymentAmount.toString()
+                        : ""
+                    }
                     onChange={(e) => {
                       const value = e.target.value;
-                      
+
                       // Si el input está vacío, establecer 0 (no 1)
-                      if (value === "" || value === null || value === undefined) {
+                      if (
+                        value === "" ||
+                        value === null ||
+                        value === undefined
+                      ) {
                         setPaymentAmount(0);
                         return;
                       }
-                      
+
                       const newAmount = parseFloat(value);
-                      
+
                       // Verificar que sea un número válido y no NaN
                       if (!isNaN(newAmount) && isFinite(newAmount)) {
                         const maxAmount = calculateTotalWithTax();
@@ -1847,23 +1890,27 @@ export default function VentasPage() {
                         </div>
                       )}
                       {/* Solo mostrar vuelto cuando se excluye el IVA */}
-                      {paymentAmount > calculateTotalWithTax() && excludeTax && (
-                        <div className="flex justify-between text-sm">
-                          <span>Vuelto</span>
-                          <span className="font-medium text-green-600">
-                            $
-                            {(
-                              paymentAmount - calculateTotalWithTax()
-                            ).toLocaleString("es-AR")}
-                          </span>
-                        </div>
-                      )}
+                      {paymentAmount > calculateTotalWithTax() &&
+                        excludeTax && (
+                          <div className="flex justify-between text-sm">
+                            <span>Vuelto</span>
+                            <span className="font-medium text-green-600">
+                              $
+                              {(
+                                paymentAmount - calculateTotalWithTax()
+                              ).toLocaleString("es-AR")}
+                            </span>
+                          </div>
+                        )}
                       {/* Mostrar mensaje cuando se incluye IVA y no hay vuelto */}
-                      {paymentAmount > calculateTotalWithTax() && !excludeTax && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500 italic">Sin vuelto (IVA incluido)</span>
-                        </div>
-                      )}
+                      {paymentAmount > calculateTotalWithTax() &&
+                        !excludeTax && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500 italic">
+                              Sin vuelto (IVA incluido)
+                            </span>
+                          </div>
+                        )}
                     </div>
                   )}
                 </div>
@@ -2064,13 +2111,19 @@ export default function VentasPage() {
                           sale.total_paid
                         );
                         // Calcular el número de venta: la más reciente tiene el número más alto
-                        const saleNumber = totalSales - ((currentPage - 1) * itemsPerPage + index);
+                        const saleNumber =
+                          totalSales -
+                          ((currentPage - 1) * itemsPerPage + index);
                         return (
                           <TableRow key={sale.transaction_id}>
                             <TableCell className="font-medium">
                               <div>
-                                <div className="font-semibold">Venta #{saleNumber}</div>
-                                <div className="text-xs text-gray-500">Transacción N°{sale.transaction_id}</div>
+                                <div className="font-semibold">
+                                  Venta #{saleNumber}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Transacción N°{sale.transaction_id}
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -2097,32 +2150,32 @@ export default function VentasPage() {
                                 {paymentStatus.status}
                               </Badge>
                             </TableCell>
-                             <TableCell className="text-right">
-                               <div className="flex items-center justify-end space-x-2">
-                                 <Button
-                                   variant="outline"
-                                   size="sm"
-                                   onClick={() =>
-                                     handleViewSaleDetails(sale.transaction_id)
-                                   }
-                                   disabled={isLoadingSaleDetails}
-                                   title="Ver detalles"
-                                 >
-                                   <Eye className="h-4 w-4" />
-                                 </Button>
-                                 {sale.total_paid < sale.total_transaction && (
-                                   <Button
-                                     variant="outline"
-                                     size="sm"
-                                     onClick={() => openPaymentModal(sale)}
-                                     className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
-                                     title="Agregar pago"
-                                   >
-                                     <Banknote className="h-4 w-4" />
-                                   </Button>
-                                 )}
-                               </div>
-                             </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleViewSaleDetails(sale.transaction_id)
+                                  }
+                                  disabled={isLoadingSaleDetails}
+                                  title="Ver detalles"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                {sale.total_paid < sale.total_transaction && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openPaymentModal(sale)}
+                                    className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700"
+                                    title="Agregar pago"
+                                  >
+                                    <Banknote className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
                           </TableRow>
                         );
                       })}
@@ -2273,11 +2326,21 @@ export default function VentasPage() {
                   </p>
                   <div className="flex items-center gap-2 mb-2">
                     <strong>Tipo de Impuesto:</strong>
-                    <Badge 
-                      variant={hasIVA(selectedSale.transaction.tax_type) ? "default" : "secondary"}
-                      className={hasIVA(selectedSale.transaction.tax_type) ? "bg-green-100 text-green-800 border-green-200" : "bg-gray-100 text-gray-800 border-gray-200"}
+                    <Badge
+                      variant={
+                        hasIVA(selectedSale.transaction.tax_type)
+                          ? "default"
+                          : "secondary"
+                      }
+                      className={
+                        hasIVA(selectedSale.transaction.tax_type)
+                          ? "bg-green-100 text-green-800 border-green-200"
+                          : "bg-gray-100 text-gray-800 border-gray-200"
+                      }
                     >
-                      {hasIVA(selectedSale.transaction.tax_type) ? "Con IVA" : "Sin IVA"}
+                      {hasIVA(selectedSale.transaction.tax_type)
+                        ? "Con IVA"
+                        : "Sin IVA"}
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">
@@ -2402,7 +2465,9 @@ export default function VentasPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDeletePayment(payment.payment_id)}
+                              onClick={() =>
+                                handleDeletePayment(payment.payment_id)
+                              }
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               title="Eliminar pago"
                             >
@@ -2465,14 +2530,16 @@ export default function VentasPage() {
                           ).status
                         }
                       </Badge>
-                      <Badge 
+                      <Badge
                         className={
-                          hasIVA(selectedSale.transaction.tax_type) 
-                            ? "bg-green-100 text-green-800 border-green-300 font-semibold" 
+                          hasIVA(selectedSale.transaction.tax_type)
+                            ? "bg-green-100 text-green-800 border-green-300 font-semibold"
                             : "bg-red-100 text-red-800 border-red-300 font-semibold"
                         }
                       >
-                        {hasIVA(selectedSale.transaction.tax_type) ? "Incluye IVA" : "No incluye IVA"}
+                        {hasIVA(selectedSale.transaction.tax_type)
+                          ? "Incluye IVA"
+                          : "No incluye IVA"}
                       </Badge>
                     </div>
                   </div>
@@ -2485,18 +2552,20 @@ export default function VentasPage() {
             <Button variant="outline" onClick={() => setShowSaleDetails(false)}>
               Cerrar
             </Button>
-            <Button 
+            <Button
               className="bg-green-600 hover:bg-green-700"
               onClick={() => {
                 if (selectedSale) {
                   // Crear una ventana nueva para imprimir/descargar el recibo
-                  const printWindow = window.open('', '_blank');
+                  const printWindow = window.open("", "_blank");
                   if (printWindow) {
                     printWindow.document.write(`
                       <!DOCTYPE html>
                       <html>
                       <head>
-                        <title>Recibo de Venta #${selectedSale.transaction.transaction_id}</title>
+                        <title>Recibo de Venta #${
+                          selectedSale.transaction.transaction_id
+                        }</title>
                         <style>
                           * {
                             box-sizing: border-box;
@@ -2647,26 +2716,48 @@ export default function VentasPage() {
                       <body>
                         <div class="header">
                           <h1>RECIBO DE VENTA</h1>
-                          <p>Número: #${selectedSale.transaction.transaction_id}</p>
-                          <p>Fecha: ${formatDate(selectedSale.transaction.date)}</p>
+                          <p>Número: #${
+                            selectedSale.transaction.transaction_id
+                          }</p>
+                          <p>Fecha: ${formatDate(
+                            selectedSale.transaction.date
+                          )}</p>
                         </div>
                         
                         <div class="info-section">
                           <div class="info-column">
                             <h3>Información del Cliente</h3>
-                            <p><strong>Nombre:</strong> ${selectedSale.transaction.client_name}</p>
-                            <p><strong>Empresa:</strong> ${selectedSale.transaction.client_company || "N/A"}</p>
-                            <p><strong>Email:</strong> ${selectedSale.transaction.client_email || "N/A"}</p>
-                            <p><strong>Teléfono:</strong> ${selectedSale.transaction.client_phone || "N/A"}</p>
+                            <p><strong>Nombre:</strong> ${
+                              selectedSale.transaction.client_name
+                            }</p>
+                            <p><strong>Empresa:</strong> ${
+                              selectedSale.transaction.client_company || "N/A"
+                            }</p>
+                            <p><strong>Email:</strong> ${
+                              selectedSale.transaction.client_email || "N/A"
+                            }</p>
+                            <p><strong>Teléfono:</strong> ${
+                              selectedSale.transaction.client_phone || "N/A"
+                            }</p>
                           </div>
                           <div class="info-column">
                             <h3>Información de la Venta</h3>
                             <p><strong>Tipo de Impuesto:</strong> 
-                              <span class="badge ${hasIVA(selectedSale.transaction.tax_type) ? 'badge-green' : 'badge-red'}">
-                                ${hasIVA(selectedSale.transaction.tax_type) ? 'Con IVA' : 'Sin IVA'}
+                              <span class="badge ${
+                                hasIVA(selectedSale.transaction.tax_type)
+                                  ? "badge-green"
+                                  : "badge-red"
+                              }">
+                                ${
+                                  hasIVA(selectedSale.transaction.tax_type)
+                                    ? "Con IVA"
+                                    : "Sin IVA"
+                                }
                               </span>
                             </p>
-                            <p><small>${getIVADescription(selectedSale.transaction.tax_type)}</small></p>
+                            <p><small>${getIVADescription(
+                              selectedSale.transaction.tax_type
+                            )}</small></p>
                           </div>
                         </div>
 
@@ -2682,19 +2773,29 @@ export default function VentasPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            ${selectedSale.items.map((item: any) => `
+                            ${selectedSale.items
+                              .map(
+                                (item: any) => `
                               <tr>
                                 <td>${item.product_code}</td>
                                 <td>${item.product_name}</td>
                                 <td class="text-right">${item.quantity}</td>
-                                <td class="text-right">$${item.price.toLocaleString("es-AR")}</td>
-                                <td class="text-right">$${(item.quantity * item.price).toLocaleString("es-AR")}</td>
+                                <td class="text-right">$${item.price.toLocaleString(
+                                  "es-AR"
+                                )}</td>
+                                <td class="text-right">$${(
+                                  item.quantity * item.price
+                                ).toLocaleString("es-AR")}</td>
                               </tr>
-                            `).join('')}
+                            `
+                              )
+                              .join("")}
                           </tbody>
                         </table>
 
-                        ${selectedSale.extras.length > 0 ? `
+                        ${
+                          selectedSale.extras.length > 0
+                            ? `
                           <h3>Cargos Adicionales</h3>
                           <table>
                             <thead>
@@ -2705,64 +2806,140 @@ export default function VentasPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              ${selectedSale.extras.map((extra: any) => `
+                              ${selectedSale.extras
+                                .map(
+                                  (extra: any) => `
                                 <tr>
                                   <td>${extra.type}</td>
                                   <td>${extra.note}</td>
-                                  <td class="text-right ${extra.type === "Descuento" ? "text-green-600" : ""}">
-                                    ${extra.type === "Descuento" ? "-" : ""}$${extra.price.toLocaleString("es-AR")}
+                                  <td class="text-right ${
+                                    extra.type === "Descuento"
+                                      ? "text-green-600"
+                                      : ""
+                                  }">
+                                    ${
+                                      extra.type === "Descuento" ? "-" : ""
+                                    }$${extra.price.toLocaleString("es-AR")}
                                   </td>
                                 </tr>
-                              `).join('')}
+                              `
+                                )
+                                .join("")}
                             </tbody>
                           </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
-                        ${selectedSale.payments.length > 0 ? `
+                        ${
+                          selectedSale.payments.length > 0
+                            ? `
                           <div class="payment-info">
                             <h3>Información de Pagos</h3>
-                            ${selectedSale.payments.map((payment: any) => `
+                            ${selectedSale.payments
+                              .map(
+                                (payment: any) => `
                               <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 4px;">
                                 <div style="display: flex; justify-content: space-between;">
                                   <div>
-                                    <p><strong>Método:</strong> ${payment.type}</p>
-                                    <p><strong>Fecha:</strong> ${formatDate(payment.date)}</p>
+                                    <p><strong>Método:</strong> ${
+                                      payment.type
+                                    }</p>
+                                    <p><strong>Fecha:</strong> ${formatDate(
+                                      payment.date
+                                    )}</p>
                                   </div>
                                   <div>
-                                    <p><strong>Monto:</strong> $${payment.amount.toLocaleString("es-AR")}</p>
-                                    ${payment.note ? `<p><strong>Nota:</strong> ${payment.note}</p>` : ''}
+                                    <p><strong>Monto:</strong> $${payment.amount.toLocaleString(
+                                      "es-AR"
+                                    )}</p>
+                                    ${
+                                      payment.note
+                                        ? `<p><strong>Nota:</strong> ${payment.note}</p>`
+                                        : ""
+                                    }
                                   </div>
                                 </div>
                               </div>
-                            `).join('')}
+                            `
+                              )
+                              .join("")}
                           </div>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
                         <div class="summary">
                           <h3>Resumen de la Venta</h3>
-                          <p><strong>Subtotal Productos:</strong> $${selectedSale.totals.items.toLocaleString("es-AR")}</p>
-                          ${selectedSale.totals.extras !== 0 ? `
+                          <p><strong>Subtotal Productos:</strong> $${selectedSale.totals.items.toLocaleString(
+                            "es-AR"
+                          )}</p>
+                          ${
+                            selectedSale.totals.extras !== 0
+                              ? `
                             <p><strong>Cargos Adicionales:</strong> 
-                              <span class="${selectedSale.totals.extras < 0 ? "text-green-600" : ""}">
-                                ${selectedSale.totals.extras < 0 ? "-" : ""}$${Math.abs(selectedSale.totals.extras).toLocaleString("es-AR")}
+                              <span class="${
+                                selectedSale.totals.extras < 0
+                                  ? "text-green-600"
+                                  : ""
+                              }">
+                                ${
+                                  selectedSale.totals.extras < 0 ? "-" : ""
+                                }$${Math.abs(
+                                  selectedSale.totals.extras
+                                ).toLocaleString("es-AR")}
                               </span>
                             </p>
-                          ` : ''}
-                          <p><strong>Total Venta:</strong> $${selectedSale.totals.transaction.toLocaleString("es-AR")}</p>
-                          <p><strong>Total Pagado:</strong> $${selectedSale.totals.paid.toLocaleString("es-AR")}</p>
-                          <p><strong>Pendiente:</strong> $${selectedSale.totals.pending.toLocaleString("es-AR")}</p>
+                          `
+                              : ""
+                          }
+                          <p><strong>Total Venta:</strong> $${selectedSale.totals.transaction.toLocaleString(
+                            "es-AR"
+                          )}</p>
+                          <p><strong>Total Pagado:</strong> $${selectedSale.totals.paid.toLocaleString(
+                            "es-AR"
+                          )}</p>
+                          <p><strong>Pendiente:</strong> $${selectedSale.totals.pending.toLocaleString(
+                            "es-AR"
+                          )}</p>
                           
                           <div style="margin-top: 15px;">
-                            <span class="badge ${hasIVA(selectedSale.transaction.tax_type) ? 'badge-green' : 'badge-red'}">
-                              ${hasIVA(selectedSale.transaction.tax_type) ? 'Incluye IVA' : 'No incluye IVA'}
+                            <span class="badge ${
+                              hasIVA(selectedSale.transaction.tax_type)
+                                ? "badge-green"
+                                : "badge-red"
+                            }">
+                              ${
+                                hasIVA(selectedSale.transaction.tax_type)
+                                  ? "Incluye IVA"
+                                  : "No incluye IVA"
+                              }
                             </span>
-                            <span class="badge ${getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).status === 'Pagado' ? 'badge-green' : getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).status === 'Parcial' ? 'badge-yellow' : 'badge-red'}" style="margin-left: 10px;">
-                              ${getPaymentStatus(selectedSale.totals.transaction, selectedSale.totals.paid).status}
+                            <span class="badge ${
+                              getPaymentStatus(
+                                selectedSale.totals.transaction,
+                                selectedSale.totals.paid
+                              ).status === "Pagado"
+                                ? "badge-green"
+                                : getPaymentStatus(
+                                    selectedSale.totals.transaction,
+                                    selectedSale.totals.paid
+                                  ).status === "Parcial"
+                                ? "badge-yellow"
+                                : "badge-red"
+                            }" style="margin-left: 10px;">
+                              ${
+                                getPaymentStatus(
+                                  selectedSale.totals.transaction,
+                                  selectedSale.totals.paid
+                                ).status
+                              }
                             </span>
                             <p style="margin-top: 10px; font-size: 12px; color: #666;">
-                              ${hasIVA(selectedSale.transaction.tax_type) 
-                                ? 'Esta venta incluye IVA del 21%.'
-                                : 'Esta venta no incluye IVA.'
+                              ${
+                                hasIVA(selectedSale.transaction.tax_type)
+                                  ? "Esta venta incluye IVA del 21%."
+                                  : "Esta venta no incluye IVA."
                               }
                             </p>
                           </div>
@@ -2784,450 +2961,506 @@ export default function VentasPage() {
         </DialogContent>
       </Dialog>
 
-       {/* Modal para agregar extras */}
-       <Dialog open={showExtraModal} onOpenChange={setShowExtraModal}>
-         <DialogContent className="sm:max-w-md">
-           <DialogHeader>
-             <DialogTitle>Agregar Extra</DialogTitle>
-           </DialogHeader>
-           <div className="space-y-4">
-             <div className="space-y-2">
-               <Label htmlFor="extraType">Tipo de Extra</Label>
-               <Select value={newExtraType} onValueChange={setNewExtraType}>
-                 <SelectTrigger>
-                   <SelectValue placeholder="Seleccionar tipo de extra..." />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="Mano de obra">Mano de obra</SelectItem>
-                   <SelectItem value="Envio">Envío</SelectItem>
-                   <SelectItem value="Descuento">Descuento</SelectItem>
-                 </SelectContent>
-               </Select>
-             </div>
+      {/* Modal para agregar extras */}
+      <Dialog open={showExtraModal} onOpenChange={setShowExtraModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar Extra</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="extraType">Tipo de Extra</Label>
+              <Select value={newExtraType} onValueChange={setNewExtraType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo de extra..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mano de obra">Mano de obra</SelectItem>
+                  <SelectItem value="Envio">Envío</SelectItem>
+                  <SelectItem value="Descuento">Descuento</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-             <div className="space-y-2">
-               <Label htmlFor="extraPrice">Monto</Label>
-               <Input
-                 id="extraPrice"
-                 type="number"
-                 placeholder="0.00"
-                 value={newExtraPrice || ""}
-                 onChange={(e) =>
-                   setNewExtraPrice(parseFloat(e.target.value) || 0)
-                 }
-                 min="0"
-                 step="0.01"
-               />
-             </div>
-           </div>
-           <DialogFooter className="flex gap-2">
-             <Button variant="outline" onClick={closeExtraModal}>
-               Cancelar
-             </Button>
-             <Button onClick={addExtra}>Agregar Extra</Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
+            <div className="space-y-2">
+              <Label htmlFor="extraPrice">Monto</Label>
+              <Input
+                id="extraPrice"
+                type="number"
+                placeholder="0.00"
+                value={newExtraPrice || ""}
+                onChange={(e) =>
+                  setNewExtraPrice(parseFloat(e.target.value) || 0)
+                }
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={closeExtraModal}>
+              Cancelar
+            </Button>
+            <Button onClick={addExtra}>Agregar Extra</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-       {/* Modal para agregar pagos */}
-       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-         <DialogContent className="sm:max-w-md">
-           <DialogHeader>
-             <DialogTitle>
-               Agregar Pago - Venta #{selectedSaleForPayment?.transaction_id}
-             </DialogTitle>
-           </DialogHeader>
-           {selectedSaleForPayment && (
-             <div className="space-y-4">
-               {/* Información de la venta */}
-               <div className="p-3 bg-gray-50 rounded-lg">
-                 <div className="text-sm space-y-1">
-                   <div className="flex justify-between">
-                     <span>Cliente:</span>
-                     <span className="font-medium">{selectedSaleForPayment.client_name}</span>
-                   </div>
-                   <div className="flex justify-between">
-                     <span>Total Venta:</span>
-                     <span className="font-medium">${selectedSaleForPayment.total_transaction.toLocaleString("es-AR")}</span>
-                   </div>
-                   <div className="flex justify-between">
-                     <span>Pagado:</span>
-                     <span className="font-medium">${selectedSaleForPayment.total_paid.toLocaleString("es-AR")}</span>
-                   </div>
-                   <div className="flex justify-between font-semibold">
-                     <span>Pendiente:</span>
-                     <span className="text-orange-600">${(selectedSaleForPayment.total_transaction - selectedSaleForPayment.total_paid).toLocaleString("es-AR")}</span>
-                   </div>
-                 </div>
-               </div>
+      {/* Modal para agregar pagos */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Agregar Pago - Venta #{selectedSaleForPayment?.transaction_id}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSaleForPayment && (
+            <div className="space-y-4">
+              {/* Información de la venta */}
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span>Cliente:</span>
+                    <span className="font-medium">
+                      {selectedSaleForPayment.client_name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Venta:</span>
+                    <span className="font-medium">
+                      $
+                      {selectedSaleForPayment.total_transaction.toLocaleString(
+                        "es-AR"
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Pagado:</span>
+                    <span className="font-medium">
+                      $
+                      {selectedSaleForPayment.total_paid.toLocaleString(
+                        "es-AR"
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-semibold">
+                    <span>Pendiente:</span>
+                    <span className="text-orange-600">
+                      $
+                      {(
+                        selectedSaleForPayment.total_transaction -
+                        selectedSaleForPayment.total_paid
+                      ).toLocaleString("es-AR")}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-               {/* Formulario de pago */}
-               <div className="space-y-4">
-                 <div className="space-y-2">
-                   <Label>Monto del Pago</Label>
-                   <Input
-                     type="number"
-                     placeholder="0.00"
-                     value={newPaymentAmount || ""}
-                     onChange={(e) => setNewPaymentAmount(parseFloat(e.target.value) || 0)}
-                     min="0"
-                     step="0.01"
-                     max={selectedSaleForPayment.total_transaction - selectedSaleForPayment.total_paid}
-                   />
-                 </div>
+              {/* Formulario de pago */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Monto del Pago</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={newPaymentAmount || ""}
+                    onChange={(e) =>
+                      setNewPaymentAmount(parseFloat(e.target.value) || 0)
+                    }
+                    min="0"
+                    step="0.01"
+                    max={
+                      selectedSaleForPayment.total_transaction -
+                      selectedSaleForPayment.total_paid
+                    }
+                  />
+                </div>
 
-                 <div className="space-y-2">
-                   <Label>Método de Pago</Label>
-                   <Select value={newPaymentMethod} onValueChange={setNewPaymentMethod}>
-                     <SelectTrigger>
-                       <SelectValue placeholder="Seleccionar método" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="Efectivo">Efectivo</SelectItem>
-                       <SelectItem value="Transferencia">Transferencia Bancaria</SelectItem>
-                       <SelectItem value="Tarjeta">Tarjeta de Crédito/Débito</SelectItem>
-                       <SelectItem value="Cheque">Cheque</SelectItem>
-                       <SelectItem value="Credito30">Crédito (30 días)</SelectItem>
-                       <SelectItem value="Credito60">Crédito (60 días)</SelectItem>
-                       <SelectItem value="Credito90">Crédito (90 días)</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
+                <div className="space-y-2">
+                  <Label>Método de Pago</Label>
+                  <Select
+                    value={newPaymentMethod}
+                    onValueChange={setNewPaymentMethod}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar método" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Efectivo">Efectivo</SelectItem>
+                      <SelectItem value="Transferencia">
+                        Transferencia Bancaria
+                      </SelectItem>
+                      <SelectItem value="Tarjeta">
+                        Tarjeta de Crédito/Débito
+                      </SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                      <SelectItem value="Credito30">
+                        Crédito (30 días)
+                      </SelectItem>
+                      <SelectItem value="Credito60">
+                        Crédito (60 días)
+                      </SelectItem>
+                      <SelectItem value="Credito90">
+                        Crédito (90 días)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                 <div className="space-y-2">
-                   <Label>Fecha del Pago</Label>
-                   <Input
-                     type="date"
-                     value={newPaymentDate}
-                     onChange={(e) => setNewPaymentDate(e.target.value)}
-                   />
-                 </div>
+                <div className="space-y-2">
+                  <Label>Fecha del Pago</Label>
+                  <Input
+                    type="date"
+                    value={newPaymentDate}
+                    onChange={(e) => setNewPaymentDate(e.target.value)}
+                  />
+                </div>
 
-                 <div className="space-y-2">
-                   <Label>Notas (opcional)</Label>
-                   <Input
-                     placeholder="Agregar notas al pago..."
-                     value={newPaymentNote}
-                     onChange={(e) => setNewPaymentNote(e.target.value)}
-                   />
-                 </div>
-               </div>
-             </div>
-           )}
-           <DialogFooter className="flex gap-2">
-             <Button variant="outline" onClick={closePaymentModal}>
-               Cancelar
-             </Button>
-             <Button 
-               onClick={handleAddPayment}
-               disabled={isProcessingNewPayment}
-               className="bg-green-600 hover:bg-green-700"
-             >
-               {isProcessingNewPayment ? (
-                 <>
-                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                   Procesando...
-                 </>
-               ) : (
-                 "Agregar Pago"
-               )}
-             </Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
+                <div className="space-y-2">
+                  <Label>Notas (opcional)</Label>
+                  <Input
+                    placeholder="Agregar notas al pago..."
+                    value={newPaymentNote}
+                    onChange={(e) => setNewPaymentNote(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={closePaymentModal}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAddPayment}
+              disabled={isProcessingNewPayment}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isProcessingNewPayment ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                "Agregar Pago"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-       {/* Modal para editar pagos */}
-       <Dialog open={showEditPaymentModal} onOpenChange={setShowEditPaymentModal}>
-         <DialogContent className="sm:max-w-md">
-           <DialogHeader>
-             <DialogTitle>
-               Editar Pago - Venta #{selectedSale?.transaction?.transaction_id}
-             </DialogTitle>
-           </DialogHeader>
-           {selectedPaymentForEdit && (
-             <div className="space-y-4">
-               {/* Formulario de edición de pago */}
-               <div className="space-y-4">
-                 <div className="space-y-2">
-                   <Label>Monto del Pago</Label>
-                   <Input
-                     type="number"
-                     placeholder="0.00"
-                     value={editPaymentAmount || ""}
-                     onChange={(e) => setEditPaymentAmount(parseFloat(e.target.value) || 0)}
-                     min="0"
-                     step="0.01"
-                   />
-                 </div>
+      {/* Modal para editar pagos */}
+      <Dialog
+        open={showEditPaymentModal}
+        onOpenChange={setShowEditPaymentModal}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Editar Pago - Venta #{selectedSale?.transaction?.transaction_id}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPaymentForEdit && (
+            <div className="space-y-4">
+              {/* Formulario de edición de pago */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Monto del Pago</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={editPaymentAmount || ""}
+                    onChange={(e) =>
+                      setEditPaymentAmount(parseFloat(e.target.value) || 0)
+                    }
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
 
-                 <div className="space-y-2">
-                   <Label>Método de Pago</Label>
-                   <Select value={editPaymentMethod} onValueChange={setEditPaymentMethod}>
-                     <SelectTrigger>
-                       <SelectValue placeholder="Seleccionar método" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="Efectivo">Efectivo</SelectItem>
-                       <SelectItem value="Transferencia">Transferencia Bancaria</SelectItem>
-                       <SelectItem value="Tarjeta">Tarjeta de Crédito/Débito</SelectItem>
-                       <SelectItem value="Cheque">Cheque</SelectItem>
-                       <SelectItem value="Credito30">Crédito (30 días)</SelectItem>
-                       <SelectItem value="Credito60">Crédito (60 días)</SelectItem>
-                       <SelectItem value="Credito90">Crédito (90 días)</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
+                <div className="space-y-2">
+                  <Label>Método de Pago</Label>
+                  <Select
+                    value={editPaymentMethod}
+                    onValueChange={setEditPaymentMethod}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar método" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Efectivo">Efectivo</SelectItem>
+                      <SelectItem value="Transferencia">
+                        Transferencia Bancaria
+                      </SelectItem>
+                      <SelectItem value="Tarjeta">
+                        Tarjeta de Crédito/Débito
+                      </SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                      <SelectItem value="Credito30">
+                        Crédito (30 días)
+                      </SelectItem>
+                      <SelectItem value="Credito60">
+                        Crédito (60 días)
+                      </SelectItem>
+                      <SelectItem value="Credito90">
+                        Crédito (90 días)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
+                <div className="space-y-2">
+                  <Label>Notas (opcional)</Label>
+                  <Input
+                    placeholder="Agregar notas al pago..."
+                    value={editPaymentNote}
+                    onChange={(e) => setEditPaymentNote(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={closeEditPaymentModal}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEditPayment}
+              disabled={isProcessingEditPayment}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isProcessingEditPayment ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                "Actualizar Pago"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-                 <div className="space-y-2">
-                   <Label>Notas (opcional)</Label>
-                   <Input
-                     placeholder="Agregar notas al pago..."
-                     value={editPaymentNote}
-                     onChange={(e) => setEditPaymentNote(e.target.value)}
-                   />
-                 </div>
-               </div>
-             </div>
-           )}
-           <DialogFooter className="flex gap-2">
-             <Button variant="outline" onClick={closeEditPaymentModal}>
-               Cancelar
-             </Button>
-             <Button 
-               onClick={handleEditPayment}
-               disabled={isProcessingEditPayment}
-               className="bg-blue-600 hover:bg-blue-700"
-             >
-               {isProcessingEditPayment ? (
-                 <>
-                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                   Procesando...
-                 </>
-               ) : (
-                 "Actualizar Pago"
-               )}
-             </Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
+      {/* Modal de Presupuesto */}
+      <Dialog open={showBudgetModal} onOpenChange={setShowBudgetModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Presupuesto de Venta</DialogTitle>
+          </DialogHeader>
 
-       {/* Modal de Presupuesto */}
-       <Dialog open={showBudgetModal} onOpenChange={setShowBudgetModal}>
-         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-           <DialogHeader>
-             <DialogTitle>Presupuesto de Venta</DialogTitle>
-           </DialogHeader>
+          <div className="space-y-6">
+            {/* Información del Cliente */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <h3 className="font-semibold mb-2">Información del Cliente</h3>
+                {selectedClient ? (
+                  <>
+                    <p>
+                      <strong>Nombre:</strong>{" "}
+                      {clients.find(
+                        (c) => c.person_id.toString() === selectedClient
+                      )?.name || "Cliente no encontrado"}
+                    </p>
+                    <p>
+                      <strong>Empresa:</strong>{" "}
+                      {clients.find(
+                        (c) => c.person_id.toString() === selectedClient
+                      )?.company_name || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Email:</strong>{" "}
+                      {clients.find(
+                        (c) => c.person_id.toString() === selectedClient
+                      )?.email || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Teléfono:</strong>{" "}
+                      {clients.find(
+                        (c) => c.person_id.toString() === selectedClient
+                      )?.phone || "N/A"}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-gray-500 italic">
+                    No se ha seleccionado un cliente
+                  </p>
+                )}
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">
+                  Información del Presupuesto
+                </h3>
+                <p>
+                  <strong>Fecha:</strong>{" "}
+                  {new Date().toLocaleDateString("es-AR")}
+                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <strong>Tipo de Impuesto:</strong>
+                  <Badge
+                    variant="default"
+                    className="bg-green-100 text-green-800 border-green-200"
+                  >
+                    Con IVA
+                  </Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Presupuesto con IVA incluido (21%)
+                </p>
+              </div>
+            </div>
 
-           <div className="space-y-6">
-             {/* Información del Cliente */}
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-               <div>
-                 <h3 className="font-semibold mb-2">
-                   Información del Cliente
-                 </h3>
-                 {selectedClient ? (
-                   <>
-                     <p>
-                       <strong>Nombre:</strong>{" "}
-                       {clients.find(c => c.person_id.toString() === selectedClient)?.name || "Cliente no encontrado"}
-                     </p>
-                     <p>
-                       <strong>Empresa:</strong>{" "}
-                       {clients.find(c => c.person_id.toString() === selectedClient)?.company_name || "N/A"}
-                     </p>
-                     <p>
-                       <strong>Email:</strong>{" "}
-                       {clients.find(c => c.person_id.toString() === selectedClient)?.email || "N/A"}
-                     </p>
-                     <p>
-                       <strong>Teléfono:</strong>{" "}
-                       {clients.find(c => c.person_id.toString() === selectedClient)?.phone || "N/A"}
-                     </p>
-                   </>
-                 ) : (
-                   <p className="text-gray-500 italic">No se ha seleccionado un cliente</p>
-                 )}
-               </div>
-               <div>
-                 <h3 className="font-semibold mb-2">
-                   Información del Presupuesto
-                 </h3>
-                 <p>
-                   <strong>Fecha:</strong>{" "}
-                   {new Date().toLocaleDateString("es-AR")}
-                 </p>
-                 <div className="flex items-center gap-2 mb-2">
-                   <strong>Tipo de Impuesto:</strong>
-                   <Badge 
-                     variant="default"
-                     className="bg-green-100 text-green-800 border-green-200"
-                   >
-                     Con IVA
-                   </Badge>
-                 </div>
-                 <p className="text-sm text-gray-600 mb-2">
-                   Presupuesto con IVA incluido (21%)
-                 </p>
-               </div>
-             </div>
+            {/* Items */}
+            <div>
+              <h3 className="font-semibold mb-3">Productos</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Producto</TableHead>
+                    <TableHead className="text-right">Cantidad</TableHead>
+                    <TableHead className="text-right">Precio Unit.</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cartItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">
+                        {item.codigo}
+                      </TableCell>
+                      <TableCell>{item.nombre}</TableCell>
+                      <TableCell className="text-right">
+                        {item.cantidad}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(item.precio)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(item.total)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-             {/* Items */}
-             <div>
-               <h3 className="font-semibold mb-3">Productos</h3>
-               <Table>
-                 <TableHeader>
-                   <TableRow>
-                     <TableHead>Código</TableHead>
-                     <TableHead>Producto</TableHead>
-                     <TableHead className="text-right">Cantidad</TableHead>
-                     <TableHead className="text-right">Precio Unit.</TableHead>
-                     <TableHead className="text-right">Total</TableHead>
-                   </TableRow>
-                 </TableHeader>
-                 <TableBody>
-                   {cartItems.map((item) => (
-                     <TableRow key={item.id}>
-                       <TableCell className="font-medium">
-                         {item.codigo}
-                       </TableCell>
-                       <TableCell>{item.nombre}</TableCell>
-                       <TableCell className="text-right">
-                         {item.cantidad}
-                       </TableCell>
-                       <TableCell className="text-right">
-                         {formatCurrency(item.precio)}
-                       </TableCell>
-                       <TableCell className="text-right">
-                         {formatCurrency(item.total)}
-                       </TableCell>
-                     </TableRow>
-                   ))}
-                 </TableBody>
-               </Table>
-             </div>
+            {/* Extras */}
+            {saleExtras.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {saleExtras.map((extra) => (
+                      <TableRow key={extra.id}>
+                        <TableCell className="font-medium">
+                          {extra.type}
+                        </TableCell>
+                        <TableCell>{extra.note}</TableCell>
+                        <TableCell
+                          className={`text-right ${
+                            extra.type === "Descuento" ? "text-green-600" : ""
+                          }`}
+                        >
+                          {extra.type === "Descuento" ? "-" : ""}
+                          {formatCurrency(extra.price)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
 
-             {/* Extras */}
-             {saleExtras.length > 0 && (
-               <div>
-                 <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
-                 <Table>
-                   <TableHeader>
-                     <TableRow>
-                       <TableHead>Tipo</TableHead>
-                       <TableHead>Descripción</TableHead>
-                       <TableHead className="text-right">Monto</TableHead>
-                     </TableRow>
-                   </TableHeader>
-                   <TableBody>
-                     {saleExtras.map((extra) => (
-                       <TableRow key={extra.id}>
-                         <TableCell className="font-medium">
-                           {extra.type}
-                         </TableCell>
-                         <TableCell>{extra.note}</TableCell>
-                         <TableCell
-                           className={`text-right ${
-                             extra.type === "Descuento" ? "text-green-600" : ""
-                           }`}
-                         >
-                           {extra.type === "Descuento" ? "-" : ""}
-                           {formatCurrency(extra.price)}
-                         </TableCell>
-                       </TableRow>
-                     ))}
-                   </TableBody>
-                 </Table>
-               </div>
-             )}
+            {/* Resumen */}
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold mb-3">Resumen del Presupuesto</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p>
+                    <strong>Subtotal Productos:</strong> {formatCurrency(total)}
+                  </p>
+                  {totalExtras !== 0 && (
+                    <p>
+                      <strong>Cargos Adicionales:</strong>{" "}
+                      <span className={totalExtras < 0 ? "text-green-600" : ""}>
+                        {totalExtras < 0 ? "-" : ""}
+                        {formatCurrency(Math.abs(totalExtras))}
+                      </span>
+                    </p>
+                  )}
+                  <p>
+                    <strong>Subtotal:</strong>{" "}
+                    {formatCurrency(total + totalExtras)}
+                  </p>
+                  <p>
+                    <strong>IVA (21%):</strong>{" "}
+                    {formatCurrency((total + totalExtras) * 0.21)}
+                  </p>
+                  <p className="text-lg font-bold">
+                    Total: {formatCurrency((total + totalExtras) * 1.21)}
+                  </p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-green-100 text-green-800 border-green-300 font-semibold">
+                      Incluye IVA
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Este presupuesto incluye IVA del 21%. El monto mostrado es
+                    el total a pagar.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-             {/* Resumen */}
-             <div className="p-4 bg-gray-50 rounded-lg">
-               <h3 className="font-semibold mb-3">Resumen del Presupuesto</h3>
-               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                   <p>
-                     <strong>Subtotal Productos:</strong>{" "}
-                     {formatCurrency(total)}
-                   </p>
-                   {totalExtras !== 0 && (
-                     <p>
-                       <strong>Cargos Adicionales:</strong>{" "}
-                       <span
-                         className={
-                           totalExtras < 0 ? "text-green-600" : ""
-                         }
-                       >
-                         {totalExtras < 0 ? "-" : ""}
-                         {formatCurrency(Math.abs(totalExtras))}
-                       </span>
-                     </p>
-                   )}
-                   <p>
-                     <strong>Subtotal:</strong>{" "}
-                     {formatCurrency(total + totalExtras)}
-                   </p>
-                   <p>
-                     <strong>IVA (21%):</strong>{" "}
-                     {formatCurrency((total + totalExtras) * 0.21)}
-                   </p>
-                   <p className="text-lg font-bold">
-                     Total: {formatCurrency((total + totalExtras) * 1.21)}
-                   </p>
-                 </div>
-                 <div>
-                   <div className="flex items-center gap-2">
-                     <Badge
-                       className="bg-green-100 text-green-800 border-green-300 font-semibold"
-                     >
-                       Incluye IVA
-                     </Badge>
-                   </div>
-                   <p className="text-sm text-gray-600 mt-2">
-                     Este presupuesto incluye IVA del 21%. El monto mostrado es el total a pagar.
-                   </p>
-                 </div>
-               </div>
-             </div>
-           </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowBudgetModal(false)}>
+              Cerrar
+            </Button>
+            <Button
+              variant="outline"
+              className="border-green-200 text-green-700 hover:bg-green-50"
+              onClick={async () => {
+                try {
+                  // Guardar el presupuesto en el historial
+                  const savedBudget = await saveBudgetToHistory();
+                  notification.success(
+                    `Presupuesto guardado con ID: ${
+                      savedBudget.transaction_id || "N/A"
+                    }`
+                  );
+                  // Cerrar el modal después de guardar
+                  setShowBudgetModal(false);
+                } catch (error) {
+                  notification.error("Error al guardar el presupuesto");
+                  console.error("Error:", error);
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Guardar Presupuesto
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={async () => {
+                try {
+                  // Guardar el presupuesto en el historial
+                  await saveBudgetToHistory();
 
-           <DialogFooter className="flex gap-2">
-             <Button 
-               variant="outline" 
-               onClick={() => setShowBudgetModal(false)}
-             >
-               Cerrar
-             </Button>
-             <Button 
-               variant="outline"
-               className="border-green-200 text-green-700 hover:bg-green-50"
-               onClick={async () => {
-                 try {
-                   // Guardar el presupuesto en el historial
-                   const savedBudget = await saveBudgetToHistory();
-                   alert(`Presupuesto guardado con ID: ${savedBudget.transaction_id || 'N/A'}`);
-                   // Cerrar el modal después de guardar
-                   setShowBudgetModal(false);
-                 } catch (error) {
-                   alert('Error al guardar el presupuesto');
-                   console.error('Error:', error);
-                 }
-               }}
-             >
-               <Download className="mr-2 h-4 w-4" />
-               Guardar Presupuesto
-             </Button>
-             <Button 
-               className="bg-blue-600 hover:bg-blue-700"
-               onClick={async () => {
-                 try {
-                   // Guardar el presupuesto en el historial
-                   await saveBudgetToHistory();
-                   
-                   // Crear una ventana nueva para imprimir/descargar solo el presupuesto
-                 const printWindow = window.open('', '_blank');
-                 if (printWindow) {
-                   printWindow.document.write(`
+                  // Crear una ventana nueva para imprimir/descargar solo el presupuesto
+                  const printWindow = window.open("", "_blank");
+                  if (printWindow) {
+                    printWindow.document.write(`
                        <!DOCTYPE html>
                        <html>
                        <head>
@@ -3376,18 +3609,44 @@ export default function VentasPage() {
                        <body>
                          <div class="header">
                            <h1>PRESUPUESTO DE VENTA</h1>
-                           <p>Fecha: ${new Date().toLocaleDateString("es-AR")}</p>
+                           <p>Fecha: ${new Date().toLocaleDateString(
+                             "es-AR"
+                           )}</p>
                          </div>
                          
                          <div class="info-section">
                            <div class="info-column">
                              <h3>Información del Cliente</h3>
-                             ${selectedClient ? `
-                               <p><strong>Nombre:</strong> ${clients.find(c => c.person_id.toString() === selectedClient)?.name || "Cliente no encontrado"}</p>
-                               <p><strong>Empresa:</strong> ${clients.find(c => c.person_id.toString() === selectedClient)?.company_name || "N/A"}</p>
-                               <p><strong>Email:</strong> ${clients.find(c => c.person_id.toString() === selectedClient)?.email || "N/A"}</p>
-                               <p><strong>Teléfono:</strong> ${clients.find(c => c.person_id.toString() === selectedClient)?.phone || "N/A"}</p>
-                             ` : '<p>No se ha seleccionado un cliente</p>'}
+                             ${
+                               selectedClient
+                                 ? `
+                               <p><strong>Nombre:</strong> ${
+                                 clients.find(
+                                   (c) =>
+                                     c.person_id.toString() === selectedClient
+                                 )?.name || "Cliente no encontrado"
+                               }</p>
+                               <p><strong>Empresa:</strong> ${
+                                 clients.find(
+                                   (c) =>
+                                     c.person_id.toString() === selectedClient
+                                 )?.company_name || "N/A"
+                               }</p>
+                               <p><strong>Email:</strong> ${
+                                 clients.find(
+                                   (c) =>
+                                     c.person_id.toString() === selectedClient
+                                 )?.email || "N/A"
+                               }</p>
+                               <p><strong>Teléfono:</strong> ${
+                                 clients.find(
+                                   (c) =>
+                                     c.person_id.toString() === selectedClient
+                                 )?.phone || "N/A"
+                               }</p>
+                             `
+                                 : "<p>No se ha seleccionado un cliente</p>"
+                             }
                            </div>
                            <div class="info-column">
                              <h3>Información del Presupuesto</h3>
@@ -3412,19 +3671,29 @@ export default function VentasPage() {
                              </tr>
                            </thead>
                            <tbody>
-                             ${cartItems.map(item => `
+                             ${cartItems
+                               .map(
+                                 (item) => `
                                <tr>
                                  <td>${item.codigo}</td>
                                  <td>${item.nombre}</td>
                                  <td class="text-right">${item.cantidad}</td>
-                                 <td class="text-right">$${item.precio.toLocaleString("es-AR")}</td>
-                                 <td class="text-right">$${item.total.toLocaleString("es-AR")}</td>
+                                 <td class="text-right">$${item.precio.toLocaleString(
+                                   "es-AR"
+                                 )}</td>
+                                 <td class="text-right">$${item.total.toLocaleString(
+                                   "es-AR"
+                                 )}</td>
                                </tr>
-                             `).join('')}
+                             `
+                               )
+                               .join("")}
                            </tbody>
                          </table>
 
-                         ${saleExtras.length > 0 ? `
+                         ${
+                           saleExtras.length > 0
+                             ? `
                            <h3>Cargos Adicionales</h3>
                            <table>
                              <thead>
@@ -3435,32 +3704,62 @@ export default function VentasPage() {
                                </tr>
                              </thead>
                              <tbody>
-                               ${saleExtras.map(extra => `
+                               ${saleExtras
+                                 .map(
+                                   (extra) => `
                                  <tr>
                                    <td>${extra.type}</td>
                                    <td>${extra.note}</td>
-                                   <td class="text-right ${extra.type === "Descuento" ? "text-green-600" : ""}">
-                                     ${extra.type === "Descuento" ? "-" : ""}$${extra.price.toLocaleString("es-AR")}
+                                   <td class="text-right ${
+                                     extra.type === "Descuento"
+                                       ? "text-green-600"
+                                       : ""
+                                   }">
+                                     ${
+                                       extra.type === "Descuento" ? "-" : ""
+                                     }$${extra.price.toLocaleString("es-AR")}
                                    </td>
                                  </tr>
-                               `).join('')}
+                               `
+                                 )
+                                 .join("")}
                              </tbody>
                            </table>
-                         ` : ''}
+                         `
+                             : ""
+                         }
 
                          <div class="summary">
                            <h3>Resumen del Presupuesto</h3>
-                           <p><strong>Subtotal Productos:</strong> $${total.toLocaleString("es-AR")}</p>
-                           ${totalExtras !== 0 ? `
+                           <p><strong>Subtotal Productos:</strong> $${total.toLocaleString(
+                             "es-AR"
+                           )}</p>
+                           ${
+                             totalExtras !== 0
+                               ? `
                              <p><strong>Cargos Adicionales:</strong> 
-                               <span class="${totalExtras < 0 ? "text-green-600" : ""}">
-                                 ${totalExtras < 0 ? "-" : ""}$${Math.abs(totalExtras).toLocaleString("es-AR")}
+                               <span class="${
+                                 totalExtras < 0 ? "text-green-600" : ""
+                               }">
+                                 ${totalExtras < 0 ? "-" : ""}$${Math.abs(
+                                   totalExtras
+                                 ).toLocaleString("es-AR")}
                                </span>
                              </p>
-                           ` : ''}
-                           <p><strong>Subtotal:</strong> $${(total + totalExtras).toLocaleString("es-AR")}</p>
-                           <p><strong>IVA (21%):</strong> $${((total + totalExtras) * 0.21).toLocaleString("es-AR")}</p>
-                           <p class="total">Total: $${((total + totalExtras) * 1.21).toLocaleString("es-AR")}</p>
+                           `
+                               : ""
+                           }
+                           <p><strong>Subtotal:</strong> $${(
+                             total + totalExtras
+                           ).toLocaleString("es-AR")}</p>
+                           <p><strong>IVA (21%):</strong> $${(
+                             (total + totalExtras) *
+                             0.21
+                           ).toLocaleString("es-AR")}</p>
+                           <p class="total">Total: $${(
+                             (total + totalExtras) *
+                             1.21
+                           ).toLocaleString("es-AR")}</p>
                            
                            <div style="margin-top: 15px;">
                              <span class="badge badge-green">
@@ -3474,251 +3773,281 @@ export default function VentasPage() {
                        </body>
                        </html>
                      `);
-                     printWindow.document.close();
-                     printWindow.print();
-                     printWindow.close();
-                 }
-                 } catch (error) {
-                   alert('Error al guardar el presupuesto');
-                   console.error('Error:', error);
-                 }
-               }}
-             >
-               <Download className="mr-2 h-4 w-4" />
-               Imprimir/Descargar
-             </Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
+                    printWindow.document.close();
+                    printWindow.print();
+                    printWindow.close();
+                  }
+                } catch (error) {
+                  notification.error("Error al guardar el presupuesto");
+                  console.error("Error:", error);
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Imprimir/Descargar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-       {/* Modal de Presupuesto de Transacción Completada */}
-       <Dialog open={showTransactionBudgetModal} onOpenChange={setShowTransactionBudgetModal}>
-         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-           <DialogHeader>
-             <DialogTitle>Recibo de Venta #{completedTransaction?.transaction_id}</DialogTitle>
-           </DialogHeader>
+      {/* Modal de Presupuesto de Transacción Completada */}
+      <Dialog
+        open={showTransactionBudgetModal}
+        onOpenChange={setShowTransactionBudgetModal}
+      >
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Recibo de Venta #{completedTransaction?.transaction_id}
+            </DialogTitle>
+          </DialogHeader>
 
-           {completedTransaction && (
-             <div className="space-y-6">
-               {/* Información del Cliente */}
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                 <div>
-                   <h3 className="font-semibold mb-2">
-                     Información del Cliente
-                   </h3>
-                   {completedTransaction.client ? (
-                     <>
-                       <p>
-                         <strong>Nombre:</strong>{" "}
-                         {completedTransaction.client.name}
-                       </p>
-                       <p>
-                         <strong>Empresa:</strong>{" "}
-                         {completedTransaction.client.company_name || "N/A"}
-                       </p>
-                       <p>
-                         <strong>Email:</strong>{" "}
-                         {completedTransaction.client.email || "N/A"}
-                       </p>
-                       <p>
-                         <strong>Teléfono:</strong>{" "}
-                         {completedTransaction.client.phone || "N/A"}
-                       </p>
-                     </>
-                   ) : (
-                     <p className="text-gray-500 italic">Cliente no especificado</p>
-                   )}
-                 </div>
-                 <div>
-                   <h3 className="font-semibold mb-2">
-                     Información de la Venta
-                   </h3>
-                   <p>
-                     <strong>Número de Venta:</strong> #{completedTransaction.transaction_id}
-                   </p>
-                   <p>
-                     <strong>Fecha:</strong>{" "}
-                     {new Date(completedTransaction.date).toLocaleDateString("es-AR")}
-                   </p>
-                   <div className="flex items-center gap-2 mb-2">
-                     <strong>Tipo de Impuesto:</strong>
-                     <Badge 
-                       variant="default"
-                       className="bg-green-100 text-green-800 border-green-200"
-                     >
-                       Con IVA
-                     </Badge>
-                   </div>
-                   <p className="text-sm text-gray-600 mb-2">
-                     Venta con IVA incluido (21%)
-                   </p>
-                 </div>
-               </div>
+          {completedTransaction && (
+            <div className="space-y-6">
+              {/* Información del Cliente */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <h3 className="font-semibold mb-2">
+                    Información del Cliente
+                  </h3>
+                  {completedTransaction.client ? (
+                    <>
+                      <p>
+                        <strong>Nombre:</strong>{" "}
+                        {completedTransaction.client.name}
+                      </p>
+                      <p>
+                        <strong>Empresa:</strong>{" "}
+                        {completedTransaction.client.company_name || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Email:</strong>{" "}
+                        {completedTransaction.client.email || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Teléfono:</strong>{" "}
+                        {completedTransaction.client.phone || "N/A"}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-gray-500 italic">
+                      Cliente no especificado
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">
+                    Información de la Venta
+                  </h3>
+                  <p>
+                    <strong>Número de Venta:</strong> #
+                    {completedTransaction.transaction_id}
+                  </p>
+                  <p>
+                    <strong>Fecha:</strong>{" "}
+                    {new Date(completedTransaction.date).toLocaleDateString(
+                      "es-AR"
+                    )}
+                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <strong>Tipo de Impuesto:</strong>
+                    <Badge
+                      variant="default"
+                      className="bg-green-100 text-green-800 border-green-200"
+                    >
+                      Con IVA
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Venta con IVA incluido (21%)
+                  </p>
+                </div>
+              </div>
 
-               {/* Items */}
-               <div>
-                 <h3 className="font-semibold mb-3">Productos</h3>
-                 <Table>
-                   <TableHeader>
-                     <TableRow>
-                       <TableHead>Código</TableHead>
-                       <TableHead>Producto</TableHead>
-                       <TableHead className="text-right">Cantidad</TableHead>
-                       <TableHead className="text-right">Precio Unit.</TableHead>
-                       <TableHead className="text-right">Total</TableHead>
-                     </TableRow>
-                   </TableHeader>
-                   <TableBody>
-                     {completedTransaction.items.map((item: any) => (
-                       <TableRow key={item.id}>
-                         <TableCell className="font-medium">
-                           {item.codigo}
-                         </TableCell>
-                         <TableCell>{item.nombre}</TableCell>
-                         <TableCell className="text-right">
-                           {item.cantidad}
-                         </TableCell>
-                         <TableCell className="text-right">
-                           {formatCurrency(item.precio)}
-                         </TableCell>
-                         <TableCell className="text-right">
-                           {formatCurrency(item.total)}
-                         </TableCell>
-                       </TableRow>
-                     ))}
-                   </TableBody>
-                 </Table>
-               </div>
+              {/* Items */}
+              <div>
+                <h3 className="font-semibold mb-3">Productos</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Producto</TableHead>
+                      <TableHead className="text-right">Cantidad</TableHead>
+                      <TableHead className="text-right">Precio Unit.</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {completedTransaction.items.map((item: any) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">
+                          {item.codigo}
+                        </TableCell>
+                        <TableCell>{item.nombre}</TableCell>
+                        <TableCell className="text-right">
+                          {item.cantidad}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.precio)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.total)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-               {/* Extras */}
-               {completedTransaction.extras.length > 0 && (
-                 <div>
-                   <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
-                   <Table>
-                     <TableHeader>
-                       <TableRow>
-                         <TableHead>Tipo</TableHead>
-                         <TableHead>Descripción</TableHead>
-                         <TableHead className="text-right">Monto</TableHead>
-                       </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                       {completedTransaction.extras.map((extra: any) => (
-                         <TableRow key={extra.id}>
-                           <TableCell className="font-medium">
-                             {extra.type}
-                           </TableCell>
-                           <TableCell>{extra.note}</TableCell>
-                           <TableCell
-                             className={`text-right ${
-                               extra.type === "Descuento" ? "text-green-600" : ""
-                             }`}
-                           >
-                             {extra.type === "Descuento" ? "-" : ""}
-                             {formatCurrency(extra.price)}
-                           </TableCell>
-                         </TableRow>
-                       ))}
-                     </TableBody>
-                   </Table>
-                 </div>
-               )}
+              {/* Extras */}
+              {completedTransaction.extras.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">Cargos Adicionales</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Monto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {completedTransaction.extras.map((extra: any) => (
+                        <TableRow key={extra.id}>
+                          <TableCell className="font-medium">
+                            {extra.type}
+                          </TableCell>
+                          <TableCell>{extra.note}</TableCell>
+                          <TableCell
+                            className={`text-right ${
+                              extra.type === "Descuento" ? "text-green-600" : ""
+                            }`}
+                          >
+                            {extra.type === "Descuento" ? "-" : ""}
+                            {formatCurrency(extra.price)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
-               {/* Información de Pago */}
-               {completedTransaction.payment && (
-                 <div>
-                   <h3 className="font-semibold mb-3">Información de Pago</h3>
-                   <div className="p-4 bg-blue-50 rounded-lg">
-                     <div className="grid grid-cols-2 gap-4">
-                       <div>
-                         <p><strong>Método de Pago:</strong> {completedTransaction.payment.method}</p>
-                         <p><strong>Fecha de Pago:</strong> {new Date(completedTransaction.payment.date).toLocaleDateString("es-AR")}</p>
-                       </div>
-                       <div>
-                         <p><strong>Monto Pagado:</strong> {formatCurrency(completedTransaction.payment.amount)}</p>
-                         {completedTransaction.payment.note && (
-                           <p><strong>Nota:</strong> {completedTransaction.payment.note}</p>
-                         )}
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               )}
+              {/* Información de Pago */}
+              {completedTransaction.payment && (
+                <div>
+                  <h3 className="font-semibold mb-3">Información de Pago</h3>
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p>
+                          <strong>Método de Pago:</strong>{" "}
+                          {completedTransaction.payment.method}
+                        </p>
+                        <p>
+                          <strong>Fecha de Pago:</strong>{" "}
+                          {new Date(
+                            completedTransaction.payment.date
+                          ).toLocaleDateString("es-AR")}
+                        </p>
+                      </div>
+                      <div>
+                        <p>
+                          <strong>Monto Pagado:</strong>{" "}
+                          {formatCurrency(completedTransaction.payment.amount)}
+                        </p>
+                        {completedTransaction.payment.note && (
+                          <p>
+                            <strong>Nota:</strong>{" "}
+                            {completedTransaction.payment.note}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-               {/* Resumen */}
-               <div className="p-4 bg-gray-50 rounded-lg">
-                 <h3 className="font-semibold mb-3">Resumen de la Venta</h3>
-                 <div className="grid grid-cols-2 gap-4">
-                   <div>
-                     <p>
-                       <strong>Subtotal Productos:</strong>{" "}
-                       {formatCurrency(completedTransaction.totals.subtotal)}
-                     </p>
-                     {completedTransaction.totals.extras !== 0 && (
-                       <p>
-                         <strong>Cargos Adicionales:</strong>{" "}
-                         <span
-                           className={
-                             completedTransaction.totals.extras < 0 ? "text-green-600" : ""
-                           }
-                         >
-                           {completedTransaction.totals.extras < 0 ? "-" : ""}
-                           {formatCurrency(Math.abs(completedTransaction.totals.extras))}
-                         </span>
-                       </p>
-                     )}
-                     <p>
-                       <strong>Subtotal:</strong>{" "}
-                       {formatCurrency(completedTransaction.totals.subtotal + completedTransaction.totals.extras)}
-                     </p>
-                     <p>
-                       <strong>IVA (21%):</strong>{" "}
-                       {formatCurrency(completedTransaction.totals.tax)}
-                     </p>
-                     <p className="text-lg font-bold">
-                       Total: {formatCurrency(completedTransaction.totals.total)}
-                     </p>
-                   </div>
-                   <div>
-                     <div className="flex items-center gap-2">
-                       <Badge
-                         className="bg-green-100 text-green-800 border-green-300 font-semibold"
-                       >
-                         Venta Completada
-                       </Badge>
-                       <Badge
-                         className="bg-green-100 text-green-800 border-green-300 font-semibold"
-                       >
-                         Incluye IVA
-                       </Badge>
-                     </div>
-                     <p className="text-sm text-gray-600 mt-2">
-                       Esta venta ha sido completada exitosamente. El monto mostrado incluye IVA del 21%.
-                     </p>
-                   </div>
-                 </div>
-               </div>
-             </div>
-           )}
+              {/* Resumen */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold mb-3">Resumen de la Venta</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p>
+                      <strong>Subtotal Productos:</strong>{" "}
+                      {formatCurrency(completedTransaction.totals.subtotal)}
+                    </p>
+                    {completedTransaction.totals.extras !== 0 && (
+                      <p>
+                        <strong>Cargos Adicionales:</strong>{" "}
+                        <span
+                          className={
+                            completedTransaction.totals.extras < 0
+                              ? "text-green-600"
+                              : ""
+                          }
+                        >
+                          {completedTransaction.totals.extras < 0 ? "-" : ""}
+                          {formatCurrency(
+                            Math.abs(completedTransaction.totals.extras)
+                          )}
+                        </span>
+                      </p>
+                    )}
+                    <p>
+                      <strong>Subtotal:</strong>{" "}
+                      {formatCurrency(
+                        completedTransaction.totals.subtotal +
+                          completedTransaction.totals.extras
+                      )}
+                    </p>
+                    <p>
+                      <strong>IVA (21%):</strong>{" "}
+                      {formatCurrency(completedTransaction.totals.tax)}
+                    </p>
+                    <p className="text-lg font-bold">
+                      Total: {formatCurrency(completedTransaction.totals.total)}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-green-100 text-green-800 border-green-300 font-semibold">
+                        Venta Completada
+                      </Badge>
+                      <Badge className="bg-green-100 text-green-800 border-green-300 font-semibold">
+                        Incluye IVA
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Esta venta ha sido completada exitosamente. El monto
+                      mostrado incluye IVA del 21%.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
-           <DialogFooter className="flex gap-2">
-             <Button 
-               variant="outline" 
-               onClick={() => setShowTransactionBudgetModal(false)}
-             >
-               Cerrar
-             </Button>
-             <Button 
-               className="bg-green-600 hover:bg-green-700"
-               onClick={() => {
-                 // Crear una ventana nueva para imprimir/descargar el recibo
-                 const printWindow = window.open('', '_blank');
-                 if (printWindow && completedTransaction) {
-                   printWindow.document.write(`
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowTransactionBudgetModal(false)}
+            >
+              Cerrar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                // Crear una ventana nueva para imprimir/descargar el recibo
+                const printWindow = window.open("", "_blank");
+                if (printWindow && completedTransaction) {
+                  printWindow.document.write(`
                      <!DOCTYPE html>
                      <html>
                      <head>
-                       <title>Recibo de Venta #${completedTransaction.transaction_id}</title>
+                       <title>Recibo de Venta #${
+                         completedTransaction.transaction_id
+                       }</title>
                        <style>
                          * {
                            box-sizing: border-box;
@@ -3865,18 +4194,32 @@ export default function VentasPage() {
                        <div class="header">
                          <h1>RECIBO DE VENTA</h1>
                          <p>Número: #${completedTransaction.transaction_id}</p>
-                         <p>Fecha: ${new Date(completedTransaction.date).toLocaleDateString("es-AR")}</p>
+                         <p>Fecha: ${new Date(
+                           completedTransaction.date
+                         ).toLocaleDateString("es-AR")}</p>
                        </div>
                        
                        <div class="info-section">
                          <div class="info-column">
                            <h3>Información del Cliente</h3>
-                           ${completedTransaction.client ? `
-                             <p><strong>Nombre:</strong> ${completedTransaction.client.name}</p>
-                             <p><strong>Empresa:</strong> ${completedTransaction.client.company_name || "N/A"}</p>
-                             <p><strong>Email:</strong> ${completedTransaction.client.email || "N/A"}</p>
-                             <p><strong>Teléfono:</strong> ${completedTransaction.client.phone || "N/A"}</p>
-                           ` : '<p>Cliente no especificado</p>'}
+                           ${
+                             completedTransaction.client
+                               ? `
+                             <p><strong>Nombre:</strong> ${
+                               completedTransaction.client.name
+                             }</p>
+                             <p><strong>Empresa:</strong> ${
+                               completedTransaction.client.company_name || "N/A"
+                             }</p>
+                             <p><strong>Email:</strong> ${
+                               completedTransaction.client.email || "N/A"
+                             }</p>
+                             <p><strong>Teléfono:</strong> ${
+                               completedTransaction.client.phone || "N/A"
+                             }</p>
+                           `
+                               : "<p>Cliente no especificado</p>"
+                           }
                          </div>
                          <div class="info-column">
                            <h3>Información de la Venta</h3>
@@ -3901,19 +4244,29 @@ export default function VentasPage() {
                            </tr>
                          </thead>
                          <tbody>
-                           ${completedTransaction.items.map((item: any) => `
+                           ${completedTransaction.items
+                             .map(
+                               (item: any) => `
                              <tr>
                                <td>${item.codigo}</td>
                                <td>${item.nombre}</td>
                                <td class="text-right">${item.cantidad}</td>
-                               <td class="text-right">$${item.precio.toLocaleString("es-AR")}</td>
-                               <td class="text-right">$${item.total.toLocaleString("es-AR")}</td>
+                               <td class="text-right">$${item.precio.toLocaleString(
+                                 "es-AR"
+                               )}</td>
+                               <td class="text-right">$${item.total.toLocaleString(
+                                 "es-AR"
+                               )}</td>
                              </tr>
-                           `).join('')}
+                           `
+                             )
+                             .join("")}
                          </tbody>
                        </table>
 
-                       ${completedTransaction.extras.length > 0 ? `
+                       ${
+                         completedTransaction.extras.length > 0
+                           ? `
                          <h3>Cargos Adicionales</h3>
                          <table>
                            <thead>
@@ -3924,48 +4277,97 @@ export default function VentasPage() {
                              </tr>
                            </thead>
                            <tbody>
-                             ${completedTransaction.extras.map((extra: any) => `
+                             ${completedTransaction.extras
+                               .map(
+                                 (extra: any) => `
                                <tr>
                                  <td>${extra.type}</td>
                                  <td>${extra.note}</td>
-                                 <td class="text-right ${extra.type === "Descuento" ? "text-green-600" : ""}">
-                                   ${extra.type === "Descuento" ? "-" : ""}$${extra.price.toLocaleString("es-AR")}
+                                 <td class="text-right ${
+                                   extra.type === "Descuento"
+                                     ? "text-green-600"
+                                     : ""
+                                 }">
+                                   ${
+                                     extra.type === "Descuento" ? "-" : ""
+                                   }$${extra.price.toLocaleString("es-AR")}
                                  </td>
                                </tr>
-                             `).join('')}
+                             `
+                               )
+                               .join("")}
                            </tbody>
                          </table>
-                       ` : ''}
+                       `
+                           : ""
+                       }
 
-                       ${completedTransaction.payment ? `
+                       ${
+                         completedTransaction.payment
+                           ? `
                          <div class="payment-info">
                            <h3>Información de Pago</h3>
                            <div style="display: flex; justify-content: space-between;">
                              <div>
-                               <p><strong>Método:</strong> ${completedTransaction.payment.method}</p>
-                               <p><strong>Fecha:</strong> ${new Date(completedTransaction.payment.date).toLocaleDateString("es-AR")}</p>
+                               <p><strong>Método:</strong> ${
+                                 completedTransaction.payment.method
+                               }</p>
+                               <p><strong>Fecha:</strong> ${new Date(
+                                 completedTransaction.payment.date
+                               ).toLocaleDateString("es-AR")}</p>
                              </div>
                              <div>
-                               <p><strong>Monto Pagado:</strong> $${completedTransaction.payment.amount.toLocaleString("es-AR")}</p>
-                               ${completedTransaction.payment.note ? `<p><strong>Nota:</strong> ${completedTransaction.payment.note}</p>` : ''}
+                               <p><strong>Monto Pagado:</strong> $${completedTransaction.payment.amount.toLocaleString(
+                                 "es-AR"
+                               )}</p>
+                               ${
+                                 completedTransaction.payment.note
+                                   ? `<p><strong>Nota:</strong> ${completedTransaction.payment.note}</p>`
+                                   : ""
+                               }
                              </div>
                            </div>
                          </div>
-                       ` : ''}
+                       `
+                           : ""
+                       }
 
                        <div class="summary">
                          <h3>Resumen de la Venta</h3>
-                         <p><strong>Subtotal Productos:</strong> $${completedTransaction.totals.subtotal.toLocaleString("es-AR")}</p>
-                         ${completedTransaction.totals.extras !== 0 ? `
+                         <p><strong>Subtotal Productos:</strong> $${completedTransaction.totals.subtotal.toLocaleString(
+                           "es-AR"
+                         )}</p>
+                         ${
+                           completedTransaction.totals.extras !== 0
+                             ? `
                            <p><strong>Cargos Adicionales:</strong> 
-                             <span class="${completedTransaction.totals.extras < 0 ? "text-green-600" : ""}">
-                               ${completedTransaction.totals.extras < 0 ? "-" : ""}$${Math.abs(completedTransaction.totals.extras).toLocaleString("es-AR")}
+                             <span class="${
+                               completedTransaction.totals.extras < 0
+                                 ? "text-green-600"
+                                 : ""
+                             }">
+                               ${
+                                 completedTransaction.totals.extras < 0
+                                   ? "-"
+                                   : ""
+                               }$${Math.abs(
+                                 completedTransaction.totals.extras
+                               ).toLocaleString("es-AR")}
                              </span>
                            </p>
-                         ` : ''}
-                         <p><strong>Subtotal:</strong> $${(completedTransaction.totals.subtotal + completedTransaction.totals.extras).toLocaleString("es-AR")}</p>
-                         <p><strong>IVA (21%):</strong> $${completedTransaction.totals.tax.toLocaleString("es-AR")}</p>
-                         <p class="total">Total: $${completedTransaction.totals.total.toLocaleString("es-AR")}</p>
+                         `
+                             : ""
+                         }
+                         <p><strong>Subtotal:</strong> $${(
+                           completedTransaction.totals.subtotal +
+                           completedTransaction.totals.extras
+                         ).toLocaleString("es-AR")}</p>
+                         <p><strong>IVA (21%):</strong> $${completedTransaction.totals.tax.toLocaleString(
+                           "es-AR"
+                         )}</p>
+                         <p class="total">Total: $${completedTransaction.totals.total.toLocaleString(
+                           "es-AR"
+                         )}</p>
                          
                          <div style="margin-top: 15px;">
                            <span class="badge badge-green">
@@ -3982,18 +4384,18 @@ export default function VentasPage() {
                      </body>
                      </html>
                    `);
-                   printWindow.document.close();
-                   printWindow.print();
-                   printWindow.close();
-                 }
-               }}
-             >
-               <Download className="mr-2 h-4 w-4" />
-               Imprimir Recibo
-             </Button>
-           </DialogFooter>
-         </DialogContent>
-       </Dialog>
+                  printWindow.document.close();
+                  printWindow.print();
+                  printWindow.close();
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Imprimir Recibo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

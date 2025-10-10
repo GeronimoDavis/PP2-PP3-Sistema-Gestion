@@ -9,6 +9,7 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
+import { useNotification } from "@/hooks/use-notification";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,16 +58,17 @@ import {
   createProduct,
   updateProduct,
 } from "@/api/productsApi";
-import { 
-  getCategories, 
-  createCategory, 
-  updateCategory 
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
 } from "@/api/categoriesApi";
 
 export default function InventarioPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { user, token, validateToken, loading } = useAuth();
+  const notification = useNotification();
 
   const router = useRouter(); // Usar el hook useRouter
 
@@ -102,6 +104,9 @@ export default function InventarioPage() {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [codeError, setCodeError] = useState("");
   const [nameError, setNameError] = useState("");
+  const [stockError, setStockError] = useState("");
+  const [purchasePriceError, setPurchasePriceError] = useState("");
+  const [sellPriceError, setSellPriceError] = useState("");
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -109,8 +114,10 @@ export default function InventarioPage() {
 
   // Estados para gestión de categorías
   const [isCategoriesDialogOpen, setIsCategoriesDialogOpen] = useState(false);
-  const [isCreateCategoryDialogOpen, setIsCreateCategoryDialogOpen] = useState(false);
-  const [isEditCategoryDialogOpen, setIsEditCategoryDialogOpen] = useState(false);
+  const [isCreateCategoryDialogOpen, setIsCreateCategoryDialogOpen] =
+    useState(false);
+  const [isEditCategoryDialogOpen, setIsEditCategoryDialogOpen] =
+    useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [categoryData, setCategoryData] = useState({
     name: "",
@@ -205,7 +212,7 @@ export default function InventarioPage() {
   const handleCreateCategory = async () => {
     try {
       setCategoryNameError("");
-      
+
       if (!categoryData.name.trim()) {
         setCategoryNameError("El nombre de la categoría es obligatorio");
         return;
@@ -225,9 +232,13 @@ export default function InventarioPage() {
       await handleGetCategories(); // Recargar categorías
       setIsCreateCategoryDialogOpen(false);
       setCategoryData({ name: "" });
+      notification.success("Categoría creada exitosamente");
     } catch (error: any) {
       console.error("Error al crear categoría:", error);
-      alert("Error al crear la categoría: " + (error.response?.data?.error || error.message));
+      notification.error(
+        "Error al crear la categoría: " +
+          (error.response?.data?.error || error.message)
+      );
     }
   };
 
@@ -242,7 +253,7 @@ export default function InventarioPage() {
   const handleUpdateCategory = async () => {
     try {
       setCategoryNameError("");
-      
+
       if (!categoryData.name.trim()) {
         setCategoryNameError("El nombre de la categoría es obligatorio");
         return;
@@ -250,7 +261,7 @@ export default function InventarioPage() {
 
       // Validar nombre único (excluyendo la categoría actual)
       const existingCategory = categories.find(
-        (cat) => 
+        (cat) =>
           cat.name.toLowerCase() === categoryData.name.toLowerCase() &&
           cat.category_id !== editingCategory.category_id
       );
@@ -265,23 +276,27 @@ export default function InventarioPage() {
       setIsEditCategoryDialogOpen(false);
       setEditingCategory(null);
       setCategoryData({ name: "" });
+      notification.success("Categoría actualizada exitosamente");
     } catch (error: any) {
       console.error("Error al actualizar categoría:", error);
-      alert("Error al actualizar la categoría: " + (error.response?.data?.error || error.message));
+      notification.error(
+        "Error al actualizar la categoría: " +
+          (error.response?.data?.error || error.message)
+      );
     }
   };
 
   const handleCategoryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setCategoryData({ ...categoryData, name: newName });
-    
+
     if (newName.length > 0) {
       const existingCategory = categories.find(
-        (cat) => 
+        (cat) =>
           cat.name.toLowerCase() === newName.toLowerCase() &&
           (!editingCategory || cat.category_id !== editingCategory.category_id)
       );
-      
+
       if (existingCategory) {
         setCategoryNameError("Ya existe una categoría con este nombre");
       } else {
@@ -388,32 +403,57 @@ export default function InventarioPage() {
       // Limpiar errores previos
       setCodeError("");
       setNameError("");
+      setStockError("");
+      setPurchasePriceError("");
+      setSellPriceError("");
 
-      // Validaciones
-      if (
-        !productData.name ||
-        !productData.code ||
-        !productData.stock ||
-        !productData.purchase_price ||
-        !productData.sell_price ||
-        !productData.category_id
-      ) {
-        alert("Todos los campos son obligatorios");
+      // Validaciones de campos obligatorios
+      if (!productData.name.trim()) {
+        notification.warning("El nombre es obligatorio");
         return;
       }
 
-      if (parseFloat(productData.stock) < 0) {
-        alert("El stock no puede ser negativo");
+      if (!productData.code.trim()) {
+        notification.warning("El código es obligatorio");
         return;
       }
 
-      if (parseFloat(productData.purchase_price) <= 0) {
-        alert("El precio de compra debe ser mayor a 0");
+      if (!productData.category_id) {
+        notification.warning("Debe seleccionar una categoría");
         return;
       }
 
-      if (parseFloat(productData.sell_price) <= 0) {
-        alert("El precio de venta debe ser mayor a 0");
+      // Validaciones numéricas
+      const stock = parseFloat(productData.stock);
+      if (isNaN(stock) || productData.stock.trim() === "") {
+        notification.warning("El stock debe ser un número válido");
+        return;
+      }
+
+      if (stock < 0) {
+        notification.warning("El stock no puede ser negativo");
+        return;
+      }
+
+      const purchasePrice = parseFloat(productData.purchase_price);
+      if (isNaN(purchasePrice) || productData.purchase_price.trim() === "") {
+        notification.warning("El precio de compra debe ser un número válido");
+        return;
+      }
+
+      if (purchasePrice <= 0) {
+        notification.warning("El precio de compra debe ser mayor a 0");
+        return;
+      }
+
+      const sellPrice = parseFloat(productData.sell_price);
+      if (isNaN(sellPrice) || productData.sell_price.trim() === "") {
+        notification.warning("El precio de venta debe ser un número válido");
+        return;
+      }
+
+      if (sellPrice <= 0) {
+        notification.warning("El precio de venta debe ser mayor a 0");
         return;
       }
 
@@ -429,8 +469,11 @@ export default function InventarioPage() {
       if (!isNameValid) return;
 
       // Si todas las validaciones pasan, crear el producto y actualizar el estado de los productos
-      const newProduct = await createProduct(productData);
-      setProducts([...products, newProduct.product]);
+      await createProduct(productData);
+
+      // Recargar todos los productos para obtener el category_name
+      await handleGetProducts();
+
       setIsDialogOpen(false);
       setProductData({
         name: "",
@@ -441,9 +484,10 @@ export default function InventarioPage() {
         category_id: "",
         category_name: "",
       });
+      notification.success("Producto creado exitosamente");
     } catch (error: any) {
       console.error("Error al crear el producto:", error);
-      alert(
+      notification.error(
         "Error al crear el producto: " +
           (error.response?.data?.error || error.message)
       );
@@ -468,31 +512,57 @@ export default function InventarioPage() {
       // Limpiar errores previos
       setCodeError("");
       setNameError("");
+      setStockError("");
+      setPurchasePriceError("");
+      setSellPriceError("");
 
-      // Validaciones
-      if (
-        !productData.name ||
-        !productData.code ||
-        !productData.stock ||
-        !productData.purchase_price ||
-        !productData.category_id
-      ) {
-        alert("Todos los campos son obligatorios");
+      // Validaciones de campos obligatorios
+      if (!productData.name.trim()) {
+        setNameError("El nombre es obligatorio");
         return;
       }
 
-      if (parseFloat(productData.stock) < 0) {
-        alert("El stock no puede ser negativo");
+      if (!productData.code.trim()) {
+        setCodeError("El código es obligatorio");
         return;
       }
 
-      if (parseFloat(productData.purchase_price) <= 0) {
-        alert("El precio de compra debe ser mayor a 0");
+      if (!productData.category_id) {
+        notification.warning("Debe seleccionar una categoría");
         return;
       }
 
-      if (parseFloat(productData.sell_price) <= 0) {
-        alert("El precio de venta debe ser mayor a 0");
+      // Validaciones numéricas
+      const stock = parseFloat(productData.stock);
+      if (isNaN(stock) || productData.stock.trim() === "") {
+        notification.warning("El stock debe ser un número válido");
+        return;
+      }
+
+      if (stock < 0) {
+        notification.warning("El stock no puede ser negativo");
+        return;
+      }
+
+      const purchasePrice = parseFloat(productData.purchase_price);
+      if (isNaN(purchasePrice) || productData.purchase_price.trim() === "") {
+        notification.warning("El precio de compra debe ser un número válido");
+        return;
+      }
+
+      if (purchasePrice <= 0) {
+        notification.warning("El precio de compra debe ser mayor a 0");
+        return;
+      }
+
+      const sellPrice = parseFloat(productData.sell_price);
+      if (isNaN(sellPrice) || productData.sell_price.trim() === "") {
+        notification.warning("El precio de venta debe ser un número válido");
+        return;
+      }
+
+      if (sellPrice <= 0) {
+        notification.warning("El precio de venta debe ser mayor a 0");
         return;
       }
 
@@ -527,9 +597,10 @@ export default function InventarioPage() {
       });
 
       handleGetProducts();
+      notification.success("Producto actualizado exitosamente");
     } catch (error: any) {
       console.error("Error al actualizar el producto:", error);
-      alert(
+      notification.error(
         "Error al actualizar el producto: " +
           (error.response?.data?.error || error.message)
       );
@@ -610,6 +681,65 @@ export default function InventarioPage() {
       );
     } else {
       setNameError("");
+    }
+  };
+
+  const handleStockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newStock = e.target.value;
+    setProductData({ ...productData, stock: newStock });
+
+    if (newStock.trim() === "") {
+      setStockError("");
+      return;
+    }
+
+    const stock = parseFloat(newStock);
+    if (isNaN(stock)) {
+      setStockError("El stock debe ser un número válido");
+    } else if (stock < 0) {
+      setStockError("El stock no puede ser negativo");
+    } else {
+      setStockError("");
+    }
+  };
+
+  const handlePurchasePriceChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const newPrice = e.target.value;
+    setProductData({ ...productData, purchase_price: newPrice });
+
+    if (newPrice.trim() === "") {
+      setPurchasePriceError("");
+      return;
+    }
+
+    const price = parseFloat(newPrice);
+    if (isNaN(price)) {
+      setPurchasePriceError("El precio debe ser un número válido");
+    } else if (price <= 0) {
+      setPurchasePriceError("El precio debe ser mayor a 0");
+    } else {
+      setPurchasePriceError("");
+    }
+  };
+
+  const handleSellPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPrice = e.target.value;
+    setProductData({ ...productData, sell_price: newPrice });
+
+    if (newPrice.trim() === "") {
+      setSellPriceError("");
+      return;
+    }
+
+    const price = parseFloat(newPrice);
+    if (isNaN(price)) {
+      setSellPriceError("El precio debe ser un número válido");
+    } else if (price <= 0) {
+      setSellPriceError("El precio debe ser mayor a 0");
+    } else {
+      setSellPriceError("");
     }
   };
   //este es el que se encarga de obtener los productos para paginarlos
@@ -770,7 +900,7 @@ export default function InventarioPage() {
         <div className="flex items-center space-x-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button 
+              <Button
                 className="bg-green-600 hover:bg-green-700"
                 onClick={() => {
                   setProductData({
@@ -784,6 +914,9 @@ export default function InventarioPage() {
                   });
                   setCodeError("");
                   setNameError("");
+                  setStockError("");
+                  setPurchasePriceError("");
+                  setSellPriceError("");
                 }}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -865,11 +998,14 @@ export default function InventarioPage() {
                     type="number"
                     className="col-span-3"
                     value={productData.stock}
-                    onChange={(e) =>
-                      setProductData({ ...productData, stock: e.target.value })
-                    }
+                    onChange={handleStockChange}
                   />
                 </div>
+                {stockError && (
+                  <div className="col-span-4 text-red-500 text-sm mt-1">
+                    {stockError}
+                  </div>
+                )}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="precio-compra" className="text-right">
                     Precio Compra
@@ -880,14 +1016,14 @@ export default function InventarioPage() {
                     step="0.01"
                     className="col-span-3"
                     value={productData.purchase_price}
-                    onChange={(e) =>
-                      setProductData({
-                        ...productData,
-                        purchase_price: e.target.value,
-                      })
-                    }
+                    onChange={handlePurchasePriceChange}
                   />
                 </div>
+                {purchasePriceError && (
+                  <div className="col-span-4 text-red-500 text-sm mt-1">
+                    {purchasePriceError}
+                  </div>
+                )}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="precio-venta" className="text-right">
                     Precio Venta
@@ -898,14 +1034,14 @@ export default function InventarioPage() {
                     step="0.01"
                     className="col-span-3"
                     value={productData.sell_price}
-                    onChange={(e) =>
-                      setProductData({
-                        ...productData,
-                        sell_price: e.target.value,
-                      })
-                    }
+                    onChange={handleSellPriceChange}
                   />
                 </div>
+                {sellPriceError && (
+                  <div className="col-span-4 text-red-500 text-sm mt-1">
+                    {sellPriceError}
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button
@@ -999,11 +1135,14 @@ export default function InventarioPage() {
                     type="number"
                     className="col-span-3"
                     value={productData.stock}
-                    onChange={(e) =>
-                      setProductData({ ...productData, stock: e.target.value })
-                    }
+                    onChange={handleStockChange}
                   />
                 </div>
+                {stockError && (
+                  <div className="col-span-4 text-red-500 text-sm mt-1">
+                    {stockError}
+                  </div>
+                )}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-precio-compra" className="text-right">
                     Precio Compra
@@ -1014,14 +1153,14 @@ export default function InventarioPage() {
                     step="0.01"
                     className="col-span-3"
                     value={productData.purchase_price}
-                    onChange={(e) =>
-                      setProductData({
-                        ...productData,
-                        purchase_price: e.target.value,
-                      })
-                    }
+                    onChange={handlePurchasePriceChange}
                   />
                 </div>
+                {purchasePriceError && (
+                  <div className="col-span-4 text-red-500 text-sm mt-1">
+                    {purchasePriceError}
+                  </div>
+                )}
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-precio-venta" className="text-right">
                     Precio Venta
@@ -1032,14 +1171,14 @@ export default function InventarioPage() {
                     step="0.01"
                     className="col-span-3"
                     value={productData.sell_price}
-                    onChange={(e) =>
-                      setProductData({
-                        ...productData,
-                        sell_price: e.target.value,
-                      })
-                    }
+                    onChange={handleSellPriceChange}
                   />
                 </div>
+                {sellPriceError && (
+                  <div className="col-span-4 text-red-500 text-sm mt-1">
+                    {sellPriceError}
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button
@@ -1056,6 +1195,11 @@ export default function InventarioPage() {
                       category_id: "",
                       category_name: "",
                     });
+                    setCodeError("");
+                    setNameError("");
+                    setStockError("");
+                    setPurchasePriceError("");
+                    setSellPriceError("");
                   }}
                 >
                   Cancelar
@@ -1070,7 +1214,7 @@ export default function InventarioPage() {
             </DialogContent>
           </Dialog>
 
-          <Button 
+          <Button
             variant="outline"
             onClick={() => setIsCategoriesDialogOpen(true)}
           >
@@ -1300,12 +1444,16 @@ export default function InventarioPage() {
       )}
 
       {/* Modal de Gestión de Categorías */}
-      <Dialog open={isCategoriesDialogOpen} onOpenChange={setIsCategoriesDialogOpen}>
+      <Dialog
+        open={isCategoriesDialogOpen}
+        onOpenChange={setIsCategoriesDialogOpen}
+      >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Gestionar Categorías</DialogTitle>
             <DialogDescription>
-              Administra las categorías de productos. Puedes crear, editar y eliminar categorías.
+              Administra las categorías de productos. Puedes crear, editar y
+              eliminar categorías.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1334,7 +1482,9 @@ export default function InventarioPage() {
                 <TableBody>
                   {categories.map((category) => (
                     <TableRow key={category.category_id}>
-                      <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {category.name}
+                      </TableCell>
                       <TableCell className="text-center">
                         <Button
                           variant="ghost"
@@ -1362,7 +1512,10 @@ export default function InventarioPage() {
       </Dialog>
 
       {/* Modal de Crear Categoría */}
-      <Dialog open={isCreateCategoryDialogOpen} onOpenChange={setIsCreateCategoryDialogOpen}>
+      <Dialog
+        open={isCreateCategoryDialogOpen}
+        onOpenChange={setIsCreateCategoryDialogOpen}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Nueva Categoría</DialogTitle>
@@ -1407,7 +1560,10 @@ export default function InventarioPage() {
       </Dialog>
 
       {/* Modal de Editar Categoría */}
-      <Dialog open={isEditCategoryDialogOpen} onOpenChange={setIsEditCategoryDialogOpen}>
+      <Dialog
+        open={isEditCategoryDialogOpen}
+        onOpenChange={setIsEditCategoryDialogOpen}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Editar Categoría</DialogTitle>
