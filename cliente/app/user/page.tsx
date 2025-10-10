@@ -29,14 +29,7 @@ export default function UpdatePasswordPage() {
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen relative">
-            <div className="flex justify-end w-full p-10 ">
-                <a href="/dashboard" className="text-blue-600 hover:underline">
-                    <Avatar className="h-10 w-10">
-                        <AvatarImage src="/home.svg" alt="@home" />
-                    <AvatarFallback>INICIO</AvatarFallback>
-                    </Avatar>
-                </a>
-            </div>
+            
             <h1 className="text-3xl font-bold mb-10">Actualizar contraseña</h1>
             <form
                 onSubmit={handleSubmit}

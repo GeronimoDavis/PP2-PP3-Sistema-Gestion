@@ -76,6 +76,7 @@ class UserController
             $payload = [
                 'user_id' => $user->user_id,
                 'username' => $user->username,
+                'name' => $user->name,
                 'role' => $user->role,
                 'exp' => time() + 60 * 60 * 24 // tiempo de validez
             ];
@@ -123,14 +124,14 @@ class UserController
             <div style='height: 100px; width: 100%; background-color: #22aa22;'>
             </div>
             <div style=''>
-            <h1 style='text-align: center; font-family: sans-serif;'>${username}, tu nueva contraseña es: <b style='color: #333;'>${newPassword}</b></h1>
+            <h1 style='text-align: center; font-family: sans-serif;'>$username, tu nueva contraseña es: <b style='color: #333;'>$newPassword</b></h1>
             <p style='text-align: center; font-family: sans-serif;'>Recuerda cambiar tu contraseña por una más segura</p>
             </div>
             <div style='height: 100px; width: 100%; background-color: #22aa22;'>
             ";
             
             try {
-                enviarCorreo($cuerpoMail, utf8_decode('Recuperación de contraseña'), 'st_juanma@hotmail.com');
+                enviarCorreo($cuerpoMail, utf8_decode('Recuperacion de clave'), $username);
                 $response->getBody()->write(json_encode(['message' => 'Contraseña recuperada con éxito y enviada por correo']));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
             } catch (Exception $mailException) {
