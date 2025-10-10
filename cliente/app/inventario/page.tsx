@@ -57,10 +57,10 @@ import {
   createProduct,
   updateProduct,
 } from "@/api/productsApi";
-import { 
-  getCategories, 
-  createCategory, 
-  updateCategory 
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
 } from "@/api/categoriesApi";
 
 export default function InventarioPage() {
@@ -109,8 +109,10 @@ export default function InventarioPage() {
 
   // Estados para gestión de categorías
   const [isCategoriesDialogOpen, setIsCategoriesDialogOpen] = useState(false);
-  const [isCreateCategoryDialogOpen, setIsCreateCategoryDialogOpen] = useState(false);
-  const [isEditCategoryDialogOpen, setIsEditCategoryDialogOpen] = useState(false);
+  const [isCreateCategoryDialogOpen, setIsCreateCategoryDialogOpen] =
+    useState(false);
+  const [isEditCategoryDialogOpen, setIsEditCategoryDialogOpen] =
+    useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [categoryData, setCategoryData] = useState({
     name: "",
@@ -205,7 +207,7 @@ export default function InventarioPage() {
   const handleCreateCategory = async () => {
     try {
       setCategoryNameError("");
-      
+
       if (!categoryData.name.trim()) {
         setCategoryNameError("El nombre de la categoría es obligatorio");
         return;
@@ -227,7 +229,10 @@ export default function InventarioPage() {
       setCategoryData({ name: "" });
     } catch (error: any) {
       console.error("Error al crear categoría:", error);
-      alert("Error al crear la categoría: " + (error.response?.data?.error || error.message));
+      alert(
+        "Error al crear la categoría: " +
+          (error.response?.data?.error || error.message)
+      );
     }
   };
 
@@ -242,7 +247,7 @@ export default function InventarioPage() {
   const handleUpdateCategory = async () => {
     try {
       setCategoryNameError("");
-      
+
       if (!categoryData.name.trim()) {
         setCategoryNameError("El nombre de la categoría es obligatorio");
         return;
@@ -250,7 +255,7 @@ export default function InventarioPage() {
 
       // Validar nombre único (excluyendo la categoría actual)
       const existingCategory = categories.find(
-        (cat) => 
+        (cat) =>
           cat.name.toLowerCase() === categoryData.name.toLowerCase() &&
           cat.category_id !== editingCategory.category_id
       );
@@ -267,21 +272,24 @@ export default function InventarioPage() {
       setCategoryData({ name: "" });
     } catch (error: any) {
       console.error("Error al actualizar categoría:", error);
-      alert("Error al actualizar la categoría: " + (error.response?.data?.error || error.message));
+      alert(
+        "Error al actualizar la categoría: " +
+          (error.response?.data?.error || error.message)
+      );
     }
   };
 
   const handleCategoryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setCategoryData({ ...categoryData, name: newName });
-    
+
     if (newName.length > 0) {
       const existingCategory = categories.find(
-        (cat) => 
+        (cat) =>
           cat.name.toLowerCase() === newName.toLowerCase() &&
           (!editingCategory || cat.category_id !== editingCategory.category_id)
       );
-      
+
       if (existingCategory) {
         setCategoryNameError("Ya existe una categoría con este nombre");
       } else {
@@ -429,8 +437,11 @@ export default function InventarioPage() {
       if (!isNameValid) return;
 
       // Si todas las validaciones pasan, crear el producto y actualizar el estado de los productos
-      const newProduct = await createProduct(productData);
-      setProducts([...products, newProduct.product]);
+      await createProduct(productData);
+
+      // Recargar todos los productos para obtener el category_name
+      await handleGetProducts();
+
       setIsDialogOpen(false);
       setProductData({
         name: "",
@@ -770,7 +781,7 @@ export default function InventarioPage() {
         <div className="flex items-center space-x-2">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button 
+              <Button
                 className="bg-green-600 hover:bg-green-700"
                 onClick={() => {
                   setProductData({
@@ -1070,7 +1081,7 @@ export default function InventarioPage() {
             </DialogContent>
           </Dialog>
 
-          <Button 
+          <Button
             variant="outline"
             onClick={() => setIsCategoriesDialogOpen(true)}
           >
@@ -1300,12 +1311,16 @@ export default function InventarioPage() {
       )}
 
       {/* Modal de Gestión de Categorías */}
-      <Dialog open={isCategoriesDialogOpen} onOpenChange={setIsCategoriesDialogOpen}>
+      <Dialog
+        open={isCategoriesDialogOpen}
+        onOpenChange={setIsCategoriesDialogOpen}
+      >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Gestionar Categorías</DialogTitle>
             <DialogDescription>
-              Administra las categorías de productos. Puedes crear, editar y eliminar categorías.
+              Administra las categorías de productos. Puedes crear, editar y
+              eliminar categorías.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1334,7 +1349,9 @@ export default function InventarioPage() {
                 <TableBody>
                   {categories.map((category) => (
                     <TableRow key={category.category_id}>
-                      <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {category.name}
+                      </TableCell>
                       <TableCell className="text-center">
                         <Button
                           variant="ghost"
@@ -1362,7 +1379,10 @@ export default function InventarioPage() {
       </Dialog>
 
       {/* Modal de Crear Categoría */}
-      <Dialog open={isCreateCategoryDialogOpen} onOpenChange={setIsCreateCategoryDialogOpen}>
+      <Dialog
+        open={isCreateCategoryDialogOpen}
+        onOpenChange={setIsCreateCategoryDialogOpen}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Nueva Categoría</DialogTitle>
@@ -1407,7 +1427,10 @@ export default function InventarioPage() {
       </Dialog>
 
       {/* Modal de Editar Categoría */}
-      <Dialog open={isEditCategoryDialogOpen} onOpenChange={setIsEditCategoryDialogOpen}>
+      <Dialog
+        open={isEditCategoryDialogOpen}
+        onOpenChange={setIsEditCategoryDialogOpen}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Editar Categoría</DialogTitle>

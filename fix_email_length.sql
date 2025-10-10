@@ -1,2 +1,0 @@
-USE stockRepuestos;
-ALTER TABLE person MODIFY COLUMN email VARCHAR(255) NOT NULL;
