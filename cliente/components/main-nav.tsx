@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   BarChart3,
@@ -9,13 +11,17 @@ import {
   Trash2,
 } from "lucide-react";
 import VerDolar from "./VerDolar";
+import { usePathname } from "next/navigation";
 
 export function MainNav() {
+  const pathname = usePathname();
   return (
     <nav className="flex items-center space-x-4 lg:space-x-6">
       <Link
         href="/dashboard"
-        className="text-sm font-medium transition-colors hover:text-primary"
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          pathname === "/dashboard" ? "text-primary" : "text-muted-foreground"
+        }`}
       >
         <div className="flex items-center">
           <Home className="mr-2 h-4 w-4" />
@@ -24,7 +30,10 @@ export function MainNav() {
       </Link>
       <Link
         href="/inventario"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+        // si esta en la ruta /inventario, agregar el className quitar text-muted-foreground
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          pathname === "/inventario" ? "text-primary" : "text-muted-foreground"
+        }`}
       >
         <div className="flex items-center">
           <Package className="mr-2 h-4 w-4" />
@@ -33,7 +42,9 @@ export function MainNav() {
       </Link>
       <Link
         href="/ventas"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          pathname === "/ventas" ? "text-primary" : "text-muted-foreground"
+        }`}
       >
         <div className="flex items-center">
           <ShoppingCart className="mr-2 h-4 w-4" />
@@ -42,7 +53,9 @@ export function MainNav() {
       </Link>
       <Link
         href="/compras"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          pathname === "/compras" ? "text-primary" : "text-muted-foreground"
+        }`}
       >
         <div className="flex items-center">
           <Truck className="mr-2 h-4 w-4" />
@@ -51,7 +64,9 @@ export function MainNav() {
       </Link>
       <Link
         href="/clientes"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          pathname === "/clientes" ? "text-primary" : "text-muted-foreground"
+        }`}
       >
         <div className="flex items-center">
           <Users className="mr-2 h-4 w-4" />
@@ -60,7 +75,9 @@ export function MainNav() {
       </Link>
       <Link
         href="/reportes"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          pathname === "/reportes" ? "text-primary" : "text-muted-foreground"
+        }`}
       >
         <div className="flex items-center">
           <BarChart3 className="mr-2 h-4 w-4" />
@@ -69,7 +86,9 @@ export function MainNav() {
       </Link>
       <Link
         href="/papelera"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+        className={`text-sm font-medium transition-colors hover:text-primary ${
+          pathname === "/papelera" ? "text-primary" : "text-muted-foreground"
+        }`}
       >
         <div className="flex items-center">
           <Trash2 className="mr-2 h-4 w-4" />
