@@ -3,14 +3,8 @@
 import { Label } from "@/components/ui/label";
 
 import { useEffect, useState, useMemo } from "react";
-import {
-  Plus,
-  ShoppingBag,
-  Trash2,
-  Search,
-  X,
-  Eye,
-} from "lucide-react";
+import { Plus, ShoppingBag, Trash2, Search, X, Eye } from "lucide-react";
+import { useNotification } from "@/hooks/use-notification";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -108,6 +102,7 @@ interface Provider {
 
 export default function ComprasPage() {
   const { user, token, validateToken, loading } = useAuth();
+  const notification = useNotification();
   const router = useRouter();
 
   // COMPRA
@@ -212,7 +207,6 @@ export default function ComprasPage() {
     return purchasesFilters.sort_direction === "asc" ? " ▲" : " ▼";
   };
 
-
   // BÚSQUEDA DE PRODUCTOS
   // termino de búsqueda
   const [searchTerm, setSearchTerm] = useState("");
@@ -312,11 +306,11 @@ export default function ComprasPage() {
   const updateQuantity = (id: number, cantidad: number) => {
     // Validar cantidad
     if (cantidad <= 0) {
-      alert("La cantidad debe ser mayor a 0");
+      notification.warning("La cantidad debe ser mayor a 0");
       return;
     }
     if (cantidad > 999999999) {
-      alert("La cantidad no puede ser mayor a 999,999,999");
+      notification.warning("La cantidad no puede ser mayor a 999,999,999");
       return;
     }
 
@@ -334,11 +328,11 @@ export default function ComprasPage() {
   const updatePrice = (id: number, precioCompra: number) => {
     // Validar precio
     if (precioCompra <= 0) {
-      alert("El precio debe ser mayor a 0");
+      notification.warning("El precio debe ser mayor a 0");
       return;
     }
     if (precioCompra > 999999999.99) {
-      alert("El precio no puede ser mayor a $999,999,999.99");
+      notification.warning("El precio no puede ser mayor a $999,999,999.99");
       return;
     }
 
@@ -428,7 +422,7 @@ export default function ComprasPage() {
   const addProductToCart = (product: Product) => {
     // Validar que el producto tenga un precio válido
     if (!product.purchase_price || product.purchase_price <= 0) {
-      alert("El producto no tiene un precio de compra válido");
+      notification.warning("El producto no tiene un precio de compra válido");
       return;
     }
 
@@ -479,7 +473,7 @@ export default function ComprasPage() {
     const errors = validatePurchase();
 
     if (errors.length > 0) {
-      alert("Errores de validación:\n" + errors.join("\n"));
+      notification.error("Errores de validación:\n" + errors.join("\n"));
       return;
     }
 
@@ -531,10 +525,10 @@ export default function ComprasPage() {
       // Recargar el historial de compras para mostrar la nueva compra
       await loadPurchasesHistory();
 
-      alert("¡Compra confirmada exitosamente!");
+      notification.success("¡Compra confirmada exitosamente!");
     } catch (error: any) {
       console.error("Error al confirmar la compra:", error);
-      alert(
+      notification.error(
         "Error al confirmar la compra: " +
           (error.response?.data?.error || error.message || "Error desconocido")
       );
@@ -586,12 +580,10 @@ export default function ComprasPage() {
     loadProviders();
   }, []);
 
-
   // Cargar historial de compras cuando se carga el componente
   useEffect(() => {
     loadPurchasesHistory();
   }, []);
-
 
   // Recargar cuando cambien los filtros o la página
   useEffect(() => {
@@ -660,7 +652,7 @@ export default function ComprasPage() {
       setShowPurchaseDetails(true);
     } catch (error: any) {
       console.error("Error al cargar detalles de la compra:", error);
-      alert("Error al cargar los detalles de la compra");
+      notification.error("Error al cargar los detalles de la compra");
     } finally {
       setIsLoadingPurchaseDetails(false);
     }
@@ -994,7 +986,7 @@ export default function ComprasPage() {
                       maxFutureDate.setFullYear(today.getFullYear() + 1);
 
                       if (selectedDate > maxFutureDate) {
-                        alert(
+                        notification.warning(
                           "La fecha de compra no puede ser más de 1 año en el futuro"
                         );
                         return;
@@ -1369,9 +1361,7 @@ export default function ComprasPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
       </Tabs>
-
     </div>
   );
 }
