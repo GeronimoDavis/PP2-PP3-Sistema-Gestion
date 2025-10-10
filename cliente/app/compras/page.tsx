@@ -150,6 +150,10 @@ export default function ComprasPage() {
   const [excludeTax, setExcludeTax] = useState(false);
   // Estado de procesamiento de compra
   const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
+  // Errores de validación en tiempo real
+  const [cartItemErrors, setCartItemErrors] = useState<{
+    [key: number]: { price?: string; quantity?: string };
+  }>({});
 
   // HISTORIAL DE COMPRAS
   const [purchasesHistory, setPurchasesHistory] = useState<
@@ -256,7 +260,7 @@ export default function ComprasPage() {
 
     // Validar proveedor seleccionado
     if (!selectedProvider) {
-      errors.push("Debe seleccionar un proveedor");
+      errors.push("Debe seleccionar un proveedor de la lista");
     }
 
     // Validar método de pago
@@ -280,15 +284,26 @@ export default function ComprasPage() {
       }
     }
 
+    // Verificar si hay errores en los campos del carrito
+    const hasCartErrors = Object.values(cartItemErrors).some(
+      (error) => error.price || error.quantity
+    );
+
+    if (hasCartErrors) {
+      errors.push(
+        "Hay errores en los campos del carrito. Por favor, corríjalos antes de continuar"
+      );
+    }
+
     // Validar productos individuales
     cartItems.forEach((item, index) => {
-      if (item.precioCompra <= 0) {
+      if (isNaN(item.precioCompra) || item.precioCompra <= 0) {
         errors.push(`El producto "${item.nombre}" tiene un precio inválido`);
       }
-      if (item.cantidad <= 0) {
+      if (isNaN(item.cantidad) || item.cantidad <= 0) {
         errors.push(`El producto "${item.nombre}" tiene una cantidad inválida`);
       }
-      if (item.total <= 0) {
+      if (isNaN(item.total) || item.total <= 0) {
         errors.push(`El producto "${item.nombre}" tiene un total inválido`);
       }
     });
@@ -300,17 +315,50 @@ export default function ComprasPage() {
   // eliminar item del carrito
   const removeItem = (id: number) => {
     setCartItems(cartItems.filter((item) => item.id !== id));
+    // Limpiar errores del item eliminado
+    setCartItemErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[id];
+      return newErrors;
+    });
   };
 
   // actualizar cantidad del item
   const updateQuantity = (id: number, cantidad: number) => {
+    // Limpiar error previo
+    setCartItemErrors((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], quantity: undefined },
+    }));
+
     // Validar cantidad
-    if (cantidad <= 0) {
-      notification.warning("La cantidad debe ser mayor a 0");
+    if (isNaN(cantidad)) {
+      setCartItemErrors((prev) => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          quantity: "La cantidad debe ser un número válido",
+        },
+      }));
       return;
     }
+
+    if (cantidad <= 0) {
+      setCartItemErrors((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], quantity: "La cantidad debe ser mayor a 0" },
+      }));
+      return;
+    }
+
     if (cantidad > 999999999) {
-      notification.warning("La cantidad no puede ser mayor a 999,999,999");
+      setCartItemErrors((prev) => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          quantity: "La cantidad no puede ser mayor a 999,999,999",
+        },
+      }));
       return;
     }
 
@@ -326,13 +374,37 @@ export default function ComprasPage() {
 
   // actualizar precio del item
   const updatePrice = (id: number, precioCompra: number) => {
+    // Limpiar error previo
+    setCartItemErrors((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], price: undefined },
+    }));
+
     // Validar precio
-    if (precioCompra <= 0) {
-      notification.warning("El precio debe ser mayor a 0");
+    if (isNaN(precioCompra)) {
+      setCartItemErrors((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], price: "El precio debe ser un número válido" },
+      }));
       return;
     }
-    if (precioCompra > 999999999.99) {
-      notification.warning("El precio no puede ser mayor a $999,999,999.99");
+
+    if (precioCompra <= 0) {
+      setCartItemErrors((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], price: "El precio debe ser mayor a 0" },
+      }));
+      return;
+    }
+
+    if (precioCompra > 999999999999.99) {
+      setCartItemErrors((prev) => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          price: "El precio no puede ser mayor a $999,999,999,999.99",
+        },
+      }));
       return;
     }
 
@@ -426,6 +498,17 @@ export default function ComprasPage() {
       return;
     }
 
+    // Verificar si el producto ya está en el carrito
+    const existingItem = cartItems.find(
+      (item) => item.id === product.product_id
+    );
+    if (existingItem) {
+      notification.warning(
+        `El producto "${product.name}" ya está en el carrito. Puede modificar su cantidad desde la tabla.`
+      );
+      return;
+    }
+
     const newItem: CartItem = {
       id: product.product_id,
       codigo: product.code,
@@ -512,6 +595,7 @@ export default function ComprasPage() {
 
       // Limpiar el carrito y mostrar mensaje de éxito
       setCartItems([]);
+      setCartItemErrors({});
       setSelectedProvider("");
       setProviderSearchTerm("");
       setProviderSearchResults([]);
@@ -833,31 +917,53 @@ export default function ComprasPage() {
                         <TableCell>{item.nombre}</TableCell>
                         <TableCell className="text-right">
                           {/* precio de compra */}
-                          <Input
-                            type="number"
-                            value={item.precioCompra}
-                            onChange={(e) =>
-                              updatePrice(
-                                item.id,
-                                Number.parseFloat(e.target.value)
-                              )
-                            }
-                            className="w-24 text-right"
-                          />
+                          <div className="flex flex-col items-end">
+                            <Input
+                              type="number"
+                              value={item.precioCompra}
+                              onChange={(e) =>
+                                updatePrice(
+                                  item.id,
+                                  Number.parseFloat(e.target.value)
+                                )
+                              }
+                              className={`w-24 text-right ${
+                                cartItemErrors[item.id]?.price
+                                  ? "border-red-500"
+                                  : ""
+                              }`}
+                            />
+                            {cartItemErrors[item.id]?.price && (
+                              <span className="text-xs text-red-500 mt-1">
+                                {cartItemErrors[item.id]?.price}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={item.cantidad}
-                            onChange={(e) =>
-                              updateQuantity(
-                                item.id,
-                                Number.parseInt(e.target.value)
-                              )
-                            }
-                            min="1"
-                            className="w-16 text-right"
-                          />
+                          <div className="flex flex-col items-end">
+                            <Input
+                              type="number"
+                              value={item.cantidad}
+                              onChange={(e) =>
+                                updateQuantity(
+                                  item.id,
+                                  Number.parseInt(e.target.value)
+                                )
+                              }
+                              min="1"
+                              className={`w-20 text-right ${
+                                cartItemErrors[item.id]?.quantity
+                                  ? "border-red-500"
+                                  : ""
+                              }`}
+                            />
+                            {cartItemErrors[item.id]?.quantity && (
+                              <span className="text-xs text-red-500 mt-1">
+                                {cartItemErrors[item.id]?.quantity}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           ${item.total.toLocaleString("es-AR")}
@@ -903,6 +1009,8 @@ export default function ComprasPage() {
                       value={providerSearchTerm}
                       onChange={(e) => {
                         setProviderSearchTerm(e.target.value);
+                        // Limpiar selección cuando el usuario escribe
+                        setSelectedProvider("");
                         handleProviderSearch(e.target.value);
                       }}
                       onFocus={() => {
@@ -910,13 +1018,14 @@ export default function ComprasPage() {
                           setShowProviderResults(true);
                         }
                       }}
+                      disabled={!!selectedProvider}
                     />
 
                     {/* Resultados de búsqueda de proveedores */}
-                    {showProviderResults &&
-                      providerSearchResults.length > 0 && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                          {providerSearchResults.map((provider) => (
+                    {showProviderResults && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {providerSearchResults.length > 0 ? (
+                          providerSearchResults.map((provider) => (
                             <div
                               key={provider.person_id}
                               className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
@@ -933,21 +1042,47 @@ export default function ComprasPage() {
                                 {provider.company_name}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
+                          ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                            No se encontraron proveedores
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Proveedor seleccionado */}
                     {selectedProvider && (
-                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md flex justify-between items-center">
                         <div className="text-sm text-green-800">
-                          Proveedor seleccionado:{" "}
-                          {
-                            providers.find(
-                              (p) => p.person_id.toString() === selectedProvider
-                            )?.name
-                          }
+                          <div className="font-medium">
+                            {
+                              providers.find(
+                                (p) =>
+                                  p.person_id.toString() === selectedProvider
+                              )?.name
+                            }
+                          </div>
+                          <div className="text-xs text-green-600">
+                            {
+                              providers.find(
+                                (p) =>
+                                  p.person_id.toString() === selectedProvider
+                              )?.company_name
+                            }
+                          </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedProvider("");
+                            setProviderSearchTerm("");
+                          }}
+                          className="h-6 w-6 p-0 hover:bg-green-100"
+                        >
+                          <X className="h-4 w-4 text-green-700" />
+                        </Button>
                       </div>
                     )}
                   </div>
