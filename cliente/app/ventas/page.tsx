@@ -411,6 +411,11 @@ export default function VentasPage() {
   const [newPaymentNote, setNewPaymentNote] = useState("");
   const [isProcessingNewPayment, setIsProcessingNewPayment] = useState(false);
 
+  // Estados para el modal de confirmación de pago excedente
+  const [showPaymentConfirmationModal, setShowPaymentConfirmationModal] =
+    useState(false);
+  const [pendingPaymentData, setPendingPaymentData] = useState<any>(null);
+
   // Estados para el modal de edición de pagos
   const [showEditPaymentModal, setShowEditPaymentModal] = useState(false);
   const [selectedPaymentForEdit, setSelectedPaymentForEdit] =
@@ -555,9 +560,13 @@ export default function VentasPage() {
       return;
     }
 
-    setIsProcessingNewPayment(true);
+    // Calcular el monto pendiente
+    const pendingAmount =
+      selectedSaleForPayment.total_transaction -
+      selectedSaleForPayment.total_paid;
 
-    try {
+    // Si el monto del pago excede el monto pendiente, mostrar confirmación
+    if (newPaymentAmount > pendingAmount) {
       const paymentData = {
         transaction_id: selectedSaleForPayment.transaction_id,
         date: newPaymentDate,
@@ -566,6 +575,26 @@ export default function VentasPage() {
         note: newPaymentNote,
       };
 
+      setPendingPaymentData(paymentData);
+      setShowPaymentConfirmationModal(true);
+      return;
+    }
+
+    // Si el monto es válido, proceder con el pago
+    await processPayment({
+      transaction_id: selectedSaleForPayment.transaction_id,
+      date: newPaymentDate,
+      type: newPaymentMethod,
+      amount: newPaymentAmount,
+      note: newPaymentNote,
+    });
+  };
+
+  // Función para procesar el pago
+  const processPayment = async (paymentData: any) => {
+    setIsProcessingNewPayment(true);
+
+    try {
       await createPayment(paymentData);
 
       // Recargar el historial de ventas
@@ -581,6 +610,21 @@ export default function VentasPage() {
     } finally {
       setIsProcessingNewPayment(false);
     }
+  };
+
+  // Función para confirmar el pago excedente
+  const handleConfirmExcessPayment = async () => {
+    if (pendingPaymentData) {
+      await processPayment(pendingPaymentData);
+      setShowPaymentConfirmationModal(false);
+      setPendingPaymentData(null);
+    }
+  };
+
+  // Función para cancelar el pago excedente
+  const handleCancelExcessPayment = () => {
+    setShowPaymentConfirmationModal(false);
+    setPendingPaymentData(null);
   };
 
   // Funciones para el modal de edición de pagos
@@ -3143,6 +3187,92 @@ export default function VentasPage() {
                 </>
               ) : (
                 "Agregar Pago"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmación para pago excedente */}
+      <Dialog
+        open={showPaymentConfirmationModal}
+        onOpenChange={setShowPaymentConfirmationModal}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-orange-600">
+              ⚠️ Confirmar Pago Excedente
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSaleForPayment && pendingPaymentData && (
+            <div className="space-y-4">
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="text-sm space-y-2">
+                  <p className="font-medium text-orange-800">
+                    El monto del pago excede el monto pendiente de la
+                    transacción.
+                  </p>
+                  <div className="space-y-1 text-gray-700">
+                    <div className="flex justify-between">
+                      <span>Cliente:</span>
+                      <span className="font-medium">
+                        {selectedSaleForPayment.client_name}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Monto del Pago:</span>
+                      <span className="font-medium text-orange-600">
+                        ${pendingPaymentData.amount.toLocaleString("es-AR")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Monto Pendiente:</span>
+                      <span className="font-medium">
+                        $
+                        {(
+                          selectedSaleForPayment.total_transaction -
+                          selectedSaleForPayment.total_paid
+                        ).toLocaleString("es-AR")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <span>Exceso:</span>
+                      <span className="text-green-600">
+                        $
+                        {(
+                          pendingPaymentData.amount -
+                          (selectedSaleForPayment.total_transaction -
+                            selectedSaleForPayment.total_paid)
+                        ).toLocaleString("es-AR")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="text-sm text-gray-600">
+                <p>
+                  ¿Está seguro de que desea continuar con este pago? El exceso
+                  se registrará igualmente.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={handleCancelExcessPayment}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmExcessPayment}
+              disabled={isProcessingNewPayment}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isProcessingNewPayment ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                "Confirmar Pago"
               )}
             </Button>
           </DialogFooter>

@@ -1347,15 +1347,7 @@ export default function ComprasPage() {
                             {getPurchasesSortIndicator("total_transaction")}
                           </Button>
                         </TableHead>
-                        <TableHead className="text-right">
-                          <Button
-                            variant="ghost"
-                            onClick={() => requestPurchasesSort("items_count")}
-                          >
-                            Items
-                            {getPurchasesSortIndicator("items_count")}
-                          </Button>
-                        </TableHead>
+
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1381,9 +1373,7 @@ export default function ComprasPage() {
                           <TableCell className="text-right">
                             {formatCurrency(purchase.total_transaction)}
                           </TableCell>
-                          <TableCell className="text-right">
-                            {purchase.items_count || 0}
-                          </TableCell>
+
                           <TableCell className="text-right">
                             <Button
                               variant="outline"
