@@ -204,6 +204,7 @@ export default function VentasPage() {
       precioOriginal: number; // Precio original del producto
       cantidad: number;
       total: number;
+      stock: number; // Stock disponible del producto
     }>
   >([]);
 
@@ -1148,7 +1149,19 @@ export default function VentasPage() {
     setCartItems(
       cartItems.map((item) => {
         if (item.id === id) {
-          return { ...item, cantidad, total: item.precio * cantidad };
+          // Usar el stock del item del carrito
+          const availableStock = item.stock;
+          
+          // Limitar la cantidad al stock disponible
+          const validQuantity = Math.min(cantidad, availableStock);
+          
+          if (validQuantity !== cantidad) {
+            notification.warning(
+              `No hay suficiente stock. Stock disponible: ${availableStock}`
+            );
+          }
+          
+          return { ...item, cantidad: validQuantity, total: item.precio * validQuantity };
         }
         return item;
       })
@@ -1198,14 +1211,26 @@ export default function VentasPage() {
   // Función para verificar si hay stock disponible
   const hasAvailableStock = (product: any, requestedQuantity: number = 1) => {
     const quantityInCart = getProductQuantityInCart(product.product_id);
-    return product.stock > quantityInCart + requestedQuantity - 1;
+    const availableStock = product.stock - quantityInCart;
+    return availableStock >= requestedQuantity;
   };
 
   // Función para manejar el cambio de cantidad de un producto
   const handleQuantityChange = (productId: number, quantity: number) => {
+    // Encontrar el producto para obtener su stock
+    const product = searchResults.find(p => p.product_id === productId);
+    if (!product) return;
+
+    // Calcular stock disponible (stock total - cantidad ya en carrito)
+    const quantityInCart = getProductQuantityInCart(productId);
+    const availableStock = Math.max(0, product.stock - quantityInCart);
+
+    // Validar que la cantidad no exceda el stock disponible
+    const validQuantity = Math.min(quantity, availableStock);
+    
     setProductQuantities((prev) => ({
       ...prev,
-      [productId]: quantity,
+      [productId]: validQuantity,
     }));
   };
 
@@ -1220,6 +1245,15 @@ export default function VentasPage() {
       const updatedItems = [...cartItems];
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.cantidad + quantity;
+      
+      // Validar que la nueva cantidad total no exceda el stock
+      if (newQuantity > product.stock) {
+        notification.warning(
+          `No hay suficiente stock. Stock disponible: ${product.stock}, cantidad actual en carrito: ${existingItem.cantidad}`
+        );
+        return;
+      }
+      
       updatedItems[existingItemIndex] = {
         ...existingItem,
         cantidad: newQuantity,
@@ -1227,6 +1261,14 @@ export default function VentasPage() {
       };
       setCartItems(updatedItems);
     } else {
+      // Si el producto no existe, validar stock antes de agregarlo
+      if (quantity > product.stock) {
+        notification.warning(
+          `No hay suficiente stock. Stock disponible: ${product.stock}`
+        );
+        return;
+      }
+      
       // Si el producto no existe, agregarlo como nuevo item
       const newItem = {
         id: product.product_id, // ID del producto
@@ -1236,6 +1278,7 @@ export default function VentasPage() {
         precioOriginal: product.sell_price, // Guardar precio original
         cantidad: quantity, // Cantidad del producto
         total: product.sell_price * quantity, // Total del producto
+        stock: product.stock, // Stock disponible del producto
       };
       setCartItems([...cartItems, newItem]);
     }
@@ -1419,66 +1462,57 @@ export default function VentasPage() {
                                 )}
                               </TableCell>
                               <TableCell className="text-right">
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  max={Math.max(
-                                    0,
-                                    product.stock -
-                                      getProductQuantityInCart(
-                                        product.product_id
-                                      )
-                                  )}
-                                  className="w-16 text-right"
-                                  disabled={!hasAvailableStock(product)}
-                                  placeholder="1"
-                                  value={
-                                    productQuantities[product.product_id] || 1
-                                  }
-                                  onChange={(e) => {
-                                    const qty = Number(e.target.value);
-                                    if (qty > 0) {
-                                      handleQuantityChange(
-                                        product.product_id,
-                                        qty
-                                      );
-                                    }
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={!hasAvailableStock(product)}
-                                  onClick={async () => {
-                                    const quantity =
-                                      productQuantities[product.product_id] ||
-                                      1;
-                                    const availableStock = Math.max(
+                                <div className="flex flex-col items-end gap-1">
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max={Math.max(
                                       0,
                                       product.stock -
                                         getProductQuantityInCart(
                                           product.product_id
                                         )
-                                    );
-
-                                    if (
-                                      quantity > 0 &&
-                                      quantity <= availableStock
-                                    ) {
-                                      addOrUpdateProductInCart(
-                                        product,
-                                        quantity
-                                      );
-
-                                      // Limpiar después de agregar
-                                      setTimeout(() => {
-                                        setSearchResults([]);
-                                        setSearchTerm("");
-                                        setProductQuantities({});
-                                      }, 50);
+                                    )}
+                                    className="w-16 text-right"
+                                    disabled={!hasAvailableStock(product)}
+                                    placeholder="1"
+                                    value={
+                                      productQuantities[product.product_id] || 1
                                     }
+                                    onChange={(e) => {
+                                      const qty = Number(e.target.value);
+                                      if (qty > 0) {
+                                        handleQuantityChange(
+                                          product.product_id,
+                                          qty
+                                        );
+                                      }
+                                    }}
+                                  />
+                                  <span className="text-xs text-gray-500">
+                                    Stock: {product.stock - getProductQuantityInCart(product.product_id)}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={!hasAvailableStock(product, productQuantities[product.product_id] || 1)}
+                                  onClick={async () => {
+                                    const quantity =
+                                      productQuantities[product.product_id] ||
+                                      1;
+
+                                    // La validación ya está en addOrUpdateProductInCart
+                                    addOrUpdateProductInCart(product, quantity);
+
+                                    // Limpiar después de agregar (solo si se agregó exitosamente)
+                                    setTimeout(() => {
+                                      setSearchResults([]);
+                                      setSearchTerm("");
+                                      setProductQuantities({});
+                                    }, 50);
                                   }}
                                 >
                                   Agregar
@@ -1509,7 +1543,14 @@ export default function VentasPage() {
                         <TableCell className="font-medium">
                           {item.codigo}
                         </TableCell>
-                        <TableCell>{item.nombre}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div>{item.nombre}</div>
+                            <div className="text-xs text-gray-500">
+                              Stock: {item.stock}
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-right align-middle">
                           <div className="flex items-center justify-end space-x-2">
                             <div className="relative">
@@ -1591,6 +1632,7 @@ export default function VentasPage() {
                               updateQuantity(item.id, newQuantity);
                             }}
                             min="1"
+                            max={item.stock}
                             className="w-16 text-right h-8"
                           />
                         </TableCell>
