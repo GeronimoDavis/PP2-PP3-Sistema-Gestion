@@ -1,11 +1,22 @@
 -- =============================================
 -- SCRIPT COMPLETO PARA CREAR BASE DE DATOS
--- Incluye todas las modificaciones para presupuestos
+-- Sistema de Gestión de Stock de Repuestos
+-- Incluye todas las funcionalidades:
+-- - Presupuestos (campo is_budget)
+-- - Stock mínimo personalizable (campo stock_minimum)
+-- - Vistas optimizadas para reportes
 -- =============================================
 
+-- =============================================
+-- CREACIÓN DE BASE DE DATOS
+-- =============================================
 CREATE DATABASE IF NOT EXISTS stockRepuestos;
 
 USE stockRepuestos;
+
+-- =============================================
+-- TABLAS PRINCIPALES
+-- =============================================
 
 -- Tabla de personas
 CREATE TABLE IF NOT EXISTS person (
@@ -40,7 +51,7 @@ CREATE TABLE IF NOT EXISTS category(
 	active BOOLEAN DEFAULT TRUE
 );
 
--- Tabla de productos
+-- Tabla de productos (CON CAMPO stock_minimum INCLUIDO)
 CREATE TABLE IF NOT EXISTS product(
 	product_id INT PRIMARY KEY AUTO_INCREMENT UNIQUE,
 	name VARCHAR(50),
@@ -49,6 +60,7 @@ CREATE TABLE IF NOT EXISTS product(
 	sell_price FLOAT,
 	purchase_price FLOAT,
 	category_id INT,
+	stock_minimum INT DEFAULT 5 COMMENT 'Límite mínimo de stock para considerar stock bajo',
 	active BOOLEAN DEFAULT TRUE,
 	FOREIGN KEY(category_id) REFERENCES category(category_id)
 );
@@ -107,6 +119,10 @@ CREATE TABLE payments(
 	date DATETIME,
 	FOREIGN KEY(transaction_id) REFERENCES transaction(transaction_id)
 );
+
+-- =============================================
+-- VISTAS PARA REPORTES Y CONSULTAS
+-- =============================================
 
 -- Vista de ventas detalladas (CON CAMPO is_budget INCLUIDO)
 CREATE OR REPLACE VIEW view_ventas_detalladas AS
@@ -331,3 +347,49 @@ LEFT JOIN (
 
 WHERE t.is_sale = FALSE
 ORDER BY t.date DESC;
+
+-- =============================================
+-- VERIFICACIÓN DE ESTRUCTURA
+-- =============================================
+
+-- Verificar que todas las tablas se crearon correctamente
+SELECT 'TABLAS CREADAS:' as verificacion;
+SHOW TABLES;
+
+-- Verificar estructura de la tabla product (incluyendo stock_minimum)
+SELECT 'ESTRUCTURA TABLA PRODUCT:' as verificacion;
+DESCRIBE product;
+
+-- Verificar estructura de la tabla transaction (incluyendo is_budget)
+SELECT 'ESTRUCTURA TABLA TRANSACTION:' as verificacion;
+DESCRIBE transaction;
+
+-- Verificar que las vistas se crearon correctamente
+SELECT 'VISTAS CREADAS:' as verificacion;
+SHOW FULL TABLES WHERE Table_type = 'VIEW';
+
+-- =============================================
+-- CONSULTA DE EJEMPLO: PRODUCTOS CON STOCK BAJO
+-- =============================================
+
+-- Ejemplo de consulta usando el nuevo campo stock_minimum
+SELECT 
+    'EJEMPLO: PRODUCTOS CON STOCK BAJO' as descripcion,
+    product_id,
+    name,
+    code,
+    stock,
+    stock_minimum,
+    CASE 
+        WHEN stock = 0 THEN 'Sin Stock'
+        WHEN stock <= stock_minimum THEN 'Stock Bajo'
+        ELSE 'En Stock'
+    END AS estado_stock
+FROM product 
+WHERE active = 1
+ORDER BY stock ASC
+LIMIT 10;
+
+-- =============================================
+-- FIN DEL SCRIPT
+-- =============================================

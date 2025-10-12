@@ -134,7 +134,7 @@ class ProductController
             $data = $request->getParsedBody();
 
             //validaciones
-            if (!isset($data['code'], $data['name'], $data['category_id'], $data['stock'], $data['purchase_price'], $data['sell_price'])) {
+            if (!isset($data['code'], $data['name'], $data['category_id'], $data['stock'], $data['purchase_price'], $data['sell_price'], $data['stock_minimum'])) {
                 throw new Exception("Missing required fields.");
             }
 

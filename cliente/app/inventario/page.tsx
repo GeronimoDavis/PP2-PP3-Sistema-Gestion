@@ -97,6 +97,7 @@ export default function InventarioPage() {
     sell_price: "",
     category_id: "",
     category_name: "",
+    stock_minimum: "5",
   });
 
   const [originalProducts, setOriginalProducts] = useState<any[]>([]);
@@ -107,6 +108,7 @@ export default function InventarioPage() {
   const [stockError, setStockError] = useState("");
   const [purchasePriceError, setPurchasePriceError] = useState("");
   const [sellPriceError, setSellPriceError] = useState("");
+  const [stockMinimumError, setStockMinimumError] = useState("");
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -406,6 +408,7 @@ export default function InventarioPage() {
       setStockError("");
       setPurchasePriceError("");
       setSellPriceError("");
+      setStockMinimumError("");
 
       // Validaciones de campos obligatorios
       if (!productData.name.trim()) {
@@ -457,6 +460,17 @@ export default function InventarioPage() {
         return;
       }
 
+      const stockMinimum = parseFloat(productData.stock_minimum);
+      if (isNaN(stockMinimum) || productData.stock_minimum.trim() === "") {
+        notification.warning("El stock mínimo debe ser un número válido");
+        return;
+      }
+
+      if (stockMinimum < 0) {
+        notification.warning("El stock mínimo no puede ser negativo");
+        return;
+      }
+
       // Validar codigo unico
       const isCodeValid = await validateCode(productData.code);
       if (!isCodeValid) return;
@@ -483,6 +497,7 @@ export default function InventarioPage() {
         sell_price: "",
         category_id: "",
         category_name: "",
+        stock_minimum: "5",
       });
       notification.success("Producto creado exitosamente");
     } catch (error: any) {
@@ -504,6 +519,7 @@ export default function InventarioPage() {
       sell_price: product.sell_price?.toString() || "",
       category_id: product.category_id.toString(),
       category_name: product.category_name,
+      stock_minimum: product.stock_minimum?.toString() || "5",
     });
     setIsEditDialogOpen(true);
   };
@@ -515,6 +531,7 @@ export default function InventarioPage() {
       setStockError("");
       setPurchasePriceError("");
       setSellPriceError("");
+      setStockMinimumError("");
 
       // Validaciones de campos obligatorios
       if (!productData.name.trim()) {
@@ -566,6 +583,17 @@ export default function InventarioPage() {
         return;
       }
 
+      const stockMinimum = parseFloat(productData.stock_minimum);
+      if (isNaN(stockMinimum) || productData.stock_minimum.trim() === "") {
+        notification.warning("El stock mínimo debe ser un número válido");
+        return;
+      }
+
+      if (stockMinimum < 0) {
+        notification.warning("El stock mínimo no puede ser negativo");
+        return;
+      }
+
       // Validar codigo unico
       const isCodeValid = await validateCode(
         productData.code,
@@ -594,6 +622,7 @@ export default function InventarioPage() {
         sell_price: "",
         category_id: "",
         category_name: "",
+        stock_minimum: "5",
       });
 
       handleGetProducts();
@@ -742,6 +771,25 @@ export default function InventarioPage() {
       setSellPriceError("");
     }
   };
+
+  const handleStockMinimumChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newStockMinimum = e.target.value;
+    setProductData({ ...productData, stock_minimum: newStockMinimum });
+
+    if (newStockMinimum.trim() === "") {
+      setStockMinimumError("");
+      return;
+    }
+
+    const stockMinimum = parseFloat(newStockMinimum);
+    if (isNaN(stockMinimum)) {
+      setStockMinimumError("El stock mínimo debe ser un número válido");
+    } else if (stockMinimum < 0) {
+      setStockMinimumError("El stock mínimo no puede ser negativo");
+    } else {
+      setStockMinimumError("");
+    }
+  };
   //este es el que se encarga de obtener los productos para paginarlos
   const getPaginatedProducts = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -852,11 +900,11 @@ export default function InventarioPage() {
 
   const totalPages = Math.ceil(products.length / itemsPerPage);
 
-  // Función para determinar el estado del stock basado en la cantidad
-  const getStockStatus = (stock: number) => {
+  // Función para determinar el estado del stock basado en la cantidad y stock_minimum
+  const getStockStatus = (stock: number, stockMinimum: number = 5) => {
     if (stock === 0) {
       return { text: "Sin Stock", color: "bg-red-500 text-white" };
-    } else if (stock <= 5) {
+    } else if (stock <= stockMinimum) {
       return { text: "Stock Bajo", color: "bg-yellow-500 text-white" };
     } else {
       return { text: "En Stock", color: "bg-green-500 text-white" };
@@ -911,12 +959,14 @@ export default function InventarioPage() {
                     sell_price: "",
                     category_id: "",
                     category_name: "",
+                    stock_minimum: "5",
                   });
                   setCodeError("");
                   setNameError("");
                   setStockError("");
                   setPurchasePriceError("");
                   setSellPriceError("");
+                  setStockMinimumError("");
                 }}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -1040,6 +1090,24 @@ export default function InventarioPage() {
                 {sellPriceError && (
                   <div className="col-span-4 text-red-500 text-sm mt-1">
                     {sellPriceError}
+                  </div>
+                )}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="stock-minimo" className="text-right">
+                    Stock Mínimo
+                  </Label>
+                  <Input
+                    id="stock-minimo"
+                    type="number"
+                    className="col-span-3"
+                    value={productData.stock_minimum}
+                    onChange={handleStockMinimumChange}
+                    placeholder="5"
+                  />
+                </div>
+                {stockMinimumError && (
+                  <div className="col-span-4 text-red-500 text-sm mt-1">
+                    {stockMinimumError}
                   </div>
                 )}
               </div>
@@ -1179,6 +1247,24 @@ export default function InventarioPage() {
                     {sellPriceError}
                   </div>
                 )}
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-stock-minimo" className="text-right">
+                    Stock Mínimo
+                  </Label>
+                  <Input
+                    id="edit-stock-minimo"
+                    type="number"
+                    className="col-span-3"
+                    value={productData.stock_minimum}
+                    onChange={handleStockMinimumChange}
+                    placeholder="5"
+                  />
+                </div>
+                {stockMinimumError && (
+                  <div className="col-span-4 text-red-500 text-sm mt-1">
+                    {stockMinimumError}
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button
@@ -1194,12 +1280,14 @@ export default function InventarioPage() {
                       sell_price: "",
                       category_id: "",
                       category_name: "",
+                      stock_minimum: "5",
                     });
                     setCodeError("");
                     setNameError("");
                     setStockError("");
                     setPurchasePriceError("");
                     setSellPriceError("");
+                    setStockMinimumError("");
                   }}
                 >
                   Cancelar
@@ -1386,7 +1474,7 @@ export default function InventarioPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {(() => {
-                        const stockStatus = getStockStatus(product.stock);
+                        const stockStatus = getStockStatus(product.stock, product.stock_minimum);
                         return (
                           <Badge
                             variant="outline"

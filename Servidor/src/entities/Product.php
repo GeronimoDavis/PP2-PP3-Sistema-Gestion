@@ -11,6 +11,7 @@ class Product {
     public ?int $category_id;
     public ?int $active;
     public ?string $category_name;
+    public int $stock_minimum;
 
     public function __construct(array $data)
     {
@@ -23,6 +24,7 @@ class Product {
         $this->category_id = $data['category_id'] ?? null;
         $this->active = $data['active'] ?? 1;
         $this->category_name = $data['category_name'] ?? '';
+        $this->stock_minimum = isset($data['stock_minimum']) ? (int)$data['stock_minimum'] : 5;
     }
 
     public function toArray(): array
@@ -37,6 +39,7 @@ class Product {
             'category_id' => $this->category_id,
             'active' => $this->active,
             'category_name' => $this->category_name,
+            'stock_minimum' => $this->stock_minimum,
         ];
 
     }
