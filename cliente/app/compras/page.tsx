@@ -3,7 +3,15 @@
 import { Label } from "@/components/ui/label";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, ShoppingBag, Trash2, Search, X, Eye } from "lucide-react";
+import {
+  Plus,
+  ShoppingBag,
+  Trash2,
+  Search,
+  X,
+  Eye,
+  Download,
+} from "lucide-react";
 import { useNotification } from "@/hooks/use-notification";
 import { Button } from "@/components/ui/button";
 import {
@@ -100,6 +108,46 @@ interface Provider {
   active: boolean;
 }
 
+// Interfaces para los detalles de compra
+interface PurchaseItem {
+  item_id: number;
+  transaction_id: number;
+  product_id: number;
+  quantity: number;
+  price: number;
+  product_name: string;
+  product_code: string;
+  product_cost: number;
+}
+
+interface PurchaseTransaction {
+  transaction_id: number;
+  date: string;
+  is_sale: boolean;
+  person_id: number;
+  transport_id: number | null;
+  tax_type: string;
+  tracking_number: string | null;
+  provider_name: string;
+  provider_company: string;
+  provider_email: string;
+  provider_phone: string;
+  provider_tax_id: string;
+  transport_company: string | null;
+  transport_url: string | null;
+}
+
+interface PurchaseTotals {
+  items: number;
+  transaction: number;
+}
+
+interface PurchaseDetails {
+  transaction: PurchaseTransaction;
+  items: PurchaseItem[];
+  totals: PurchaseTotals;
+}
+
 export default function ComprasPage() {
   const { user, token, validateToken, loading } = useAuth();
   const notification = useNotification();
@@ -185,7 +233,8 @@ export default function ComprasPage() {
   });
 
   // Detalles de compra
-  const [selectedPurchase, setSelectedPurchase] = useState<any | null>(null);
+  const [selectedPurchase, setSelectedPurchase] =
+    useState<PurchaseDetails | null>(null);
   const [showPurchaseDetails, setShowPurchaseDetails] = useState(false);
   const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] =
     useState(false);
@@ -756,6 +805,24 @@ export default function ComprasPage() {
       style: "currency",
       currency: "ARS",
     }).format(amount);
+  };
+
+  // Función para determinar si una compra tiene IVA
+  const hasIVA = (taxType: string): boolean => {
+    return taxType === "R.I" || taxType === "Responsable Inscripto";
+  };
+
+  // Función para obtener descripción del tipo de impuesto
+  const getIVADescription = (taxType: string): string => {
+    switch (taxType) {
+      case "R.I":
+      case "Responsable Inscripto":
+        return "Responsable Inscripto - Incluye IVA";
+      case "Exento":
+        return "Exento de IVA";
+      default:
+        return "No especificado";
+    }
   };
 
   // Funciones de paginación para compras
@@ -1487,6 +1554,400 @@ export default function ComprasPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Detalles de Compra */}
+      <Dialog open={showPurchaseDetails} onOpenChange={setShowPurchaseDetails}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Detalles de Compra #
+              {selectedPurchase?.transaction?.transaction_id}
+            </DialogTitle>
+          </DialogHeader>
+
+          {isLoadingPurchaseDetails ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+              <span className="ml-2">Cargando detalles...</span>
+            </div>
+          ) : selectedPurchase ? (
+            <div className="space-y-6">
+              {/* Información del Proveedor */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <h3 className="font-semibold mb-2">
+                    Información del Proveedor
+                  </h3>
+                  <p>
+                    <strong>Nombre:</strong>{" "}
+                    {selectedPurchase.transaction.provider_name}
+                  </p>
+                  <p>
+                    <strong>Empresa:</strong>{" "}
+                    {selectedPurchase.transaction.provider_company}
+                  </p>
+                  <p>
+                    <strong>Email:</strong>{" "}
+                    {selectedPurchase.transaction.provider_email}
+                  </p>
+                  <p>
+                    <strong>Teléfono:</strong>{" "}
+                    {selectedPurchase.transaction.provider_phone}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">
+                    Información de la Compra
+                  </h3>
+                  <p>
+                    <strong>Fecha:</strong>{" "}
+                    {formatDate(selectedPurchase.transaction.date)}
+                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <strong>Tipo de Impuesto:</strong>
+                    <Badge
+                      variant={
+                        hasIVA(selectedPurchase.transaction.tax_type)
+                          ? "default"
+                          : "secondary"
+                      }
+                      className={
+                        hasIVA(selectedPurchase.transaction.tax_type)
+                          ? "bg-green-100 text-green-800 border-green-200"
+                          : "bg-gray-100 text-gray-800 border-gray-200"
+                      }
+                    >
+                      {hasIVA(selectedPurchase.transaction.tax_type)
+                        ? "Con IVA"
+                        : "Sin IVA"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    {getIVADescription(selectedPurchase.transaction.tax_type)}
+                  </p>
+                  {selectedPurchase.transaction.tracking_number && (
+                    <p>
+                      <strong>Número de Seguimiento:</strong>{" "}
+                      {selectedPurchase.transaction.tracking_number}
+                    </p>
+                  )}
+                  {selectedPurchase.transaction.transport_company && (
+                    <p>
+                      <strong>Transporte:</strong>{" "}
+                      {selectedPurchase.transaction.transport_company}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Items */}
+              <div>
+                <h3 className="font-semibold mb-3">Productos</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Código</TableHead>
+                      <TableHead>Producto</TableHead>
+                      <TableHead className="text-right">Cantidad</TableHead>
+                      <TableHead className="text-right">
+                        Precio Compra
+                      </TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedPurchase.items.map((item: any) => (
+                      <TableRow key={item.item_id}>
+                        <TableCell className="font-medium">
+                          {item.product_code}
+                        </TableCell>
+                        <TableCell>{item.product_name}</TableCell>
+                        <TableCell className="text-right">
+                          {item.quantity}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.price)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(item.quantity * item.price)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Resumen */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold mb-3">Resumen</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p>
+                      <strong>Subtotal Productos:</strong>{" "}
+                      {formatCurrency(selectedPurchase.totals.items)}
+                    </p>
+                    <p className="text-lg font-bold">
+                      Total:{" "}
+                      {formatCurrency(selectedPurchase.totals.transaction)}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={
+                          hasIVA(selectedPurchase.transaction.tax_type)
+                            ? "bg-green-100 text-green-800 border-green-300 font-semibold"
+                            : "bg-red-100 text-red-800 border-red-300 font-semibold"
+                        }
+                      >
+                        {hasIVA(selectedPurchase.transaction.tax_type)
+                          ? "Incluye IVA"
+                          : "No incluye IVA"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowPurchaseDetails(false)}
+            >
+              Cerrar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                if (selectedPurchase) {
+                  // Crear una ventana nueva para imprimir/descargar el recibo
+                  const printWindow = window.open("", "_blank");
+                  if (printWindow) {
+                    printWindow.document.write(`
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <title>Recibo de Compra #${
+                          selectedPurchase.transaction.transaction_id
+                        }</title>
+                        <style>
+                          * {
+                            box-sizing: border-box;
+                          }
+                          body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 10px; 
+                            padding: 0;
+                            background: white;
+                          }
+                          .header {
+                            text-align: center;
+                            border-bottom: 2px solid #333;
+                            padding-bottom: 20px;
+                            margin-bottom: 30px;
+                          }
+                          .header h1 {
+                            margin: 0;
+                            color: #333;
+                            font-size: 28px;
+                          }
+                          .header h2 {
+                            margin: 5px 0 0 0;
+                            color: #666;
+                            font-size: 18px;
+                            font-weight: normal;
+                          }
+                          .info-grid {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 30px;
+                            margin-bottom: 30px;
+                          }
+                          .info-section h3 {
+                            margin: 0 0 15px 0;
+                            color: #333;
+                            font-size: 16px;
+                            border-bottom: 1px solid #ddd;
+                            padding-bottom: 5px;
+                          }
+                          .info-section p {
+                            margin: 5px 0;
+                            color: #555;
+                          }
+                          table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 30px;
+                          }
+                          th, td {
+                            border: 1px solid #ddd;
+                            padding: 12px;
+                            text-align: left;
+                          }
+                          th {
+                            background-color: #f5f5f5;
+                            font-weight: bold;
+                            color: #333;
+                          }
+                          .text-right {
+                            text-align: right;
+                          }
+                          .summary {
+                            background-color: #f9f9f9;
+                            padding: 20px;
+                            border-radius: 5px;
+                            margin-top: 20px;
+                          }
+                          .summary h3 {
+                            margin: 0 0 15px 0;
+                            color: #333;
+                          }
+                          .summary-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 5px 0;
+                            padding: 5px 0;
+                          }
+                          .total {
+                            font-weight: bold;
+                            font-size: 18px;
+                            border-top: 2px solid #333;
+                            padding-top: 10px;
+                            margin-top: 10px;
+                          }
+                          .footer {
+                            text-align: center;
+                            margin-top: 30px;
+                            padding-top: 20px;
+                            border-top: 1px solid #ddd;
+                            color: #666;
+                          }
+                          @media print {
+                            body { margin: 0; }
+                            .no-print { display: none; }
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="header">
+                          <h1>RECIBO DE COMPRA</h1>
+                          <h2>Compra #${
+                            selectedPurchase.transaction.transaction_id
+                          }</h2>
+                        </div>
+
+                        <div class="info-grid">
+                          <div class="info-section">
+                            <h3>Información del Proveedor</h3>
+                            <p><strong>Nombre:</strong> ${
+                              selectedPurchase.transaction.provider_name
+                            }</p>
+                            <p><strong>Empresa:</strong> ${
+                              selectedPurchase.transaction.provider_company
+                            }</p>
+                            <p><strong>Email:</strong> ${
+                              selectedPurchase.transaction.provider_email
+                            }</p>
+                            <p><strong>Teléfono:</strong> ${
+                              selectedPurchase.transaction.provider_phone
+                            }</p>
+                          </div>
+                          <div class="info-section">
+                            <h3>Información de la Compra</h3>
+                            <p><strong>Fecha:</strong> ${formatDate(
+                              selectedPurchase.transaction.date
+                            )}</p>
+                            <p><strong>Tipo de Impuesto:</strong> ${getIVADescription(
+                              selectedPurchase.transaction.tax_type
+                            )}</p>
+                            ${
+                              selectedPurchase.transaction.tracking_number
+                                ? `<p><strong>Número de Seguimiento:</strong> ${selectedPurchase.transaction.tracking_number}</p>`
+                                : ""
+                            }
+                            ${
+                              selectedPurchase.transaction.transport_company
+                                ? `<p><strong>Transporte:</strong> ${selectedPurchase.transaction.transport_company}</p>`
+                                : ""
+                            }
+                          </div>
+                        </div>
+
+                        <h3>Productos</h3>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Código</th>
+                              <th>Producto</th>
+                              <th class="text-right">Cantidad</th>
+                              <th class="text-right">Precio Compra</th>
+                              <th class="text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${selectedPurchase.items
+                              .map(
+                                (item: any) => `
+                              <tr>
+                                <td>${item.product_code}</td>
+                                <td>${item.product_name}</td>
+                                <td class="text-right">${item.quantity}</td>
+                                <td class="text-right">${formatCurrency(
+                                  item.price
+                                )}</td>
+                                <td class="text-right">${formatCurrency(
+                                  item.quantity * item.price
+                                )}</td>
+                              </tr>
+                            `
+                              )
+                              .join("")}
+                          </tbody>
+                        </table>
+
+                        <div class="summary">
+                          <h3>Resumen</h3>
+                          <div class="summary-row">
+                            <span><strong>Subtotal Productos:</strong></span>
+                            <span>${formatCurrency(
+                              selectedPurchase.totals.items
+                            )}</span>
+                          </div>
+                          <div class="summary-row total">
+                            <span><strong>Total:</strong></span>
+                            <span>${formatCurrency(
+                              selectedPurchase.totals.transaction
+                            )}</span>
+                          </div>
+                        </div>
+
+                        <div class="footer">
+                          <p>Recibo generado el ${new Date().toLocaleDateString(
+                            "es-AR"
+                          )}</p>
+                        </div>
+
+                        <script>
+                          window.onload = function() {
+                            window.print();
+                          };
+                        </script>
+                      </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                  }
+                }
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Imprimir Recibo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
