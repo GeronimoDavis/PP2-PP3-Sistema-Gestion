@@ -212,10 +212,23 @@ export default function VentasPage() {
 
   // Funciones para manejar extras
   const addExtra = () => {
-    if (!newExtraType.trim() || newExtraPrice <= 0) {
-      notification.warning(
-        "Por favor complete el tipo de extra y un monto válido"
-      );
+    if (!newExtraType.trim()) {
+      notification.warning("Por favor complete el tipo de extra");
+      return;
+    }
+
+    if (newExtraPrice < 0) {
+      notification.warning("El monto del extra no puede ser negativo");
+      return;
+    }
+
+    if (newExtraPrice === 0) {
+      notification.warning("El monto del extra debe ser mayor a 0");
+      return;
+    }
+
+    if (isNaN(newExtraPrice) || !isFinite(newExtraPrice)) {
+      notification.warning("El monto del extra debe ser un número válido");
       return;
     }
 
@@ -1146,22 +1159,45 @@ export default function VentasPage() {
   };
 
   const updateQuantity = (id: number, cantidad: number) => {
+    // Validar que la cantidad no sea negativa
+    if (cantidad < 0) {
+      notification.warning("La cantidad no puede ser negativa");
+      return;
+    }
+
+    // Validar que la cantidad sea un número válido
+    if (isNaN(cantidad) || !isFinite(cantidad)) {
+      notification.warning("La cantidad debe ser un número válido");
+      return;
+    }
+
     setCartItems(
       cartItems.map((item) => {
         if (item.id === id) {
           // Usar el stock del item del carrito
           const availableStock = item.stock;
-          
+
+          // Asegurar que la cantidad sea al menos 1
+          const minQuantity = Math.max(1, cantidad);
+
           // Limitar la cantidad al stock disponible
-          const validQuantity = Math.min(cantidad, availableStock);
-          
+          const validQuantity = Math.min(minQuantity, availableStock);
+
           if (validQuantity !== cantidad) {
-            notification.warning(
-              `No hay suficiente stock. Stock disponible: ${availableStock}`
-            );
+            if (cantidad < 1) {
+              notification.warning("La cantidad mínima es 1");
+            } else if (cantidad > availableStock) {
+              notification.warning(
+                `No hay suficiente stock. Stock disponible: ${availableStock}`
+              );
+            }
           }
-          
-          return { ...item, cantidad: validQuantity, total: item.precio * validQuantity };
+
+          return {
+            ...item,
+            cantidad: validQuantity,
+            total: item.precio * validQuantity,
+          };
         }
         return item;
       })
@@ -1217,17 +1253,42 @@ export default function VentasPage() {
 
   // Función para manejar el cambio de cantidad de un producto
   const handleQuantityChange = (productId: number, quantity: number) => {
+    // Validar que la cantidad no sea negativa
+    if (quantity < 0) {
+      notification.warning("La cantidad no puede ser negativa");
+      return;
+    }
+
+    // Validar que la cantidad sea un número válido
+    if (isNaN(quantity) || !isFinite(quantity)) {
+      notification.warning("La cantidad debe ser un número válido");
+      return;
+    }
+
     // Encontrar el producto para obtener su stock
-    const product = searchResults.find(p => p.product_id === productId);
+    const product = searchResults.find((p) => p.product_id === productId);
     if (!product) return;
 
     // Calcular stock disponible (stock total - cantidad ya en carrito)
     const quantityInCart = getProductQuantityInCart(productId);
     const availableStock = Math.max(0, product.stock - quantityInCart);
 
+    // Asegurar que la cantidad sea al menos 1
+    const minQuantity = Math.max(1, quantity);
+
     // Validar que la cantidad no exceda el stock disponible
-    const validQuantity = Math.min(quantity, availableStock);
-    
+    const validQuantity = Math.min(minQuantity, availableStock);
+
+    if (validQuantity !== quantity) {
+      if (quantity < 1) {
+        notification.warning("La cantidad mínima es 1");
+      } else if (quantity > availableStock) {
+        notification.warning(
+          `No hay suficiente stock. Stock disponible: ${availableStock}`
+        );
+      }
+    }
+
     setProductQuantities((prev) => ({
       ...prev,
       [productId]: validQuantity,
@@ -1236,6 +1297,30 @@ export default function VentasPage() {
 
   // Función para agregar o actualizar producto en el carrito
   const addOrUpdateProductInCart = (product: any, quantity: number) => {
+    // Validar que la cantidad no sea negativa
+    if (quantity < 0) {
+      notification.warning("La cantidad no puede ser negativa");
+      return;
+    }
+
+    // Validar que la cantidad sea un número válido
+    if (isNaN(quantity) || !isFinite(quantity)) {
+      notification.warning("La cantidad debe ser un número válido");
+      return;
+    }
+
+    // Validar que el precio del producto no sea negativo
+    if (product.sell_price < 0) {
+      notification.warning("El precio del producto no puede ser negativo");
+      return;
+    }
+
+    // Validar que el precio sea un número válido
+    if (isNaN(product.sell_price) || !isFinite(product.sell_price)) {
+      notification.warning("El precio del producto debe ser un número válido");
+      return;
+    }
+
     const existingItemIndex = cartItems.findIndex(
       (item) => item.id === product.product_id
     );
@@ -1245,7 +1330,7 @@ export default function VentasPage() {
       const updatedItems = [...cartItems];
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.cantidad + quantity;
-      
+
       // Validar que la nueva cantidad total no exceda el stock
       if (newQuantity > product.stock) {
         notification.warning(
@@ -1253,7 +1338,7 @@ export default function VentasPage() {
         );
         return;
       }
-      
+
       updatedItems[existingItemIndex] = {
         ...existingItem,
         cantidad: newQuantity,
@@ -1268,7 +1353,7 @@ export default function VentasPage() {
         );
         return;
       }
-      
+
       // Si el producto no existe, agregarlo como nuevo item
       const newItem = {
         id: product.product_id, // ID del producto
@@ -1480,8 +1565,18 @@ export default function VentasPage() {
                                       productQuantities[product.product_id] || 1
                                     }
                                     onChange={(e) => {
-                                      const qty = Number(e.target.value);
-                                      if (qty > 0) {
+                                      const value = e.target.value;
+                                      // Validar que el valor no sea negativo
+                                      if (value === "" || value === "0") {
+                                        handleQuantityChange(
+                                          product.product_id,
+                                          1
+                                        );
+                                        return;
+                                      }
+                                      const qty = Number(value);
+                                      // Solo actualizar si es un número válido y positivo
+                                      if (!isNaN(qty) && qty > 0) {
                                         handleQuantityChange(
                                           product.product_id,
                                           qty
@@ -1490,7 +1585,11 @@ export default function VentasPage() {
                                     }}
                                   />
                                   <span className="text-xs text-gray-500">
-                                    Stock: {product.stock - getProductQuantityInCart(product.product_id)}
+                                    Stock:{" "}
+                                    {product.stock -
+                                      getProductQuantityInCart(
+                                        product.product_id
+                                      )}
                                   </span>
                                 </div>
                               </TableCell>
@@ -1498,7 +1597,12 @@ export default function VentasPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  disabled={!hasAvailableStock(product, productQuantities[product.product_id] || 1)}
+                                  disabled={
+                                    !hasAvailableStock(
+                                      product,
+                                      productQuantities[product.product_id] || 1
+                                    )
+                                  }
                                   onClick={async () => {
                                     const quantity =
                                       productQuantities[product.product_id] ||
@@ -1558,20 +1662,44 @@ export default function VentasPage() {
                                 type="number"
                                 value={item.precio}
                                 onChange={(e) => {
-                                  const newPrice =
-                                    parseFloat(e.target.value) || 0;
-                                  setCartItems(
-                                    cartItems.map((cartItem) => {
-                                      if (cartItem.id === item.id) {
-                                        return {
-                                          ...cartItem,
-                                          precio: newPrice,
-                                          total: newPrice * cartItem.cantidad,
-                                        };
-                                      }
-                                      return cartItem;
-                                    })
-                                  );
+                                  const value = e.target.value;
+                                  // Validar que el valor no sea negativo
+                                  if (value === "" || value === "0") {
+                                    const newPrice = 0;
+                                    setCartItems(
+                                      cartItems.map((cartItem) => {
+                                        if (cartItem.id === item.id) {
+                                          return {
+                                            ...cartItem,
+                                            precio: newPrice,
+                                            total: newPrice * cartItem.cantidad,
+                                          };
+                                        }
+                                        return cartItem;
+                                      })
+                                    );
+                                    return;
+                                  }
+                                  const newPrice = parseFloat(value);
+                                  // Solo actualizar si es un número válido y no negativo
+                                  if (!isNaN(newPrice) && newPrice >= 0) {
+                                    setCartItems(
+                                      cartItems.map((cartItem) => {
+                                        if (cartItem.id === item.id) {
+                                          return {
+                                            ...cartItem,
+                                            precio: newPrice,
+                                            total: newPrice * cartItem.cantidad,
+                                          };
+                                        }
+                                        return cartItem;
+                                      })
+                                    );
+                                  } else if (newPrice < 0) {
+                                    notification.warning(
+                                      "El precio no puede ser negativo"
+                                    );
+                                  }
                                 }}
                                 min="0"
                                 step="0.01"
@@ -1627,9 +1755,16 @@ export default function VentasPage() {
                             value={item.cantidad}
                             onChange={(e) => {
                               const value = e.target.value;
-                              const newQuantity =
-                                value === "" ? 1 : parseInt(value) || 1;
-                              updateQuantity(item.id, newQuantity);
+                              // Validar que el valor no sea negativo
+                              if (value === "" || value === "0") {
+                                updateQuantity(item.id, 1);
+                                return;
+                              }
+                              const newQuantity = parseInt(value);
+                              // Solo actualizar si es un número válido y positivo
+                              if (!isNaN(newQuantity) && newQuantity > 0) {
+                                updateQuantity(item.id, newQuantity);
+                              }
                             }}
                             min="1"
                             max={item.stock}
@@ -1853,6 +1988,14 @@ export default function VentasPage() {
 
                       // Verificar que sea un número válido y no NaN
                       if (!isNaN(newAmount) && isFinite(newAmount)) {
+                        // Verificar que no sea negativo
+                        if (newAmount < 0) {
+                          notification.warning(
+                            "El monto de pago no puede ser negativo"
+                          );
+                          setPaymentAmount(0);
+                          return;
+                        }
                         const maxAmount = calculateTotalWithTax();
                         // Limitar el monto al total máximo
                         setPaymentAmount(Math.min(newAmount, maxAmount));
@@ -3075,9 +3218,20 @@ export default function VentasPage() {
                 type="number"
                 placeholder="0.00"
                 value={newExtraPrice || ""}
-                onChange={(e) =>
-                  setNewExtraPrice(parseFloat(e.target.value) || 0)
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "" || value === "0") {
+                    setNewExtraPrice(0);
+                    return;
+                  }
+                  const price = parseFloat(value);
+                  // Solo actualizar si es un número válido y no negativo
+                  if (!isNaN(price) && price >= 0) {
+                    setNewExtraPrice(price);
+                  } else if (price < 0) {
+                    notification.warning("El monto no puede ser negativo");
+                  }
+                }}
                 min="0"
                 step="0.01"
               />
@@ -3150,9 +3304,22 @@ export default function VentasPage() {
                     type="number"
                     placeholder="0.00"
                     value={newPaymentAmount || ""}
-                    onChange={(e) =>
-                      setNewPaymentAmount(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "" || value === "0") {
+                        setNewPaymentAmount(0);
+                        return;
+                      }
+                      const amount = parseFloat(value);
+                      // Solo actualizar si es un número válido y no negativo
+                      if (!isNaN(amount) && amount >= 0) {
+                        setNewPaymentAmount(amount);
+                      } else if (amount < 0) {
+                        notification.warning(
+                          "El monto del pago no puede ser negativo"
+                        );
+                      }
+                    }}
                     min="0"
                     step="0.01"
                     max={
