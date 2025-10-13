@@ -99,6 +99,22 @@ export default function ClientesPage() {
     payments: 0,
   });
 
+  // Estados para el modal de edición
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editFormErrors, setEditFormErrors] = useState({});
+  const [editClientData, setEditClientData] = useState({
+    person_id: null,
+    name: "",
+    company_name: "",
+    tax_type: "",
+    tax_id: "",
+    phone: "",
+    email: "",
+    address: "",
+    notes: "",
+    provider: false,
+  });
+
   const { user, token, validateToken, loading } = useAuth();
   const { toast } = useToast();
 
@@ -121,6 +137,10 @@ export default function ClientesPage() {
 
   const clearFormErrors = () => {
     setFormErrors({});
+  };
+
+  const clearEditFormErrors = () => {
+    setEditFormErrors({});
   };
 
   const validateForm = () => {
@@ -147,6 +167,33 @@ export default function ClientesPage() {
     }
 
     setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validateEditForm = () => {
+    const errors = {};
+
+    if (!editClientData.name.trim()) {
+      errors.name = "El nombre es obligatorio";
+    }
+
+    if (!editClientData.tax_type) {
+      errors.tax_type = "El tipo es obligatorio";
+    }
+
+    if (!editClientData.tax_id.trim()) {
+      errors.tax_id = "El CUIT/CUIL es obligatorio";
+    } else if (editClientData.tax_id.length !== 11) {
+      errors.tax_id = "El CUIT/CUIL debe tener 11 dígitos";
+    }
+
+    if (!editClientData.email.trim()) {
+      errors.email = "El email es obligatorio";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editClientData.email)) {
+      errors.email = "El email debe tener un formato válido";
+    }
+
+    setEditFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
@@ -312,6 +359,79 @@ export default function ClientesPage() {
       toast({
         title: "Error al desactivar cliente",
         description: "No se pudo actualizar el estado del cliente.",
+        variant: "destructive",
+      });
+      console.error("Error:", error);
+    }
+  };
+
+  // Abrir modal de edición con datos del cliente
+  const handleOpenEditDialog = async (clientId) => {
+    try {
+      const { person } = await getPersonById(clientId);
+      setEditClientData({
+        person_id: person.person_id,
+        name: person.name || "",
+        company_name: person.company_name || "",
+        tax_type: person.tax_type || "",
+        tax_id: person.tax_id || "",
+        phone: person.phone || "",
+        email: person.email || "",
+        address: person.address || "",
+        notes: person.notes || "",
+        provider: Boolean(person.provider),
+      });
+      clearEditFormErrors();
+      setIsEditDialogOpen(true);
+    } catch (error) {
+      toast({
+        title: "Error al cargar datos",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive",
+      });
+      console.error("Error:", error);
+    }
+  };
+
+  // Actualizar cliente
+  const handleUpdateClient = async () => {
+    // Limpiar errores previos
+    clearEditFormErrors();
+
+    // Validar formulario
+    if (!validateEditForm()) {
+      return;
+    }
+
+    try {
+      // Asegurar que provider sea un booleano
+      const dataToSend = {
+        name: editClientData.name,
+        company_name: editClientData.company_name,
+        tax_type: editClientData.tax_type,
+        tax_id: editClientData.tax_id,
+        phone: editClientData.phone,
+        email: editClientData.email,
+        address: editClientData.address,
+        notes: editClientData.notes,
+        provider: Boolean(editClientData.provider),
+      };
+
+      await updatePerson(editClientData.person_id, dataToSend);
+
+      // Actualizar la lista de clientes
+      await loadClients();
+
+      setIsEditDialogOpen(false);
+
+      toast({
+        title: "Cliente actualizado",
+        description: "El cliente se ha actualizado exitosamente.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error al actualizar cliente",
+        description: error.response?.data?.error || error.message,
         variant: "destructive",
       });
       console.error("Error:", error);
@@ -866,9 +986,12 @@ export default function ClientesPage() {
                               <Eye className="mr-2 h-4 w-4" />
                               Ver detalles
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Editar persona</DropdownMenuItem>
-                            <DropdownMenuItem>
-                              Historial de compras
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleOpenEditDialog(client.person_id)
+                              }
+                            >
+                              Editar persona
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -974,7 +1097,9 @@ export default function ClientesPage() {
                         </div>
                       )}
                       <div>
-                        <Label className="text-gray-500">Tipo de Persona</Label>
+                        <Label className="text-gray-500">
+                          Tipo de Persona{" "}
+                        </Label>
                         <Badge
                           className={`${
                             selectedClient.provider
@@ -1286,6 +1411,256 @@ export default function ClientesPage() {
               onClick={() => setIsDetailsModalOpen(false)}
             >
               Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Edición de Cliente */}
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            clearEditFormErrors();
+            setEditClientData({
+              person_id: null,
+              name: "",
+              company_name: "",
+              tax_type: "",
+              tax_id: "",
+              phone: "",
+              email: "",
+              address: "",
+              notes: "",
+              provider: false,
+            });
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Cliente</DialogTitle>
+            <DialogDescription>
+              Modifica los datos del cliente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-nombre" className="text-right">
+                Nombre
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="edit-nombre"
+                  className={editFormErrors.name ? "border-red-500" : ""}
+                  value={editClientData.name}
+                  onChange={(e) => {
+                    setEditClientData({
+                      ...editClientData,
+                      name: e.target.value,
+                    });
+                    if (editFormErrors.name) {
+                      setEditFormErrors({ ...editFormErrors, name: null });
+                    }
+                  }}
+                />
+                {editFormErrors.name && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {editFormErrors.name}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-razon_social" className="text-right">
+                Razón Social
+              </Label>
+              <Input
+                id="edit-razon_social"
+                className="col-span-3"
+                value={editClientData.company_name}
+                onChange={(e) =>
+                  setEditClientData({
+                    ...editClientData,
+                    company_name: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-tipo" className="text-right">
+                Tipo
+              </Label>
+              <div className="col-span-3">
+                <Select
+                  value={editClientData.tax_type}
+                  onValueChange={(value) => {
+                    setEditClientData({ ...editClientData, tax_type: value });
+                    if (editFormErrors.tax_type) {
+                      setEditFormErrors({ ...editFormErrors, tax_type: null });
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    className={editFormErrors.tax_type ? "border-red-500" : ""}
+                  >
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="R.I">R.I</SelectItem>
+                    <SelectItem value="Exento">Exento</SelectItem>
+                    <SelectItem value="R.N.I">R.N.I</SelectItem>
+                    <SelectItem value="Monotributo">Monotributo</SelectItem>
+                    <SelectItem value="Consumidor Final">
+                      Consumidor Final
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {editFormErrors.tax_type && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {editFormErrors.tax_type}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-cuit" className="text-right">
+                CUIT/CUIL
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="edit-cuit"
+                  className={editFormErrors.tax_id ? "border-red-500" : ""}
+                  value={editClientData.tax_id}
+                  onChange={(e) => {
+                    setEditClientData({
+                      ...editClientData,
+                      tax_id: e.target.value,
+                    });
+                    if (editFormErrors.tax_id) {
+                      setEditFormErrors({ ...editFormErrors, tax_id: null });
+                    }
+                  }}
+                />
+                {editFormErrors.tax_id && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {editFormErrors.tax_id}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-telefono" className="text-right">
+                Teléfono
+              </Label>
+              <Input
+                id="edit-telefono"
+                className="col-span-3"
+                value={editClientData.phone}
+                onChange={(e) =>
+                  setEditClientData({
+                    ...editClientData,
+                    phone: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-email" className="text-right">
+                Email
+              </Label>
+              <div className="col-span-3">
+                <Input
+                  id="edit-email"
+                  type="email"
+                  className={editFormErrors.email ? "border-red-500" : ""}
+                  value={editClientData.email}
+                  onChange={(e) => {
+                    setEditClientData({
+                      ...editClientData,
+                      email: e.target.value,
+                    });
+                    if (editFormErrors.email) {
+                      setEditFormErrors({ ...editFormErrors, email: null });
+                    }
+                  }}
+                />
+                {editFormErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {editFormErrors.email}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-direccion" className="text-right">
+                Dirección
+              </Label>
+              <Input
+                id="edit-direccion"
+                className="col-span-3"
+                value={editClientData.address}
+                onChange={(e) =>
+                  setEditClientData({
+                    ...editClientData,
+                    address: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-notas" className="text-right">
+                Notas
+              </Label>
+              <Textarea
+                id="edit-notas"
+                className="col-span-3"
+                value={editClientData.notes}
+                onChange={(e) =>
+                  setEditClientData({
+                    ...editClientData,
+                    notes: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-provider" className="text-right">
+                Cliente/Proveedor
+              </Label>
+              <Select
+                value={editClientData.provider ? "true" : "false"}
+                onValueChange={(value) =>
+                  setEditClientData({
+                    ...editClientData,
+                    provider: value === "true",
+                  })
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Seleccionar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Proveedor</SelectItem>
+                  <SelectItem value="false">Cliente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleUpdateClient}
+            >
+              Actualizar
             </Button>
           </DialogFooter>
         </DialogContent>
