@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Download, MoreHorizontal, UserPlus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,6 +57,7 @@ export default function ClientesPage() {
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [error, setError] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const [clientData, setClientData] = useState({
     name: "",
     company_name: "",
@@ -78,6 +80,7 @@ export default function ClientesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { user, token, validateToken, loading } = useAuth();
+  const { toast } = useToast();
 
   const router = useRouter(); // Usar el hook useRouter
 
@@ -94,6 +97,37 @@ export default function ClientesPage() {
       return null;
     }
     return sortConfig.direction === "ascending" ? " ▲" : " ▼";
+  };
+
+  const clearFormErrors = () => {
+    setFormErrors({});
+  };
+
+  const validateForm = () => {
+    const errors = {};
+
+    if (!clientData.name.trim()) {
+      errors.name = "El nombre es obligatorio";
+    }
+
+    if (!clientData.tax_type) {
+      errors.tax_type = "El tipo es obligatorio";
+    }
+
+    if (!clientData.tax_id.trim()) {
+      errors.tax_id = "El CUIT/CUIL es obligatorio";
+    } else if (clientData.tax_id.length !== 11) {
+      errors.tax_id = "El CUIT/CUIL debe tener 11 dígitos";
+    }
+
+    if (!clientData.email.trim()) {
+      errors.email = "El email es obligatorio";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientData.email)) {
+      errors.email = "El email debe tener un formato válido";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const sortedClients = useMemo(() => {
@@ -177,14 +211,19 @@ export default function ClientesPage() {
       setError(null);
     } catch (error) {
       if (error.response?.status === 401) {
-        setError("Sesión expirada. Por favor, inicie sesión nuevamente.");
+        toast({
+          title: "Sesión expirada",
+          description: "Por favor, inicie sesión nuevamente.",
+          variant: "destructive",
+        });
         // Redirigir al login si el token no es válido
         window.location.href = "/";
       } else {
-        setError(
-          "Error al cargar los clientes: " +
-            (error.response?.data?.error || error.message)
-        );
+        toast({
+          title: "Error al cargar clientes",
+          description: error.response?.data?.error || error.message,
+          variant: "destructive",
+        });
       }
       console.error("Error:", error);
     } finally {
@@ -193,18 +232,15 @@ export default function ClientesPage() {
   };
   //este es el que se encarga de crear un cliente
   const handleCreateClient = async (clientData) => {
-    try {
-      // Validaciones
-      if (!clientData.email || !clientData.tax_id || !clientData.tax_type) {
-        setError("Todos los campos son obligatorios");
-        return;
-      }
-      //validar que el CUIT/CUIL tenga 11 dígitos
-      if (clientData.tax_id.length !== 11) {
-        setError("El CUIT/CUIL debe tener 11 dígitos");
-        return;
-      }
+    // Limpiar errores previos
+    clearFormErrors();
 
+    // Validar formulario
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
       // Asegurar que provider sea un booleano
       const dataToSend = {
         ...clientData,
@@ -214,6 +250,7 @@ export default function ClientesPage() {
       //crear el cliente
       const newClient = await createPerson(dataToSend);
       setClients([...clients, newClient.person]);
+      setOriginalClients([...originalClients, newClient.person]);
       setIsDialogOpen(false);
       setClientData({
         name: "",
@@ -226,11 +263,18 @@ export default function ClientesPage() {
         notes: "",
         provider: false,
       });
+      clearFormErrors();
+
+      toast({
+        title: "Cliente creado",
+        description: "El cliente se ha creado exitosamente.",
+      });
     } catch (error) {
-      setError(
-        "Error al crear el cliente: " +
-          (error.response?.data?.error || error.message)
-      );
+      toast({
+        title: "Error al crear cliente",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive",
+      });
       console.error("Error:", error);
     }
   };
@@ -240,8 +284,16 @@ export default function ClientesPage() {
       await updatePersonStatus(id);
       // Recargar la lista completa para mostrar solo personas activas
       await loadClients();
+      toast({
+        title: "Cliente desactivado",
+        description: "El cliente ha sido desactivado exitosamente.",
+      });
     } catch (error) {
-      setError("Error al actualizar el estado del cliente");
+      toast({
+        title: "Error al desactivar cliente",
+        description: "No se pudo actualizar el estado del cliente.",
+        variant: "destructive",
+      });
       console.error("Error:", error);
     }
   };
@@ -363,7 +415,26 @@ export default function ClientesPage() {
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Personas</h2>
         <div className="flex items-center space-x-2">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                clearFormErrors();
+                setClientData({
+                  name: "",
+                  company_name: "",
+                  tax_type: "",
+                  tax_id: "",
+                  phone: "",
+                  email: "",
+                  address: "",
+                  notes: "",
+                  provider: false,
+                });
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700">
                 <UserPlus className="mr-2 h-4 w-4" />
@@ -382,14 +453,24 @@ export default function ClientesPage() {
                   <Label htmlFor="nombre" className="text-right">
                     Nombre
                   </Label>
-                  <Input
-                    id="nombre"
-                    className="col-span-3"
-                    value={clientData.name}
-                    onChange={(e) =>
-                      setClientData({ ...clientData, name: e.target.value })
-                    }
-                  />
+                  <div className="col-span-3">
+                    <Input
+                      id="nombre"
+                      className={formErrors.name ? "border-red-500" : ""}
+                      value={clientData.name}
+                      onChange={(e) => {
+                        setClientData({ ...clientData, name: e.target.value });
+                        if (formErrors.name) {
+                          setFormErrors({ ...formErrors, name: null });
+                        }
+                      }}
+                    />
+                    {formErrors.name && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.name}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="razon_social" className="text-right">
@@ -411,38 +492,63 @@ export default function ClientesPage() {
                   <Label htmlFor="tipo" className="text-right">
                     Tipo
                   </Label>
-                  <Select
-                    value={clientData.tax_type}
-                    onValueChange={(value) =>
-                      setClientData({ ...clientData, tax_type: value })
-                    }
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="R.I">R.I</SelectItem>
-                      <SelectItem value="Exento">Exento</SelectItem>
-                      <SelectItem value="R.N.I">R.N.I</SelectItem>
-                      <SelectItem value="Monotributo">Monotributo</SelectItem>
-                      <SelectItem value="Consumidor Final">
-                        Consumidor Final
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="col-span-3">
+                    <Select
+                      value={clientData.tax_type}
+                      onValueChange={(value) => {
+                        setClientData({ ...clientData, tax_type: value });
+                        if (formErrors.tax_type) {
+                          setFormErrors({ ...formErrors, tax_type: null });
+                        }
+                      }}
+                    >
+                      <SelectTrigger
+                        className={formErrors.tax_type ? "border-red-500" : ""}
+                      >
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="R.I">R.I</SelectItem>
+                        <SelectItem value="Exento">Exento</SelectItem>
+                        <SelectItem value="R.N.I">R.N.I</SelectItem>
+                        <SelectItem value="Monotributo">Monotributo</SelectItem>
+                        <SelectItem value="Consumidor Final">
+                          Consumidor Final
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formErrors.tax_type && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.tax_type}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="cuit" className="text-right">
                     CUIT/CUIL
                   </Label>
-                  <Input
-                    id="cuit"
-                    className="col-span-3"
-                    value={clientData.tax_id}
-                    onChange={(e) =>
-                      setClientData({ ...clientData, tax_id: e.target.value })
-                    }
-                  />
+                  <div className="col-span-3">
+                    <Input
+                      id="cuit"
+                      className={formErrors.tax_id ? "border-red-500" : ""}
+                      value={clientData.tax_id}
+                      onChange={(e) => {
+                        setClientData({
+                          ...clientData,
+                          tax_id: e.target.value,
+                        });
+                        if (formErrors.tax_id) {
+                          setFormErrors({ ...formErrors, tax_id: null });
+                        }
+                      }}
+                    />
+                    {formErrors.tax_id && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.tax_id}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="telefono" className="text-right">
@@ -461,15 +567,25 @@ export default function ClientesPage() {
                   <Label htmlFor="email" className="text-right">
                     Email
                   </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    className="col-span-3"
-                    value={clientData.email}
-                    onChange={(e) =>
-                      setClientData({ ...clientData, email: e.target.value })
-                    }
-                  />
+                  <div className="col-span-3">
+                    <Input
+                      id="email"
+                      type="email"
+                      className={formErrors.email ? "border-red-500" : ""}
+                      value={clientData.email}
+                      onChange={(e) => {
+                        setClientData({ ...clientData, email: e.target.value });
+                        if (formErrors.email) {
+                          setFormErrors({ ...formErrors, email: null });
+                        }
+                      }}
+                    />
+                    {formErrors.email && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.email}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="direccion" className="text-right">
@@ -569,20 +685,6 @@ export default function ClientesPage() {
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
               <p className="mt-2 text-gray-600">Cargando personas...</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : error ? (
-        <Card>
-          <CardContent className="p-8">
-            <div className="text-center">
-              <p className="text-red-600">{error}</p>
-              <Button
-                onClick={loadClients}
-                className="mt-4 bg-blue-600 hover:bg-blue-700"
-              >
-                Reintentar
-              </Button>
             </div>
           </CardContent>
         </Card>

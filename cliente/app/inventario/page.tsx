@@ -10,6 +10,17 @@ import {
   Trash2,
 } from "lucide-react";
 import { useNotification } from "@/hooks/use-notification";
+import { useToast } from "@/hooks/use-toast";
+
+interface FormErrors {
+  name?: string | null;
+  code?: string | null;
+  category_id?: string | null;
+  stock?: string | null;
+  purchase_price?: string | null;
+  sell_price?: string | null;
+  stock_minimum?: string | null;
+}
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,6 +80,7 @@ export default function InventarioPage() {
 
   const { user, token, validateToken, loading } = useAuth();
   const notification = useNotification();
+  const { toast } = useToast();
 
   const router = useRouter(); // Usar el hook useRouter
 
@@ -103,12 +115,7 @@ export default function InventarioPage() {
   const [originalProducts, setOriginalProducts] = useState<any[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [codeError, setCodeError] = useState("");
-  const [nameError, setNameError] = useState("");
-  const [stockError, setStockError] = useState("");
-  const [purchasePriceError, setPurchasePriceError] = useState("");
-  const [sellPriceError, setSellPriceError] = useState("");
-  const [stockMinimumError, setStockMinimumError] = useState("");
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -148,6 +155,58 @@ export default function InventarioPage() {
       return null;
     }
     return sortConfig.direction === "ascending" ? " ▲" : " ▼";
+  };
+
+  const clearFormErrors = () => {
+    setFormErrors({});
+  };
+
+  const validateForm = () => {
+    const errors: FormErrors = {};
+
+    if (!productData.name.trim()) {
+      errors.name = "El nombre es obligatorio";
+    }
+
+    if (!productData.code.trim()) {
+      errors.code = "El código es obligatorio";
+    }
+
+    if (!productData.category_id) {
+      errors.category_id = "Debe seleccionar una categoría";
+    }
+
+    // Validaciones numéricas
+    const stock = parseFloat(productData.stock);
+    if (isNaN(stock) || productData.stock.trim() === "") {
+      errors.stock = "El stock debe ser un número válido";
+    } else if (stock < 0) {
+      errors.stock = "El stock no puede ser negativo";
+    }
+
+    const purchasePrice = parseFloat(productData.purchase_price);
+    if (isNaN(purchasePrice) || productData.purchase_price.trim() === "") {
+      errors.purchase_price = "El precio de compra debe ser un número válido";
+    } else if (purchasePrice <= 0) {
+      errors.purchase_price = "El precio de compra debe ser mayor a 0";
+    }
+
+    const sellPrice = parseFloat(productData.sell_price);
+    if (isNaN(sellPrice) || productData.sell_price.trim() === "") {
+      errors.sell_price = "El precio de venta debe ser un número válido";
+    } else if (sellPrice <= 0) {
+      errors.sell_price = "El precio de venta debe ser mayor a 0";
+    }
+
+    const stockMinimum = parseFloat(productData.stock_minimum);
+    if (isNaN(stockMinimum) || productData.stock_minimum.trim() === "") {
+      errors.stock_minimum = "El stock mínimo debe ser un número válido";
+    } else if (stockMinimum < 0) {
+      errors.stock_minimum = "El stock mínimo no puede ser negativo";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const sortedProducts = useMemo(() => {
@@ -195,7 +254,16 @@ export default function InventarioPage() {
       setProducts(productsWithCategories);
       //actualizar el estado de los productos originales para que se pueda filtrar por categoria
       setOriginalProducts(productsWithCategories);
+      toast({
+        title: "Producto actualizado",
+        description: "El estado del producto se ha actualizado exitosamente.",
+      });
     } catch (error) {
+      toast({
+        title: "Error al actualizar producto",
+        description: "No se pudo actualizar el estado del producto.",
+        variant: "destructive",
+      });
       console.error("Error al actualizar el estado del producto:", error);
     }
   };
@@ -334,10 +402,11 @@ export default function InventarioPage() {
       setError(null);
     } catch (error: any) {
       console.error("Error al obtener los productos por categoría:", error);
-      setError(
-        "Error al filtrar por categoría: " +
-          (error.response?.data?.error || error.message)
-      );
+      toast({
+        title: "Error al filtrar por categoría",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive",
+      });
     } finally {
       setLoadingProducts(false);
     }
@@ -361,10 +430,11 @@ export default function InventarioPage() {
       setError(null);
     } catch (error: any) {
       console.error("Error al obtener los productos:", error);
-      setError(
-        "Error al cargar los productos: " +
-          (error.response?.data?.error || error.message)
-      );
+      toast({
+        title: "Error al cargar productos",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive",
+      });
     } finally {
       setLoadingProducts(false);
     }
@@ -390,10 +460,11 @@ export default function InventarioPage() {
       setError(null);
     } catch (error: any) {
       console.error("Error al limpiar filtros:", error);
-      setError(
-        "Error al limpiar filtros: " +
-          (error.response?.data?.error || error.message)
-      );
+      toast({
+        title: "Error al limpiar filtros",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive",
+      });
     } finally {
       setLoadingProducts(false);
     }
@@ -401,76 +472,15 @@ export default function InventarioPage() {
 
   //este es el que se encarga de crear un nuevo producto
   const handleCreateProduct = async () => {
+    // Limpiar errores previos
+    clearFormErrors();
+
+    // Validar formulario
+    if (!validateForm()) {
+      return;
+    }
+
     try {
-      // Limpiar errores previos
-      setCodeError("");
-      setNameError("");
-      setStockError("");
-      setPurchasePriceError("");
-      setSellPriceError("");
-      setStockMinimumError("");
-
-      // Validaciones de campos obligatorios
-      if (!productData.name.trim()) {
-        notification.warning("El nombre es obligatorio");
-        return;
-      }
-
-      if (!productData.code.trim()) {
-        notification.warning("El código es obligatorio");
-        return;
-      }
-
-      if (!productData.category_id) {
-        notification.warning("Debe seleccionar una categoría");
-        return;
-      }
-
-      // Validaciones numéricas
-      const stock = parseFloat(productData.stock);
-      if (isNaN(stock) || productData.stock.trim() === "") {
-        notification.warning("El stock debe ser un número válido");
-        return;
-      }
-
-      if (stock < 0) {
-        notification.warning("El stock no puede ser negativo");
-        return;
-      }
-
-      const purchasePrice = parseFloat(productData.purchase_price);
-      if (isNaN(purchasePrice) || productData.purchase_price.trim() === "") {
-        notification.warning("El precio de compra debe ser un número válido");
-        return;
-      }
-
-      if (purchasePrice <= 0) {
-        notification.warning("El precio de compra debe ser mayor a 0");
-        return;
-      }
-
-      const sellPrice = parseFloat(productData.sell_price);
-      if (isNaN(sellPrice) || productData.sell_price.trim() === "") {
-        notification.warning("El precio de venta debe ser un número válido");
-        return;
-      }
-
-      if (sellPrice <= 0) {
-        notification.warning("El precio de venta debe ser mayor a 0");
-        return;
-      }
-
-      const stockMinimum = parseFloat(productData.stock_minimum);
-      if (isNaN(stockMinimum) || productData.stock_minimum.trim() === "") {
-        notification.warning("El stock mínimo debe ser un número válido");
-        return;
-      }
-
-      if (stockMinimum < 0) {
-        notification.warning("El stock mínimo no puede ser negativo");
-        return;
-      }
-
       // Validar codigo unico
       const isCodeValid = await validateCode(productData.code);
       if (!isCodeValid) return;
@@ -499,13 +509,19 @@ export default function InventarioPage() {
         category_name: "",
         stock_minimum: "5",
       });
-      notification.success("Producto creado exitosamente");
+      clearFormErrors();
+
+      toast({
+        title: "Producto creado",
+        description: "El producto se ha creado exitosamente.",
+      });
     } catch (error: any) {
+      toast({
+        title: "Error al crear producto",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive",
+      });
       console.error("Error al crear el producto:", error);
-      notification.error(
-        "Error al crear el producto: " +
-          (error.response?.data?.error || error.message)
-      );
     }
   };
 
@@ -524,76 +540,15 @@ export default function InventarioPage() {
     setIsEditDialogOpen(true);
   };
   const handleUpdateProduct = async () => {
+    // Limpiar errores previos
+    clearFormErrors();
+
+    // Validar formulario
+    if (!validateForm()) {
+      return;
+    }
+
     try {
-      // Limpiar errores previos
-      setCodeError("");
-      setNameError("");
-      setStockError("");
-      setPurchasePriceError("");
-      setSellPriceError("");
-      setStockMinimumError("");
-
-      // Validaciones de campos obligatorios
-      if (!productData.name.trim()) {
-        setNameError("El nombre es obligatorio");
-        return;
-      }
-
-      if (!productData.code.trim()) {
-        setCodeError("El código es obligatorio");
-        return;
-      }
-
-      if (!productData.category_id) {
-        notification.warning("Debe seleccionar una categoría");
-        return;
-      }
-
-      // Validaciones numéricas
-      const stock = parseFloat(productData.stock);
-      if (isNaN(stock) || productData.stock.trim() === "") {
-        notification.warning("El stock debe ser un número válido");
-        return;
-      }
-
-      if (stock < 0) {
-        notification.warning("El stock no puede ser negativo");
-        return;
-      }
-
-      const purchasePrice = parseFloat(productData.purchase_price);
-      if (isNaN(purchasePrice) || productData.purchase_price.trim() === "") {
-        notification.warning("El precio de compra debe ser un número válido");
-        return;
-      }
-
-      if (purchasePrice <= 0) {
-        notification.warning("El precio de compra debe ser mayor a 0");
-        return;
-      }
-
-      const sellPrice = parseFloat(productData.sell_price);
-      if (isNaN(sellPrice) || productData.sell_price.trim() === "") {
-        notification.warning("El precio de venta debe ser un número válido");
-        return;
-      }
-
-      if (sellPrice <= 0) {
-        notification.warning("El precio de venta debe ser mayor a 0");
-        return;
-      }
-
-      const stockMinimum = parseFloat(productData.stock_minimum);
-      if (isNaN(stockMinimum) || productData.stock_minimum.trim() === "") {
-        notification.warning("El stock mínimo debe ser un número válido");
-        return;
-      }
-
-      if (stockMinimum < 0) {
-        notification.warning("El stock mínimo no puede ser negativo");
-        return;
-      }
-
       // Validar codigo unico
       const isCodeValid = await validateCode(
         productData.code,
@@ -624,15 +579,20 @@ export default function InventarioPage() {
         category_name: "",
         stock_minimum: "5",
       });
+      clearFormErrors();
 
       handleGetProducts();
-      notification.success("Producto actualizado exitosamente");
+      toast({
+        title: "Producto actualizado",
+        description: "El producto se ha actualizado exitosamente.",
+      });
     } catch (error: any) {
+      toast({
+        title: "Error al actualizar producto",
+        description: error.response?.data?.error || error.message,
+        variant: "destructive",
+      });
       console.error("Error al actualizar el producto:", error);
-      notification.error(
-        "Error al actualizar el producto: " +
-          (error.response?.data?.error || error.message)
-      );
     }
   };
 
@@ -645,10 +605,13 @@ export default function InventarioPage() {
       );
 
       if (existingProduct) {
-        setCodeError("Este código ya existe en otro producto");
+        setFormErrors({
+          ...formErrors,
+          code: "Este código ya existe en otro producto",
+        });
         return false;
       } else {
-        setCodeError("");
+        setFormErrors({ ...formErrors, code: null });
         return true;
       }
     } catch (error) {
@@ -672,12 +635,13 @@ export default function InventarioPage() {
       );
 
       if (existingProduct) {
-        setNameError(
-          "Ya existe un producto con este nombre en la misma categoría"
-        );
+        setFormErrors({
+          ...formErrors,
+          name: "Ya existe un producto con este nombre en la misma categoría",
+        });
         return false;
       } else {
-        setNameError("");
+        setFormErrors({ ...formErrors, name: null });
         return true;
       }
     } catch (error) {
@@ -694,7 +658,7 @@ export default function InventarioPage() {
     if (newCode.length > 0) {
       await validateCode(newCode, editingProduct?.product_id);
     } else {
-      setCodeError("");
+      setFormErrors({ ...formErrors, code: null });
     }
   };
 
@@ -709,7 +673,7 @@ export default function InventarioPage() {
         editingProduct?.product_id
       );
     } else {
-      setNameError("");
+      setFormErrors({ ...formErrors, name: null });
     }
   };
 
@@ -718,17 +682,20 @@ export default function InventarioPage() {
     setProductData({ ...productData, stock: newStock });
 
     if (newStock.trim() === "") {
-      setStockError("");
+      setFormErrors({ ...formErrors, stock: null });
       return;
     }
 
     const stock = parseFloat(newStock);
     if (isNaN(stock)) {
-      setStockError("El stock debe ser un número válido");
+      setFormErrors({
+        ...formErrors,
+        stock: "El stock debe ser un número válido",
+      });
     } else if (stock < 0) {
-      setStockError("El stock no puede ser negativo");
+      setFormErrors({ ...formErrors, stock: "El stock no puede ser negativo" });
     } else {
-      setStockError("");
+      setFormErrors({ ...formErrors, stock: null });
     }
   };
 
@@ -739,17 +706,23 @@ export default function InventarioPage() {
     setProductData({ ...productData, purchase_price: newPrice });
 
     if (newPrice.trim() === "") {
-      setPurchasePriceError("");
+      setFormErrors({ ...formErrors, purchase_price: null });
       return;
     }
 
     const price = parseFloat(newPrice);
     if (isNaN(price)) {
-      setPurchasePriceError("El precio debe ser un número válido");
+      setFormErrors({
+        ...formErrors,
+        purchase_price: "El precio debe ser un número válido",
+      });
     } else if (price <= 0) {
-      setPurchasePriceError("El precio debe ser mayor a 0");
+      setFormErrors({
+        ...formErrors,
+        purchase_price: "El precio debe ser mayor a 0",
+      });
     } else {
-      setPurchasePriceError("");
+      setFormErrors({ ...formErrors, purchase_price: null });
     }
   };
 
@@ -758,17 +731,23 @@ export default function InventarioPage() {
     setProductData({ ...productData, sell_price: newPrice });
 
     if (newPrice.trim() === "") {
-      setSellPriceError("");
+      setFormErrors({ ...formErrors, sell_price: null });
       return;
     }
 
     const price = parseFloat(newPrice);
     if (isNaN(price)) {
-      setSellPriceError("El precio debe ser un número válido");
+      setFormErrors({
+        ...formErrors,
+        sell_price: "El precio debe ser un número válido",
+      });
     } else if (price <= 0) {
-      setSellPriceError("El precio debe ser mayor a 0");
+      setFormErrors({
+        ...formErrors,
+        sell_price: "El precio debe ser mayor a 0",
+      });
     } else {
-      setSellPriceError("");
+      setFormErrors({ ...formErrors, sell_price: null });
     }
   };
 
@@ -777,17 +756,23 @@ export default function InventarioPage() {
     setProductData({ ...productData, stock_minimum: newStockMinimum });
 
     if (newStockMinimum.trim() === "") {
-      setStockMinimumError("");
+      setFormErrors({ ...formErrors, stock_minimum: null });
       return;
     }
 
     const stockMinimum = parseFloat(newStockMinimum);
     if (isNaN(stockMinimum)) {
-      setStockMinimumError("El stock mínimo debe ser un número válido");
+      setFormErrors({
+        ...formErrors,
+        stock_minimum: "El stock mínimo debe ser un número válido",
+      });
     } else if (stockMinimum < 0) {
-      setStockMinimumError("El stock mínimo no puede ser negativo");
+      setFormErrors({
+        ...formErrors,
+        stock_minimum: "El stock mínimo no puede ser negativo",
+      });
     } else {
-      setStockMinimumError("");
+      setFormErrors({ ...formErrors, stock_minimum: null });
     }
   };
   //este es el que se encarga de obtener los productos para paginarlos
@@ -932,10 +917,11 @@ export default function InventarioPage() {
       })
       .catch((error: any) => {
         console.error("Error al cargar productos:", error);
-        setError(
-          "Error al cargar los productos: " +
-            (error.response?.data?.error || error.message)
-        );
+        toast({
+          title: "Error al cargar productos",
+          description: error.response?.data?.error || error.message,
+          variant: "destructive",
+        });
         setLoadingProducts(false);
       });
     handleGetCategories();
@@ -961,12 +947,7 @@ export default function InventarioPage() {
                     category_name: "",
                     stock_minimum: "5",
                   });
-                  setCodeError("");
-                  setNameError("");
-                  setStockError("");
-                  setPurchasePriceError("");
-                  setSellPriceError("");
-                  setStockMinimumError("");
+                  clearFormErrors();
                 }}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -986,130 +967,160 @@ export default function InventarioPage() {
                   <Label htmlFor="codigo" className="text-right">
                     Código
                   </Label>
-                  <Input
-                    id="codigo"
-                    className="col-span-3"
-                    value={productData.code}
-                    onChange={handleCodeChange}
-                  />
-                </div>
-                {codeError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {codeError}
+                  <div className="col-span-3">
+                    <Input
+                      id="codigo"
+                      className={formErrors.code ? "border-red-500" : ""}
+                      value={productData.code}
+                      onChange={handleCodeChange}
+                    />
+                    {formErrors.code && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.code}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="nombre" className="text-right">
                     Nombre
                   </Label>
-                  <Input
-                    id="nombre"
-                    className="col-span-3"
-                    value={productData.name}
-                    onChange={handleNameChange}
-                  />
-                </div>
-                {nameError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {nameError}
+                  <div className="col-span-3">
+                    <Input
+                      id="nombre"
+                      className={formErrors.name ? "border-red-500" : ""}
+                      value={productData.name}
+                      onChange={handleNameChange}
+                    />
+                    {formErrors.name && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.name}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="categoria" className="text-right">
                     Categoría
                   </Label>
-                  <Select
-                    value={productData.category_id}
-                    onValueChange={(value) =>
-                      setProductData({ ...productData, category_id: value })
-                    }
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem
-                          key={category.category_id}
-                          value={category.category_id.toString()}
-                        >
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="col-span-3">
+                    <Select
+                      value={productData.category_id}
+                      onValueChange={(value) => {
+                        setProductData({ ...productData, category_id: value });
+                        if (formErrors.category_id) {
+                          setFormErrors({ ...formErrors, category_id: null });
+                        }
+                      }}
+                    >
+                      <SelectTrigger
+                        className={
+                          formErrors.category_id ? "border-red-500" : ""
+                        }
+                      >
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem
+                            key={category.category_id}
+                            value={category.category_id.toString()}
+                          >
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formErrors.category_id && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.category_id}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="stock" className="text-right">
                     Stock
                   </Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    className="col-span-3"
-                    value={productData.stock}
-                    onChange={handleStockChange}
-                  />
-                </div>
-                {stockError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {stockError}
+                  <div className="col-span-3">
+                    <Input
+                      id="stock"
+                      type="number"
+                      className={formErrors.stock ? "border-red-500" : ""}
+                      value={productData.stock}
+                      onChange={handleStockChange}
+                    />
+                    {formErrors.stock && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.stock}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="precio-compra" className="text-right">
                     Precio Compra
                   </Label>
-                  <Input
-                    id="precio-compra"
-                    type="number"
-                    step="0.01"
-                    className="col-span-3"
-                    value={productData.purchase_price}
-                    onChange={handlePurchasePriceChange}
-                  />
-                </div>
-                {purchasePriceError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {purchasePriceError}
+                  <div className="col-span-3">
+                    <Input
+                      id="precio-compra"
+                      type="number"
+                      step="0.01"
+                      className={
+                        formErrors.purchase_price ? "border-red-500" : ""
+                      }
+                      value={productData.purchase_price}
+                      onChange={handlePurchasePriceChange}
+                    />
+                    {formErrors.purchase_price && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.purchase_price}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="precio-venta" className="text-right">
                     Precio Venta
                   </Label>
-                  <Input
-                    id="precio-venta"
-                    type="number"
-                    step="0.01"
-                    className="col-span-3"
-                    value={productData.sell_price}
-                    onChange={handleSellPriceChange}
-                  />
-                </div>
-                {sellPriceError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {sellPriceError}
+                  <div className="col-span-3">
+                    <Input
+                      id="precio-venta"
+                      type="number"
+                      step="0.01"
+                      className={formErrors.sell_price ? "border-red-500" : ""}
+                      value={productData.sell_price}
+                      onChange={handleSellPriceChange}
+                    />
+                    {formErrors.sell_price && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.sell_price}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="stock-minimo" className="text-right">
                     Stock Mínimo
                   </Label>
-                  <Input
-                    id="stock-minimo"
-                    type="number"
-                    className="col-span-3"
-                    value={productData.stock_minimum}
-                    onChange={handleStockMinimumChange}
-                    placeholder="5"
-                  />
-                </div>
-                {stockMinimumError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {stockMinimumError}
+                  <div className="col-span-3">
+                    <Input
+                      id="stock-minimo"
+                      type="number"
+                      className={
+                        formErrors.stock_minimum ? "border-red-500" : ""
+                      }
+                      value={productData.stock_minimum}
+                      onChange={handleStockMinimumChange}
+                      placeholder="5"
+                    />
+                    {formErrors.stock_minimum && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.stock_minimum}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -1141,130 +1152,160 @@ export default function InventarioPage() {
                   <Label htmlFor="edit-codigo" className="text-right">
                     Código
                   </Label>
-                  <Input
-                    id="edit-codigo"
-                    className="col-span-3"
-                    value={productData.code}
-                    onChange={handleCodeChange}
-                  />
-                </div>
-                {codeError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {codeError}
+                  <div className="col-span-3">
+                    <Input
+                      id="edit-codigo"
+                      className={formErrors.code ? "border-red-500" : ""}
+                      value={productData.code}
+                      onChange={handleCodeChange}
+                    />
+                    {formErrors.code && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.code}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-nombre" className="text-right">
                     Nombre
                   </Label>
-                  <Input
-                    id="edit-nombre"
-                    className="col-span-3"
-                    value={productData.name}
-                    onChange={handleNameChange}
-                  />
-                </div>
-                {nameError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {nameError}
+                  <div className="col-span-3">
+                    <Input
+                      id="edit-nombre"
+                      className={formErrors.name ? "border-red-500" : ""}
+                      value={productData.name}
+                      onChange={handleNameChange}
+                    />
+                    {formErrors.name && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.name}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-categoria" className="text-right">
                     Categoría
                   </Label>
-                  <Select
-                    value={productData.category_id}
-                    onValueChange={(value) =>
-                      setProductData({ ...productData, category_id: value })
-                    }
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem
-                          key={category.category_id}
-                          value={category.category_id.toString()}
-                        >
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="col-span-3">
+                    <Select
+                      value={productData.category_id}
+                      onValueChange={(value) => {
+                        setProductData({ ...productData, category_id: value });
+                        if (formErrors.category_id) {
+                          setFormErrors({ ...formErrors, category_id: null });
+                        }
+                      }}
+                    >
+                      <SelectTrigger
+                        className={
+                          formErrors.category_id ? "border-red-500" : ""
+                        }
+                      >
+                        <SelectValue placeholder="Seleccionar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem
+                            key={category.category_id}
+                            value={category.category_id.toString()}
+                          >
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formErrors.category_id && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.category_id}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-stock" className="text-right">
                     Stock
                   </Label>
-                  <Input
-                    id="edit-stock"
-                    type="number"
-                    className="col-span-3"
-                    value={productData.stock}
-                    onChange={handleStockChange}
-                  />
-                </div>
-                {stockError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {stockError}
+                  <div className="col-span-3">
+                    <Input
+                      id="edit-stock"
+                      type="number"
+                      className={formErrors.stock ? "border-red-500" : ""}
+                      value={productData.stock}
+                      onChange={handleStockChange}
+                    />
+                    {formErrors.stock && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.stock}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-precio-compra" className="text-right">
                     Precio Compra
                   </Label>
-                  <Input
-                    id="edit-precio-compra"
-                    type="number"
-                    step="0.01"
-                    className="col-span-3"
-                    value={productData.purchase_price}
-                    onChange={handlePurchasePriceChange}
-                  />
-                </div>
-                {purchasePriceError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {purchasePriceError}
+                  <div className="col-span-3">
+                    <Input
+                      id="edit-precio-compra"
+                      type="number"
+                      step="0.01"
+                      className={
+                        formErrors.purchase_price ? "border-red-500" : ""
+                      }
+                      value={productData.purchase_price}
+                      onChange={handlePurchasePriceChange}
+                    />
+                    {formErrors.purchase_price && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.purchase_price}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-precio-venta" className="text-right">
                     Precio Venta
                   </Label>
-                  <Input
-                    id="edit-precio-venta"
-                    type="number"
-                    step="0.01"
-                    className="col-span-3"
-                    value={productData.sell_price}
-                    onChange={handleSellPriceChange}
-                  />
-                </div>
-                {sellPriceError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {sellPriceError}
+                  <div className="col-span-3">
+                    <Input
+                      id="edit-precio-venta"
+                      type="number"
+                      step="0.01"
+                      className={formErrors.sell_price ? "border-red-500" : ""}
+                      value={productData.sell_price}
+                      onChange={handleSellPriceChange}
+                    />
+                    {formErrors.sell_price && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.sell_price}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-stock-minimo" className="text-right">
                     Stock Mínimo
                   </Label>
-                  <Input
-                    id="edit-stock-minimo"
-                    type="number"
-                    className="col-span-3"
-                    value={productData.stock_minimum}
-                    onChange={handleStockMinimumChange}
-                    placeholder="5"
-                  />
-                </div>
-                {stockMinimumError && (
-                  <div className="col-span-4 text-red-500 text-sm mt-1">
-                    {stockMinimumError}
+                  <div className="col-span-3">
+                    <Input
+                      id="edit-stock-minimo"
+                      type="number"
+                      className={
+                        formErrors.stock_minimum ? "border-red-500" : ""
+                      }
+                      value={productData.stock_minimum}
+                      onChange={handleStockMinimumChange}
+                      placeholder="5"
+                    />
+                    {formErrors.stock_minimum && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formErrors.stock_minimum}
+                      </p>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -1282,12 +1323,7 @@ export default function InventarioPage() {
                       category_name: "",
                       stock_minimum: "5",
                     });
-                    setCodeError("");
-                    setNameError("");
-                    setStockError("");
-                    setPurchasePriceError("");
-                    setSellPriceError("");
-                    setStockMinimumError("");
+                    clearFormErrors();
                   }}
                 >
                   Cancelar
@@ -1378,20 +1414,6 @@ export default function InventarioPage() {
             </div>
           </CardContent>
         </Card>
-      ) : error ? (
-        <Card>
-          <CardContent className="p-8">
-            <div className="text-center">
-              <p className="text-red-600">{error}</p>
-              <Button
-                onClick={handleGetProducts}
-                className="mt-4 bg-blue-600 hover:bg-blue-700"
-              >
-                Reintentar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       ) : (
         <Card>
           <CardContent className="p-0">
@@ -1474,7 +1496,10 @@ export default function InventarioPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {(() => {
-                        const stockStatus = getStockStatus(product.stock, product.stock_minimum);
+                        const stockStatus = getStockStatus(
+                          product.stock,
+                          product.stock_minimum
+                        );
                         return (
                           <Badge
                             variant="outline"
