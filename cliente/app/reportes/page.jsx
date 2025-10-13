@@ -88,12 +88,15 @@ export default function ReportesPage() {
       const fetchData = async () => {
         setIsDataLoading(true);
         try {
+          // Agregar un día a la fecha "to" para incluir todo el día seleccionado
+          const toDateExtended = addDays(date.to, 1);
+
           const [salesPeriod, salesCategory, topProducts, salesTrends] =
             await Promise.all([
-              getSalesByPeriod(date.from, date.to, viewPeriod),
-              getSalesByCategory(date.from, date.to),
-              getTopSellingProducts(date.from, date.to),
-              getSalesTrendsByCategory(date.from, date.to),
+              getSalesByPeriod(date.from, toDateExtended, viewPeriod),
+              getSalesByCategory(date.from, toDateExtended),
+              getTopSellingProducts(date.from, toDateExtended),
+              getSalesTrendsByCategory(date.from, toDateExtended),
             ]);
 
           setSalesByPeriodData(salesPeriod);

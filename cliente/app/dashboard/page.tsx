@@ -62,7 +62,9 @@ export default function DashboardPage() {
       setIsDataLoading(true);
 
       const fromDate = format(date.from, "yyyy-MM-dd");
-      const toDate = format(date.to, "yyyy-MM-dd");
+      // Agregar un día a la fecha "to" para incluir todo el día seleccionado
+      const toDateExtended = addDays(date.to, 1);
+      const toDate = format(toDateExtended, "yyyy-MM-dd");
 
       try {
         const [
