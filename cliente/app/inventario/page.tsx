@@ -213,6 +213,26 @@ export default function InventarioPage() {
     let sortableItems = [...products];
     if (sortConfig.key !== null) {
       sortableItems.sort((a, b) => {
+        // Manejo especial para ordenamiento por estado de stock
+        if (sortConfig.key === "stock_status") {
+          const getStockStatusValue = (product: any) => {
+            const stock = product.stock;
+            const stockMinimum = product.stock_minimum || 5;
+            if (stock === 0) return 0; // Sin Stock
+            if (stock <= stockMinimum) return 1; // Stock Bajo
+            return 2; // En Stock
+          };
+
+          const valA = getStockStatusValue(a);
+          const valB = getStockStatusValue(b);
+
+          if (sortConfig.direction === "ascending") {
+            return valA - valB;
+          } else {
+            return valB - valA;
+          }
+        }
+
         const valA = a[sortConfig.key!];
         const valB = b[sortConfig.key!];
 
@@ -1465,9 +1485,9 @@ export default function InventarioPage() {
                   <TableHead className="text-center">
                     <Button
                       variant="ghost"
-                      onClick={() => requestSort("active")}
+                      onClick={() => requestSort("stock_status")}
                     >
-                      Estado{getSortIndicator("active")}
+                      Estado{getSortIndicator("stock_status")}
                     </Button>
                   </TableHead>
                   <TableHead className="text-center">Acciones</TableHead>
