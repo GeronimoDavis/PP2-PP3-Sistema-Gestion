@@ -22,7 +22,7 @@ class DashboardService{
 
     public function getTotalSales($from, $to){
         try{
-            $stmt = $this->pdo->prepare("SELECT SUM(total_a_pagar) as TotalSales FROM view_ventas_detalladas WHERE date BETWEEN ? AND ?");
+            $stmt = $this->pdo->prepare("SELECT SUM(total_a_pagar) as TotalSales FROM view_ventas_detalladas WHERE is_budget = 0 AND date BETWEEN ? AND ?");
             $stmt->execute([$from, $to]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             return $result['TotalSales'] ?? 0;
@@ -32,7 +32,6 @@ class DashboardService{
         }
     }
 
-// ... dentro de la clase DashboardService en Servidor/src/services/DashboardService.php
 
 public function getTotalPurchases($from, $to){
     try{
@@ -48,7 +47,7 @@ public function getTotalPurchases($from, $to){
     public function getRecentTransactions($limit = 10, $from, $to){
         try{
             $stmt = $this->pdo->prepare("SELECT company_name, date, total_a_pagar 
-            FROM view_ventas_detalladas WHERE date BETWEEN ? AND ? ORDER BY date DESC LIMIT ?");
+            FROM view_ventas_detalladas WHERE is_budget = 0 AND date BETWEEN ? AND ? ORDER BY date DESC LIMIT ?");
             $stmt->bindParam(1, $from);
             $stmt->bindParam(2, $to);
             $stmt->bindParam(3, $limit, PDO::PARAM_INT);
@@ -74,7 +73,7 @@ public function getTotalPurchases($from, $to){
 
     public function getVentasConSaldoPendiente($from, $to)
     {
-        $sql = "SELECT * FROM view_ventas_detalladas WHERE saldo_restante > 0 AND date BETWEEN ? AND ?";
+        $sql = "SELECT * FROM view_ventas_detalladas WHERE saldo_restante > 0 AND is_budget = 0 AND date BETWEEN ? AND ?";
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$from, $to]);
@@ -93,7 +92,7 @@ public function getTotalPurchases($from, $to){
                     DATE_FORMAT(date, '%Y-%m') as period_label, 
                     SUM(total_a_pagar) as total 
                 FROM view_ventas_detalladas
-                WHERE date BETWEEN ? AND ?
+                WHERE is_budget = 0 AND date BETWEEN ? AND ?
                 GROUP BY period_label
                 ORDER BY period_label;
             ");
