@@ -776,7 +776,7 @@ export default function ClientesPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                             <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                            <DropdownMenuItem>Editar cliente</DropdownMenuItem>
+                            <DropdownMenuItem>Editar persona</DropdownMenuItem>
                             <DropdownMenuItem>
                               Historial de compras
                             </DropdownMenuItem>
@@ -787,7 +787,7 @@ export default function ClientesPage() {
                                 handleUpdatePersonStatus(client.person_id)
                               }
                             >
-                              Desactivar cliente
+                              Desactivar persona
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
