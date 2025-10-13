@@ -195,6 +195,11 @@ class TransactionService{
             $params = [];
 
             // Aplicar filtros
+            if (isset($filters['person_id'])) {
+                $query .= " AND person_id = ?";
+                $params[] = $filters['person_id'];
+            }
+
             if (isset($filters['start_date'])) {
                 $query .= " AND date >= ?";
                 $params[] = $filters['start_date'];
@@ -306,6 +311,11 @@ class TransactionService{
             $params = [];
 
             // Aplicar filtros 
+            if (isset($filters['person_id'])) {
+                $query .= " AND person_id = ?";
+                $params[] = $filters['person_id'];
+            }
+
             if (isset($filters['start_date'])) {
                 $query .= " AND date >= ?";
                 $params[] = $filters['start_date'];
@@ -471,6 +481,11 @@ class TransactionService{
             $params = [];
 
             // Aplicar filtros
+            if (isset($filters['person_id'])) {
+                $query .= " AND person_id = ?";
+                $params[] = $filters['person_id'];
+            }
+
             if (isset($filters['start_date'])) {
                 $query .= " AND date >= ?";
                 $params[] = $filters['start_date'];
@@ -575,6 +590,11 @@ class TransactionService{
             $params = [];
 
             // Aplicar filtros 
+            if (isset($filters['person_id'])) {
+                $query .= " AND person_id = ?";
+                $params[] = $filters['person_id'];
+            }
+
             if (isset($filters['start_date'])) {
                 $query .= " AND date >= ?";
                 $params[] = $filters['start_date'];

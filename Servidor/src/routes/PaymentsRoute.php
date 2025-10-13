@@ -15,5 +15,6 @@ $app->group('/payments', function(RouteCollectorProxy $group) use ($paymentsCont
     $group->get('/type/{type}', [$paymentsController, 'getPaymentsByType']);
     $group->get('/date/{date}', [$paymentsController, 'getPaymentsByDate']);
     $group->get("/status/{transactionId}", [$paymentsController, 'getPaymentStatus']);
+    $group->get('/person/{person_id}', [$paymentsController, 'getPaymentsByPersonId']);
 })->add(new AuthMiddleware());
     

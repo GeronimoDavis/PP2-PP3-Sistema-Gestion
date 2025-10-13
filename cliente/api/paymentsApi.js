@@ -72,6 +72,15 @@ const getPaymentsByDate = async (date) => {
   }
 };
 
+const getPaymentsByPersonId = async (personId) => {
+  try {
+    const response = await api.get(`/payments/person/${personId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export {
   getPayments,
   getPaymentById,
@@ -81,4 +90,5 @@ export {
   getPaymentsByTransactionId,
   getPaymentsByType,
   getPaymentsByDate,
+  getPaymentsByPersonId,
 };

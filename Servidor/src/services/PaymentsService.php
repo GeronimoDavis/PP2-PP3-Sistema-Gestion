@@ -211,6 +211,73 @@ class PaymentsService {
             throw new Exception("Error fetching payments by type: " . $e->getMessage());
         }
     }
+
+    public function getByPersonId($personId)
+    {
+        try {
+            $query = "
+                SELECT p.* 
+                FROM payments p
+                INNER JOIN transaction t ON p.transaction_id = t.transaction_id
+                WHERE t.person_id = ?
+                ORDER BY p.date DESC
+            ";
+            
+            $stmt = $this->pdo->prepare($query);
+            $stmt->execute([$personId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $payments = [];
+            foreach ($rows as $row) {
+                $payments[] = new Payments(
+                    $row['payment_id'],
+                    $row['transaction_id'],
+                    (float)$row['amount'],
+                    PaymentsType::from($row['type']),
+                    new DateTime($row['date']),
+                    $row['note'] ?? ""
+                );
+            }
+
+            return $payments;
+        } catch (PDOException $e) {
+            throw new Exception("Error fetching payments by person ID: " . $e->getMessage());
+        }
+    }
+
+    public function getPaymentStatus($transactionId)
+    {
+        try {
+            // Get total amount for the transaction
+            $transactionQuery = "SELECT total FROM transaction WHERE transaction_id = ?";
+            $stmt = $this->pdo->prepare($transactionQuery);
+            $stmt->execute([$transactionId]);
+            $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$transaction) {
+                throw new Exception("Transaction not found with ID: $transactionId");
+            }
+
+            // Get total paid for the transaction
+            $paymentsQuery = "SELECT COALESCE(SUM(amount), 0) as total_paid FROM payments WHERE transaction_id = ?";
+            $stmt = $this->pdo->prepare($paymentsQuery);
+            $stmt->execute([$transactionId]);
+            $paymentsResult = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $totalTransaction = (float)$transaction['total'];
+            $totalPaid = (float)$paymentsResult['total_paid'];
+
+            if ($totalPaid >= $totalTransaction) {
+                return 'paid';
+            } elseif ($totalPaid > 0) {
+                return 'partial';
+            } else {
+                return 'pending';
+            }
+        } catch (PDOException $e) {
+            throw new Exception("Error getting payment status: " . $e->getMessage());
+        }
+    }
  
 
 }

@@ -179,6 +179,26 @@ class PaymentsController
             return $response->withStatus(500);
         }
     }
+
+    public function getPaymentsByPersonId(Request $request, Response $response, array $args): Response
+    {
+        try {
+            $personId = $args['person_id'];
+            $payments = $this->paymentsService->getByPersonId($personId);
+            
+            if ($payments) {
+                $paymentsArray = array_map(fn($p) => $p->toArray(), $payments);
+                $response->getBody()->write(json_encode(['payments' => $paymentsArray]));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+            } else {
+                $response->getBody()->write(json_encode(['payments' => []]));
+                return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+            }
+        } catch (Exception $e) {
+            $response->getBody()->write(json_encode(['error' => 'Error fetching payments by person ID: ' . $e->getMessage()]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
+        }
+    }
  
 
 }
