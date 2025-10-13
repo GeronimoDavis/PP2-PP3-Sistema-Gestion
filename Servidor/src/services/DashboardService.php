@@ -32,7 +32,6 @@ class DashboardService{
         }
     }
 
-// ... dentro de la clase DashboardService en Servidor/src/services/DashboardService.php
 
 public function getTotalPurchases($from, $to){
     try{
@@ -48,7 +47,7 @@ public function getTotalPurchases($from, $to){
     public function getRecentTransactions($limit = 10, $from, $to){
         try{
             $stmt = $this->pdo->prepare("SELECT company_name, date, total_a_pagar 
-            FROM view_ventas_detalladas WHERE date BETWEEN ? AND ? ORDER BY date DESC LIMIT ?");
+            FROM view_ventas_detalladas WHERE is_budget = 0 AND date BETWEEN ? AND ? ORDER BY date DESC LIMIT ?");
             $stmt->bindParam(1, $from);
             $stmt->bindParam(2, $to);
             $stmt->bindParam(3, $limit, PDO::PARAM_INT);
