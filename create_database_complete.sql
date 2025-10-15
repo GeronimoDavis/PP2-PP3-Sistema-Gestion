@@ -21,7 +21,7 @@ USE stockRepuestos;
 -- Tabla de personas
 CREATE TABLE IF NOT EXISTS person (
 	person_id INT AUTO_INCREMENT NOT NULL UNIQUE, 
-	tax_id VARCHAR(11) NOT NULL, 
+	tax_id VARCHAR(11) NOT NULL UNIQUE, 
 	company_name VARCHAR(50) NOT NULL,
 	name VARCHAR(50),
 	email VARCHAR(255) NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE users (
 -- Tabla de categorías
 CREATE TABLE IF NOT EXISTS category(
 	category_id INT PRIMARY KEY AUTO_INCREMENT UNIQUE,
-	name VARCHAR(30),
+	name VARCHAR(30) UNIQUE,
 	active BOOLEAN DEFAULT TRUE
 );
 
