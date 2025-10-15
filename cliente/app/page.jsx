@@ -74,24 +74,42 @@ function Login() {
         alignItems: "center",
         height: "100vh",
         width: "100vw",
-        backgroundColor: "#f5f5f5",
+        backgroundColor: "#F8F8F8",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
       }}
     >
       <div
         style={{
           backgroundColor: "white",
           padding: "2rem",
-          borderRadius: "8px",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+          borderRadius: "12px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
           width: "400px",
           maxWidth: "90%",
         }}
       >
         <h2
-          style={{ textAlign: "center", marginBottom: "2rem", color: "#333" }}
+          style={{ 
+            textAlign: "center", 
+            marginBottom: "0.5rem", 
+            color: "#333333",
+            fontSize: "24px",
+            fontWeight: "700"
+          }}
         >
           Sistema de Gestión
         </h2>
+        <p
+          style={{
+            textAlign: "center",
+            marginBottom: "2rem",
+            color: "#666666",
+            fontSize: "14px",
+            fontWeight: "400"
+          }}
+        >
+          Ingresa tus credenciales corporativas
+        </p>
 
         {error && (
           <p
@@ -102,14 +120,14 @@ function Login() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "1rem" }}>
+          <div style={{ marginBottom: "1.5rem" }}>
             <label
               style={{
                 display: "block",
                 marginBottom: "0.5rem",
-                color: "#333",
-                fontWeight: "bold",
-                fontSize: "14px",
+                color: "#333333",
+                fontWeight: "600",
+                fontSize: "16px",
               }}
             >
               Usuario:
@@ -121,30 +139,33 @@ function Login() {
               onChange={(e) => setUsername(e.target.value)}
               style={{
                 width: "100%",
-                padding: "0.5rem",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
-                fontSize: "14px",
+                padding: "12px 16px",
+                border: "1px solid #CCCCCC",
+                borderRadius: "6px",
+                fontSize: "16px",
                 backgroundColor: "white",
-                color: "#333",
+                color: "#333333",
                 outline: "none",
                 WebkitAppearance: "none",
                 MozAppearance: "none",
                 appearance: "none",
                 boxSizing: "border-box",
+                transition: "border-color 0.2s ease",
               }}
+              onFocus={(e) => e.target.style.borderColor = "#007BFF"}
+              onBlur={(e) => e.target.style.borderColor = "#CCCCCC"}
               required
             />
           </div>
 
-          <div style={{ marginBottom: "1rem" }}>
+          <div style={{ marginBottom: "1.5rem" }}>
             <label
               style={{
                 display: "block",
                 marginBottom: "0.5rem",
-                color: "#333",
-                fontWeight: "bold",
-                fontSize: "14px",
+                color: "#333333",
+                fontWeight: "600",
+                fontSize: "16px",
               }}
             >
               Contraseña:
@@ -156,18 +177,21 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               style={{
                 width: "100%",
-                padding: "0.5rem",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
-                fontSize: "14px",
+                padding: "12px 16px",
+                border: "1px solid #CCCCCC",
+                borderRadius: "6px",
+                fontSize: "16px",
                 backgroundColor: "white",
-                color: "#333",
+                color: "#333333",
                 outline: "none",
                 WebkitAppearance: "none",
                 MozAppearance: "none",
                 appearance: "none",
                 boxSizing: "border-box",
+                transition: "border-color 0.2s ease",
               }}
+              onFocus={(e) => e.target.style.borderColor = "#007BFF"}
+              onBlur={(e) => e.target.style.borderColor = "#CCCCCC"}
               required
             />
           </div>
@@ -176,23 +200,57 @@ function Login() {
             type="submit"
             style={{
               width: "100%",
-              padding: "0.75rem",
+              padding: "14px 24px",
               backgroundColor: "#28a745",
               color: "white",
               border: "none",
-              borderRadius: "4px",
+              borderRadius: "6px",
               cursor: "pointer",
-              fontSize: "16px",
-              fontWeight: "bold",
+              fontSize: "18px",
+              fontWeight: "700",
+              transition: "background-color 0.2s ease",
             }}
+            onMouseOver={(e) => e.target.style.backgroundColor = "#218838"}
+            onMouseOut={(e) => e.target.style.backgroundColor = "#28a745"}
           >
             Iniciar Sesión
           </button>
         </form>
-        <div>
-          <button type="button" className="text-blue-600 hover:underline" onClick={handleRecoverPassword}>
-            Recuperar contraseña
+        
+        <div style={{ textAlign: "center", marginTop: "1rem" }}>
+          <button 
+            type="button"
+            onClick={handleRecoverPassword}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#007BFF",
+              fontSize: "14px",
+              cursor: "pointer",
+              textDecoration: "underline",
+              padding: "0",
+            }}
+          >
+            ¿Olvidaste tu contraseña?
           </button>
+        </div>
+        
+        <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
+          <p style={{ 
+            color: "#999999", 
+            fontSize: "14px", 
+            fontWeight: "400",
+            marginBottom: "0.5rem"
+          }}>
+            ¿Necesitas ayuda?
+          </p>
+          <p style={{ 
+            color: "#333333", 
+            fontSize: "14px", 
+            fontWeight: "400"
+          }}>
+            Contacta al administrador del sistema para solicitar acceso
+          </p>
         </div>
       </div>
     </div>
