@@ -8,9 +8,13 @@ import {
   SlidersHorizontal,
   Edit,
   Trash2,
+  Upload,
+  FileText,
 } from "lucide-react";
 import { useNotification } from "@/hooks/use-notification";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 interface FormErrors {
   name?: string | null;
@@ -133,6 +137,11 @@ export default function InventarioPage() {
   });
   const [categoryNameError, setCategoryNameError] = useState("");
   const [loadingCategories, setLoadingCategories] = useState(false);
+
+  // Estados para el modal de importar/exportar
+  const [isImportExportDialogOpen, setIsImportExportDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -905,6 +914,301 @@ export default function InventarioPage() {
 
   const totalPages = Math.ceil(products.length / itemsPerPage);
 
+  // Funciones para manejar importar/exportar
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+          file.type === 'application/vnd.ms-excel' ||
+          file.name.endsWith('.xlsx') || 
+          file.name.endsWith('.xls')) {
+        setSelectedFile(file);
+      } else {
+        toast({
+          title: "Formato no válido",
+          description: "Por favor selecciona un archivo Excel (.xlsx o .xls).",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+          file.type === 'application/vnd.ms-excel' ||
+          file.name.endsWith('.xlsx') || 
+          file.name.endsWith('.xls')) {
+        setSelectedFile(file);
+      } else {
+        toast({
+          title: "Formato no válido",
+          description: "Por favor selecciona un archivo Excel (.xlsx o .xls).",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleExport = () => {
+    try {
+      // Preparar los datos para exportar
+      const exportData = products.map(product => ({
+        'Código': product.code,
+        'Nombre': product.name,
+        'Categoría': product.category_name,
+        'Stock': product.stock,
+        'Precio Compra': product.purchase_price,
+        'Precio Venta': product.sell_price || '',
+        'Stock Mínimo': product.stock_minimum || 5,
+        'Estado': product.active ? 'Activo' : 'Inactivo'
+      }));
+
+      // Crear un nuevo libro de trabajo
+      const wb = XLSX.utils.book_new();
+      
+      // Crear una hoja de trabajo con los datos
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Ajustar el ancho de las columnas
+      const colWidths = [
+        { wch: 15 }, // Código
+        { wch: 30 }, // Nombre
+        { wch: 20 }, // Categoría
+        { wch: 10 }, // Stock
+        { wch: 15 }, // Precio Compra
+        { wch: 15 }, // Precio Venta
+        { wch: 15 }, // Stock Mínimo
+        { wch: 10 }  // Estado
+      ];
+      ws['!cols'] = colWidths;
+
+      // Agregar la hoja al libro
+      XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+
+      // Generar el archivo Excel
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      
+      // Crear un blob y descargarlo
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const fileName = `productos_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(data, fileName);
+
+      toast({
+        title: "Exportación exitosa",
+        description: `Se exportaron ${products.length} productos a ${fileName}`,
+      });
+    } catch (error) {
+      console.error('Error al exportar:', error);
+      toast({
+        title: "Error en la exportación",
+        description: "No se pudo exportar el archivo. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImport = () => {
+    if (!selectedFile) {
+      toast({
+        title: "Archivo requerido",
+        description: "Por favor selecciona un archivo Excel para importar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // Obtener la primera hoja
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          
+          // Convertir la hoja a JSON
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          if (jsonData.length < 2) {
+            toast({
+              title: "Archivo vacío",
+              description: "El archivo Excel no contiene datos válidos.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          // Obtener los encabezados (primera fila)
+          const headers = jsonData[0] as string[];
+          const rows = jsonData.slice(1) as any[][];
+          
+          // Validar que los encabezados sean los esperados
+          const expectedHeaders = ['Código', 'Nombre', 'Categoría', 'Stock', 'Precio Compra', 'Precio Venta', 'Stock Mínimo', 'Estado'];
+          const hasValidHeaders = expectedHeaders.every(header => 
+            headers.some(h => h && h.toString().toLowerCase().includes(header.toLowerCase()))
+          );
+          
+          if (!hasValidHeaders) {
+            toast({
+              title: "Formato incorrecto",
+              description: "El archivo Excel no tiene el formato esperado. Verifica que contenga las columnas: Código, Nombre, Categoría, Stock, Precio Compra, Precio Venta, Stock Mínimo, Estado.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          // Procesar los datos
+          const importedProducts = rows
+            .filter(row => row && row.length > 0 && row[0]) // Filtrar filas vacías
+            .map((row, index) => {
+              const [code, name, category, stock, purchasePrice, sellPrice, stockMinimum, status] = row;
+              
+              return {
+                code: code?.toString().trim() || '',
+                name: name?.toString().trim() || '',
+                category: category?.toString().trim() || '',
+                stock: parseFloat(stock) || 0,
+                purchase_price: parseFloat(purchasePrice) || 0,
+                sell_price: parseFloat(sellPrice) || null,
+                stock_minimum: parseFloat(stockMinimum) || 5,
+                active: status?.toString().toLowerCase() === 'activo' || true,
+                row: index + 2 // +2 porque empezamos desde la fila 2 (después del header)
+              };
+            })
+            .filter(product => product.code && product.name); // Filtrar productos sin código o nombre
+          
+          if (importedProducts.length === 0) {
+            toast({
+              title: "Sin datos válidos",
+              description: "No se encontraron productos válidos en el archivo.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          // TODO: Aquí se enviarían los datos al backend para procesarlos
+          // Por ahora solo mostramos un resumen
+          toast({
+            title: "Archivo procesado",
+            description: `Se encontraron ${importedProducts.length} productos válidos en el archivo. Listo para importar al sistema.`,
+          });
+          
+          console.log('Productos importados:', importedProducts);
+          
+        } catch (error) {
+          console.error('Error al procesar el archivo:', error);
+          toast({
+            title: "Error al procesar archivo",
+            description: "No se pudo procesar el archivo Excel. Verifica que el formato sea correcto.",
+            variant: "destructive",
+          });
+        }
+      };
+      
+      reader.readAsArrayBuffer(selectedFile);
+      
+    } catch (error) {
+      console.error('Error al leer el archivo:', error);
+      toast({
+        title: "Error al leer archivo",
+        description: "No se pudo leer el archivo seleccionado.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const clearSelectedFile = () => {
+    setSelectedFile(null);
+  };
+
+  const downloadTemplate = () => {
+    try {
+      // Crear datos de ejemplo para la plantilla
+      const templateData = [
+        {
+          'Código': 'PROD001',
+          'Nombre': 'Producto de Ejemplo',
+          'Categoría': 'Categoría Ejemplo',
+          'Stock': 100,
+          'Precio Compra': 10.50,
+          'Precio Venta': 15.75,
+          'Stock Mínimo': 5,
+          'Estado': 'Activo'
+        },
+        {
+          'Código': 'PROD002',
+          'Nombre': 'Otro Producto',
+          'Categoría': 'Categoría Ejemplo',
+          'Stock': 50,
+          'Precio Compra': 25.00,
+          'Precio Venta': 35.00,
+          'Stock Mínimo': 10,
+          'Estado': 'Activo'
+        }
+      ];
+
+      // Crear un nuevo libro de trabajo
+      const wb = XLSX.utils.book_new();
+      
+      // Crear una hoja de trabajo con los datos de ejemplo
+      const ws = XLSX.utils.json_to_sheet(templateData);
+      
+      // Ajustar el ancho de las columnas
+      const colWidths = [
+        { wch: 15 }, // Código
+        { wch: 30 }, // Nombre
+        { wch: 20 }, // Categoría
+        { wch: 10 }, // Stock
+        { wch: 15 }, // Precio Compra
+        { wch: 15 }, // Precio Venta
+        { wch: 15 }, // Stock Mínimo
+        { wch: 10 }  // Estado
+      ];
+      ws['!cols'] = colWidths;
+
+      // Agregar la hoja al libro
+      XLSX.utils.book_append_sheet(wb, ws, 'Plantilla Productos');
+
+      // Generar el archivo Excel
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      
+      // Crear un blob y descargarlo
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(data, 'plantilla_productos.xlsx');
+
+      toast({
+        title: "Plantilla descargada",
+        description: "Se descargó la plantilla de ejemplo para importar productos.",
+      });
+    } catch (error) {
+      console.error('Error al generar plantilla:', error);
+      toast({
+        title: "Error al generar plantilla",
+        description: "No se pudo generar la plantilla. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Función para determinar el estado del stock basado en la cantidad y stock_minimum
   const getStockStatus = (stock: number, stockMinimum: number = 5) => {
     if (stock === 0) {
@@ -1365,10 +1669,145 @@ export default function InventarioPage() {
             <SlidersHorizontal className="mr-2 h-4 w-4" />
             Categorías
           </Button>
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
+          <Dialog open={isImportExportDialogOpen} onOpenChange={setIsImportExportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Importar/Exportar
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Importar/Exportar Productos</DialogTitle>
+                <DialogDescription>
+                  Importa productos desde un archivo Excel o exporta los productos actuales.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                {/* Sección de Exportar */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-medium flex items-center">
+                    <Download className="mr-2 h-5 w-5" />
+                    Exportar Productos
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Descarga todos los productos actuales en formato Excel.
+                  </p>
+                  <Button 
+                    onClick={handleExport}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar Excel
+                  </Button>
+                </div>
+
+                <div className="border-t pt-6">
+                  {/* Sección de Importar */}
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-medium flex items-center">
+                      <Upload className="mr-2 h-5 w-5" />
+                      Importar Productos
+                    </h3>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-600">
+                        Sube un archivo Excel (.xlsx o .xls) con los productos a importar.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadTemplate}
+                        className="text-xs"
+                      >
+                        <Download className="mr-1 h-3 w-3" />
+                        Plantilla
+                      </Button>
+                    </div>
+                    
+                    {/* Área de Drag & Drop */}
+                    <div
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                        isDragOver
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-gray-300 hover:border-gray-400"
+                      }`}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      {selectedFile ? (
+                        <div className="space-y-2">
+                          <FileText className="mx-auto h-12 w-12 text-green-500" />
+                          <p className="text-sm font-medium text-green-600">
+                            {selectedFile.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {(selectedFile.size / 1024).toFixed(1)} KB
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={clearSelectedFile}
+                            className="mt-2"
+                          >
+                            Cambiar archivo
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              Arrastra tu archivo Excel aquí
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              o haz clic para seleccionar (.xlsx, .xls)
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                            id="file-upload"
+                          />
+                          <label
+                            htmlFor="file-upload"
+                            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
+                          >
+                            Seleccionar archivo
+                          </label>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button 
+                      onClick={handleImport}
+                      disabled={!selectedFile}
+                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Importar Productos
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsImportExportDialogOpen(false);
+                    setSelectedFile(null);
+                    setIsDragOver(false);
+                  }}
+                >
+                  Cerrar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       <div className="flex items-center justify-between">

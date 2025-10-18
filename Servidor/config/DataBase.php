@@ -11,14 +11,15 @@ class DataBase {
     public static function Connect()
     {
         // ========================================
-        // CONFIGURACIÓN PARA LINUX/XAMPP
+        // CONFIGURACIÓN PARA MYSQL NATIVO
         // ========================================
-        $host = $_ENV["DB_HOST"] ?? 'localhost';
+        $host = $_ENV["DB_HOST"] ?? '127.0.0.1';
         $port = $_ENV["DB_PORT"] ?? '3306';
         $dbname = $_ENV["DB_NAME"] ?? 'stockRepuestos';
         $user = $_ENV["DB_USER"] ?? 'root';
         $pass = $_ENV["DB_PASS"] ?? '';
         
+        /*
         // Para XAMPP, usar socket en lugar de host:port
         $socket = '/opt/lampp/var/mysql/mysql.sock';
         
@@ -35,6 +36,10 @@ class DataBase {
         $connectionString = 'mysql:host=' . $_ENV["DB_HOST"]. ';dbname=' . $_ENV["DB_NAME"]. ';charset=utf8';
         self::$db = new PDO($connectionString, $_ENV["DB_USER"], $_ENV["DB_PASS"]);
         */
+
+
+        // Conexión directa por host:puerto (MySQL nativo)
+        $connectionString = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8";
         
         self::$db = new PDO($connectionString, $user, $pass);
         self::$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
