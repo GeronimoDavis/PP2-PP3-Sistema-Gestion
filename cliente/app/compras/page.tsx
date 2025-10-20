@@ -12,6 +12,7 @@ import {
   Eye,
   Download,
   Banknote,
+  Edit,
 } from "lucide-react";
 import { useNotification } from "@/hooks/use-notification";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ import {
 } from "@/api/transactionsApi";
 
 import { createItem } from "@/api/itemsApi";
-import { createPayment } from "@/api/paymentsApi";
+import { createPayment, updatePayment, deletePayment } from "@/api/paymentsApi";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -147,6 +148,7 @@ interface PurchaseTotals {
 interface PurchaseDetails {
   transaction: PurchaseTransaction;
   items: PurchaseItem[];
+  payments: Payment[];
   totals: PurchaseTotals;
 }
 
@@ -282,6 +284,16 @@ export default function ComprasPage() {
   const [showPaymentConfirmationModal, setShowPaymentConfirmationModal] =
     useState(false);
   const [pendingPaymentData, setPendingPaymentData] = useState<any>(null);
+
+  // Estados para el modal de edición de pagos
+  const [showEditPaymentModal, setShowEditPaymentModal] = useState(false);
+  const [selectedPaymentForEdit, setSelectedPaymentForEdit] =
+    useState<Payment | null>(null);
+  const [editPaymentAmount, setEditPaymentAmount] = useState(0);
+  const [editPaymentMethod, setEditPaymentMethod] = useState("");
+  const [editPaymentDate, setEditPaymentDate] = useState("");
+  const [editPaymentNote, setEditPaymentNote] = useState("");
+  const [isProcessingEditPayment, setIsProcessingEditPayment] = useState(false);
 
   const requestPurchasesSort = (key: string) => {
     const newDirection =
@@ -983,6 +995,101 @@ export default function ComprasPage() {
   const cancelExcessPayment = () => {
     setShowPaymentConfirmationModal(false);
     setPendingPaymentData(null);
+  };
+
+  // Funciones para el modal de edición de pagos
+  const openEditPaymentModal = (payment: Payment) => {
+    setSelectedPaymentForEdit(payment);
+    setEditPaymentAmount(payment.amount);
+    setEditPaymentMethod(payment.type);
+    setEditPaymentDate(payment.date.split(" ")[0]); // Solo la fecha, sin la hora
+    setEditPaymentNote(payment.note);
+    setShowEditPaymentModal(true);
+  };
+
+  const closeEditPaymentModal = () => {
+    setShowEditPaymentModal(false);
+    setSelectedPaymentForEdit(null);
+    setEditPaymentAmount(0);
+    setEditPaymentMethod("");
+    setEditPaymentDate("");
+    setEditPaymentNote("");
+  };
+
+  const handleEditPayment = async () => {
+    if (!selectedPaymentForEdit) return;
+
+    if (editPaymentAmount <= 0) {
+      notification.warning("Por favor ingrese un monto válido");
+      return;
+    }
+
+    if (!editPaymentMethod) {
+      notification.warning("Por favor seleccione un método de pago");
+      return;
+    }
+
+    setIsProcessingEditPayment(true);
+
+    try {
+      const paymentData = {
+        type: editPaymentMethod,
+        amount: editPaymentAmount,
+        date: editPaymentDate + " " + new Date().toTimeString().split(" ")[0],
+        note: editPaymentNote,
+      };
+
+      await updatePayment(selectedPaymentForEdit.payment_id, paymentData);
+
+      // Recargar los detalles de la compra
+      if (selectedPurchase) {
+        const response = await getPurchaseDetails(
+          selectedPurchase.transaction.transaction_id
+        );
+        setSelectedPurchase(response);
+      }
+
+      // Recargar el historial de compras
+      loadPurchasesHistory();
+
+      notification.success("Pago actualizado exitosamente!");
+      closeEditPaymentModal();
+    } catch (error: any) {
+      console.error("Error al actualizar pago:", error);
+      notification.error(
+        "Error al actualizar pago: " + (error.message || "Error desconocido")
+      );
+    } finally {
+      setIsProcessingEditPayment(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!confirm("¿Está seguro de que desea eliminar este pago?")) {
+      return;
+    }
+
+    try {
+      await deletePayment(paymentId);
+
+      // Recargar los detalles de la compra
+      if (selectedPurchase) {
+        const response = await getPurchaseDetails(
+          selectedPurchase.transaction.transaction_id
+        );
+        setSelectedPurchase(response);
+      }
+
+      // Recargar el historial de compras
+      loadPurchasesHistory();
+
+      notification.success("Pago eliminado exitosamente!");
+    } catch (error: any) {
+      console.error("Error al eliminar pago:", error);
+      notification.error(
+        "Error al eliminar pago: " + (error.message || "Error desconocido")
+      );
+    }
   };
 
   // Función para obtener el estado de pago
@@ -1989,6 +2096,69 @@ export default function ComprasPage() {
                 </Table>
               </div>
 
+              {/* Pagos */}
+              <div>
+                <h3 className="font-semibold mb-3">Pagos</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedPurchase.payments &&
+                    selectedPurchase.payments.length > 0 ? (
+                      selectedPurchase.payments.map((payment: Payment) => (
+                        <TableRow key={payment.payment_id}>
+                          <TableCell>{formatDate(payment.date)}</TableCell>
+                          <TableCell className="font-medium">
+                            {payment.type}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(payment.amount)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEditPaymentModal(payment)}
+                                title="Editar pago"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleDeletePayment(payment.payment_id)
+                                }
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Eliminar pago"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={4}
+                          className="text-center py-4 text-muted-foreground"
+                        >
+                          No hay pagos registrados
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
               {/* Resumen */}
               <div className="p-4 bg-gray-50 rounded-lg">
                 <h3 className="font-semibold mb-3">Resumen</h3>
@@ -2002,9 +2172,46 @@ export default function ComprasPage() {
                       Total:{" "}
                       {formatCurrency(selectedPurchase.totals.transaction)}
                     </p>
+                    {selectedPurchase.payments &&
+                      selectedPurchase.payments.length > 0 && (
+                        <>
+                          <p>
+                            <strong>Total Pagado:</strong>{" "}
+                            {formatCurrency(
+                              selectedPurchase.payments.reduce(
+                                (sum, payment) => sum + payment.amount,
+                                0
+                              )
+                            )}
+                          </p>
+                          <p>
+                            <strong>Pendiente:</strong>{" "}
+                            <span
+                              className={
+                                selectedPurchase.totals.transaction -
+                                  selectedPurchase.payments.reduce(
+                                    (sum, payment) => sum + payment.amount,
+                                    0
+                                  ) >
+                                0
+                                  ? "text-orange-600 font-semibold"
+                                  : "text-green-600 font-semibold"
+                              }
+                            >
+                              {formatCurrency(
+                                selectedPurchase.totals.transaction -
+                                  selectedPurchase.payments.reduce(
+                                    (sum, payment) => sum + payment.amount,
+                                    0
+                                  )
+                              )}
+                            </span>
+                          </p>
+                        </>
+                      )}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mb-2">
                       <Badge
                         className={
                           hasIVA(selectedPurchase.transaction.tax_type)
@@ -2017,6 +2224,32 @@ export default function ComprasPage() {
                           : "No incluye IVA"}
                       </Badge>
                     </div>
+                    {selectedPurchase.payments &&
+                      selectedPurchase.payments.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            className={
+                              selectedPurchase.totals.transaction -
+                                selectedPurchase.payments.reduce(
+                                  (sum, payment) => sum + payment.amount,
+                                  0
+                                ) <=
+                              0
+                                ? "bg-green-100 text-green-800 border-green-300 font-semibold"
+                                : "bg-yellow-100 text-yellow-800 border-yellow-300 font-semibold"
+                            }
+                          >
+                            {selectedPurchase.totals.transaction -
+                              selectedPurchase.payments.reduce(
+                                (sum, payment) => sum + payment.amount,
+                                0
+                              ) <=
+                            0
+                              ? "Pagado Completo"
+                              : "Pago Parcial"}
+                          </Badge>
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>
@@ -2407,6 +2640,103 @@ export default function ComprasPage() {
               className="bg-yellow-600 hover:bg-yellow-700"
             >
               Confirmar Pago Excedente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para editar pagos */}
+      <Dialog
+        open={showEditPaymentModal}
+        onOpenChange={setShowEditPaymentModal}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Editar Pago - Compra #
+              {selectedPurchase?.transaction?.transaction_id}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPaymentForEdit && (
+            <div className="space-y-4">
+              {/* Formulario de edición de pago */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Monto del Pago</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={editPaymentAmount || ""}
+                    onChange={(e) =>
+                      setEditPaymentAmount(Number(e.target.value))
+                    }
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Método de Pago</Label>
+                  <Select
+                    value={editPaymentMethod}
+                    onValueChange={setEditPaymentMethod}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar método" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Efectivo">Efectivo</SelectItem>
+                      <SelectItem value="Transferencia">
+                        Transferencia
+                      </SelectItem>
+                      <SelectItem value="Tarjeta">Tarjeta</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                      <SelectItem value="Credito30">Crédito 30 días</SelectItem>
+                      <SelectItem value="Credito60">Crédito 60 días</SelectItem>
+                      <SelectItem value="Credito90">Crédito 90 días</SelectItem>
+                      <SelectItem value="Otro">Otro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Fecha del Pago</Label>
+                  <Input
+                    type="date"
+                    value={editPaymentDate}
+                    onChange={(e) => setEditPaymentDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Notas (Opcional)</Label>
+                  <Input
+                    value={editPaymentNote}
+                    onChange={(e) => setEditPaymentNote(e.target.value)}
+                    placeholder="Agregar notas al pago..."
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={closeEditPaymentModal}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEditPayment}
+              disabled={isProcessingEditPayment}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isProcessingEditPayment ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  Procesando...
+                </>
+              ) : (
+                "Actualizar Pago"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
