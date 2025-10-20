@@ -158,6 +158,14 @@ export default function ClientesPage() {
       errors.tax_id = "El CUIT/CUIL es obligatorio";
     } else if (clientData.tax_id.length !== 11) {
       errors.tax_id = "El CUIT/CUIL debe tener 11 dígitos";
+    } else {
+      // Verificar si el CUIT/CUIL ya existe
+      const existingClient = clients.find(
+        (client) => client.tax_id === clientData.tax_id
+      );
+      if (existingClient) {
+        errors.tax_id = "Ya existe una persona con este CUIT/CUIL";
+      }
     }
 
     if (!clientData.email.trim()) {
@@ -185,6 +193,16 @@ export default function ClientesPage() {
       errors.tax_id = "El CUIT/CUIL es obligatorio";
     } else if (editClientData.tax_id.length !== 11) {
       errors.tax_id = "El CUIT/CUIL debe tener 11 dígitos";
+    } else {
+      // Verificar si el CUIT/CUIL ya existe en otro cliente (excluyendo el actual)
+      const existingClient = clients.find(
+        (client) =>
+          client.tax_id === editClientData.tax_id &&
+          client.person_id !== editClientData.person_id
+      );
+      if (existingClient) {
+        errors.tax_id = "Ya existe una persona con este CUIT/CUIL";
+      }
     }
 
     if (!editClientData.email.trim()) {
@@ -337,11 +355,29 @@ export default function ClientesPage() {
         description: "El cliente se ha creado exitosamente.",
       });
     } catch (error) {
-      toast({
-        title: "Error al crear cliente",
-        description: error.response?.data?.error || error.message,
-        variant: "destructive",
-      });
+      // Verificar si es un error de CUIT/CUIL duplicado
+      const errorMessage = error.response?.data?.error || error.message;
+      if (
+        errorMessage.includes("Duplicate entry") &&
+        errorMessage.includes("tax_id")
+      ) {
+        setFormErrors({
+          ...formErrors,
+          tax_id: "Ya existe una persona con este CUIT/CUIL",
+        });
+        toast({
+          title: "Error al crear cliente",
+          description:
+            "El CUIT/CUIL ingresado ya está registrado en el sistema.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error al crear cliente",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
       console.error("Error:", error);
     }
   };
@@ -737,12 +773,29 @@ export default function ClientesPage() {
                       className={formErrors.tax_id ? "border-red-500" : ""}
                       value={clientData.tax_id}
                       onChange={(e) => {
+                        const newTaxId = e.target.value;
                         setClientData({
                           ...clientData,
-                          tax_id: e.target.value,
+                          tax_id: newTaxId,
                         });
+
+                        // Limpiar error previo
                         if (formErrors.tax_id) {
                           setFormErrors({ ...formErrors, tax_id: null });
+                        }
+
+                        // Validar en tiempo real si el CUIT/CUIL ya existe
+                        if (newTaxId.length === 11) {
+                          const existingClient = clients.find(
+                            (client) => client.tax_id === newTaxId
+                          );
+                          if (existingClient) {
+                            setFormErrors({
+                              ...formErrors,
+                              tax_id:
+                                "Ya existe una persona con este CUIT/CUIL",
+                            });
+                          }
                         }
                       }}
                     />
