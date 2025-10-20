@@ -11,6 +11,7 @@ import {
   X,
   Eye,
   Download,
+  Banknote,
 } from "lucide-react";
 import { useNotification } from "@/hooks/use-notification";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ import {
 } from "@/api/transactionsApi";
 
 import { createItem } from "@/api/itemsApi";
+import { createPayment } from "@/api/paymentsApi";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -148,6 +150,21 @@ interface PurchaseDetails {
   totals: PurchaseTotals;
 }
 
+// Interfaces para pagos
+interface Payment {
+  payment_id: number;
+  transaction_id: number;
+  amount: number;
+  type: string;
+  date: string;
+  note: string;
+}
+
+interface PurchaseHistoryItemWithPayments extends PurchaseHistoryItem {
+  total_paid: number;
+  payment_status: string;
+}
+
 export default function ComprasPage() {
   const { user, token, validateToken, loading } = useAuth();
   const notification = useNotification();
@@ -187,6 +204,16 @@ export default function ComprasPage() {
   const [showProviderResults, setShowProviderResults] = useState(false);
   // metodo de pago
   const [paymentMethod, setPaymentMethod] = useState("");
+  // PAGO INICIAL DE LA COMPRA
+  //monto de pago inicial
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  //fecha de pago inicial
+  const [paymentDate, setPaymentDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
+  //nota de pago inicial
+  const [paymentNote, setPaymentNote] = useState("");
   // fecha de compra
   const [purchaseDate, setPurchaseDate] = useState(() => {
     const today = new Date();
@@ -205,11 +232,11 @@ export default function ComprasPage() {
 
   // HISTORIAL DE COMPRAS
   const [purchasesHistory, setPurchasesHistory] = useState<
-    PurchaseHistoryItem[]
+    PurchaseHistoryItemWithPayments[]
   >([]);
   // historial de compras original
   const [originalPurchasesHistory, setOriginalPurchasesHistory] = useState<
-    PurchaseHistoryItem[]
+    PurchaseHistoryItemWithPayments[]
   >([]);
   // estado de carga de historial de compras
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
@@ -238,6 +265,23 @@ export default function ComprasPage() {
   const [showPurchaseDetails, setShowPurchaseDetails] = useState(false);
   const [isLoadingPurchaseDetails, setIsLoadingPurchaseDetails] =
     useState(false);
+
+  // Estados para pagos
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPurchaseForPayment, setSelectedPurchaseForPayment] =
+    useState<PurchaseHistoryItemWithPayments | null>(null);
+  const [newPaymentAmount, setNewPaymentAmount] = useState(0);
+  const [newPaymentMethod, setNewPaymentMethod] = useState("");
+  const [newPaymentDate, setNewPaymentDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
+  const [newPaymentNote, setNewPaymentNote] = useState("");
+  const [isProcessingNewPayment, setIsProcessingNewPayment] = useState(false);
+  const [purchasePayments, setPurchasePayments] = useState<Payment[]>([]);
+  const [showPaymentConfirmationModal, setShowPaymentConfirmationModal] =
+    useState(false);
+  const [pendingPaymentData, setPendingPaymentData] = useState<any>(null);
 
   const requestPurchasesSort = (key: string) => {
     const newDirection =
@@ -315,6 +359,11 @@ export default function ComprasPage() {
     // Validar método de pago
     if (!paymentMethod) {
       errors.push("Debe seleccionar un método de pago");
+    }
+
+    // Validar pago inicial si se especifica un monto
+    if (paymentAmount > 0 && !paymentMethod) {
+      errors.push("Por favor seleccione un método de pago");
     }
 
     // Validar fecha de compra
@@ -642,6 +691,24 @@ export default function ComprasPage() {
         await updateProductStockForPurchase(item.id, item.cantidad);
       }
 
+      // Crear pago inicial si se especificó un monto
+      if (paymentAmount > 0) {
+        const paymentData = {
+          transaction_id: transactionId,
+          amount: paymentAmount,
+          type: paymentMethod,
+          date: paymentDate + " " + new Date().toTimeString().split(" ")[0],
+          note: paymentNote || "",
+        };
+
+        try {
+          await createPayment(paymentData);
+        } catch (error) {
+          console.error("Error al crear pago inicial:", error);
+          // No fallar la compra si hay error en el pago
+        }
+      }
+
       // Limpiar el carrito y mostrar mensaje de éxito
       setCartItems([]);
       setCartItemErrors({});
@@ -650,6 +717,9 @@ export default function ComprasPage() {
       setProviderSearchResults([]);
       setShowProviderResults(false);
       setPaymentMethod("");
+      setPaymentAmount(0);
+      setPaymentDate(new Date().toISOString().split("T")[0]);
+      setPaymentNote("");
       setNotes("");
       setSearchTerm("");
       setSearchResults([]);
@@ -738,8 +808,19 @@ export default function ComprasPage() {
 
       const response = await getPurchasesHistory(filtersWithPagination);
       const purchasesData = response.purchases || [];
-      setPurchasesHistory(purchasesData);
-      setOriginalPurchasesHistory(purchasesData);
+
+      // Los datos ya vienen con total_paid desde la vista de la base de datos
+      const purchasesWithPayments = purchasesData.map((purchase: any) => ({
+        ...purchase,
+        total_paid: purchase.total_paid || 0,
+        payment_status: getPaymentStatusText({
+          ...purchase,
+          total_paid: purchase.total_paid || 0,
+        }),
+      }));
+
+      setPurchasesHistory(purchasesWithPayments);
+      setOriginalPurchasesHistory(purchasesWithPayments);
       setTotalPurchases(response.total || 0);
     } catch (error: any) {
       console.error("Error al cargar historial de compras:", error.message);
@@ -805,6 +886,120 @@ export default function ComprasPage() {
       style: "currency",
       currency: "ARS",
     }).format(amount);
+  };
+
+  // Funciones para manejo de pagos
+  const openPaymentModal = (purchase: PurchaseHistoryItemWithPayments) => {
+    setSelectedPurchaseForPayment(purchase);
+    setNewPaymentAmount(0);
+    setNewPaymentMethod("");
+    setNewPaymentDate(new Date().toISOString().split("T")[0]);
+    setNewPaymentNote("");
+    setShowPaymentModal(true);
+  };
+
+  const closePaymentModal = () => {
+    setShowPaymentModal(false);
+    setSelectedPurchaseForPayment(null);
+    setNewPaymentAmount(0);
+    setNewPaymentMethod("");
+    setNewPaymentNote("");
+  };
+
+  const handleAddPayment = async () => {
+    if (!selectedPurchaseForPayment) return;
+
+    if (newPaymentAmount <= 0) {
+      notification.warning("Por favor ingrese un monto válido");
+      return;
+    }
+
+    if (!newPaymentMethod) {
+      notification.warning("Por favor seleccione un método de pago");
+      return;
+    }
+
+    // Calcular el monto pendiente
+    const pendingAmount =
+      selectedPurchaseForPayment.total_transaction -
+      (selectedPurchaseForPayment.total_paid || 0);
+
+    // Si el monto del pago excede el monto pendiente, mostrar confirmación
+    if (newPaymentAmount > pendingAmount) {
+      const paymentData = {
+        transaction_id: selectedPurchaseForPayment.transaction_id,
+        date: newPaymentDate,
+        type: newPaymentMethod,
+        amount: newPaymentAmount,
+        note: newPaymentNote,
+      };
+
+      setPendingPaymentData(paymentData);
+      setShowPaymentConfirmationModal(true);
+      return;
+    }
+
+    // Si el monto es válido, proceder con el pago
+    await processPayment({
+      transaction_id: selectedPurchaseForPayment.transaction_id,
+      date: newPaymentDate,
+      type: newPaymentMethod,
+      amount: newPaymentAmount,
+      note: newPaymentNote,
+    });
+  };
+
+  // Función para procesar el pago
+  const processPayment = async (paymentData: any) => {
+    setIsProcessingNewPayment(true);
+
+    try {
+      await createPayment(paymentData);
+
+      // Recargar el historial de compras
+      loadPurchasesHistory();
+
+      notification.success("Pago agregado exitosamente!");
+      closePaymentModal();
+    } catch (error: any) {
+      console.error("Error al agregar pago:", error);
+      notification.error(
+        "Error al agregar pago: " + (error.message || "Error desconocido")
+      );
+    } finally {
+      setIsProcessingNewPayment(false);
+    }
+  };
+
+  // Función para confirmar el pago excedente
+  const confirmExcessPayment = async () => {
+    if (pendingPaymentData) {
+      await processPayment(pendingPaymentData);
+    }
+    setShowPaymentConfirmationModal(false);
+    setPendingPaymentData(null);
+  };
+
+  const cancelExcessPayment = () => {
+    setShowPaymentConfirmationModal(false);
+    setPendingPaymentData(null);
+  };
+
+  // Función para obtener el estado de pago
+  const getPaymentStatusText = (purchase: PurchaseHistoryItemWithPayments) => {
+    if (!purchase.total_paid) return "Sin pagos";
+    if (purchase.total_paid >= purchase.total_transaction)
+      return "Pagado completo";
+    if (purchase.total_paid > 0) return "Pago parcial";
+    return "Sin pagos";
+  };
+
+  const getPaymentStatusColor = (purchase: PurchaseHistoryItemWithPayments) => {
+    if (!purchase.total_paid) return "bg-gray-100 text-gray-800";
+    if (purchase.total_paid >= purchase.total_transaction)
+      return "bg-green-100 text-green-800";
+    if (purchase.total_paid > 0) return "bg-yellow-100 text-yellow-800";
+    return "bg-gray-100 text-gray-800";
   };
 
   // Función para determinar si una compra tiene IVA
@@ -1165,16 +1360,76 @@ export default function ComprasPage() {
                       <SelectValue placeholder="Seleccionar método" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="transferencia">
+                      <SelectItem value="Efectivo">Efectivo</SelectItem>
+                      <SelectItem value="Transferencia">
                         Transferencia Bancaria
                       </SelectItem>
-                      <SelectItem value="cheque">Cheque</SelectItem>
-                      <SelectItem value="credito30">Crédito 30 días</SelectItem>
-                      <SelectItem value="credito60">Crédito 60 días</SelectItem>
-                      <SelectItem value="credito90">Crédito 90 días</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                      <SelectItem value="Tarjeta">Tarjeta</SelectItem>
+                      <SelectItem value="Credito30">Crédito 30 días</SelectItem>
+                      <SelectItem value="Credito60">Crédito 60 días</SelectItem>
+                      <SelectItem value="Credito90">Crédito 90 días</SelectItem>
+                      <SelectItem value="Otro">Otro</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Monto a Pagar</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const total = calculateTotalWithTax();
+                        setPaymentAmount(total);
+                      }}
+                      className="text-xs"
+                    >
+                      Total
+                    </Button>
+                  </div>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={
+                      !isNaN(paymentAmount) && paymentAmount > 0
+                        ? paymentAmount.toString()
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "" || value === "0") {
+                        setPaymentAmount(0);
+                      } else {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue) && numValue >= 0) {
+                          setPaymentAmount(numValue);
+                        }
+                      }
+                    }}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Fecha de Pago</Label>
+                  <Input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Notas del Pago</Label>
+                  <Input
+                    placeholder="Agregar notas al pago..."
+                    value={paymentNote}
+                    onChange={(e) => setPaymentNote(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Fecha de Compra</Label>
@@ -1241,6 +1496,40 @@ export default function ComprasPage() {
                       ${calculateTotalWithTax().toLocaleString("es-AR")}
                     </span>
                   </div>
+
+                  {/* Mostrar información de pago */}
+                  {paymentAmount > 0 && (
+                    <div className="pt-4 border-t space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Monto a Pagar</span>
+                        <span className="font-medium">
+                          ${paymentAmount.toLocaleString("es-AR")}
+                        </span>
+                      </div>
+                      {paymentAmount < calculateTotalWithTax() && (
+                        <div className="flex justify-between text-sm">
+                          <span>Pendiente</span>
+                          <span className="font-medium text-orange-600">
+                            $
+                            {(
+                              calculateTotalWithTax() - paymentAmount
+                            ).toLocaleString("es-AR")}
+                          </span>
+                        </div>
+                      )}
+                      {paymentAmount > calculateTotalWithTax() && (
+                        <div className="flex justify-between text-sm">
+                          <span>Exceso</span>
+                          <span className="font-medium text-green-600">
+                            $
+                            {(
+                              paymentAmount - calculateTotalWithTax()
+                            ).toLocaleString("es-AR")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
               <CardFooter>
@@ -1414,7 +1703,10 @@ export default function ComprasPage() {
                             {getPurchasesSortIndicator("total_transaction")}
                           </Button>
                         </TableHead>
-
+                        <TableHead className="text-right">Pagado</TableHead>
+                        <TableHead className="text-center">
+                          Estado Pago
+                        </TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1440,20 +1732,40 @@ export default function ComprasPage() {
                           <TableCell className="text-right">
                             {formatCurrency(purchase.total_transaction)}
                           </TableCell>
-
                           <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleViewPurchaseDetails(
-                                  purchase.transaction_id
-                                )
-                              }
-                              disabled={isLoadingPurchaseDetails}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            {formatCurrency(purchase.total_paid || 0)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge className={getPaymentStatusColor(purchase)}>
+                              {getPaymentStatusText(purchase)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleViewPurchaseDetails(
+                                    purchase.transaction_id
+                                  )
+                                }
+                                disabled={isLoadingPurchaseDetails}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {(purchase.total_paid || 0) <
+                                purchase.total_transaction && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openPaymentModal(purchase)}
+                                  className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                                >
+                                  <Banknote className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1944,6 +2256,157 @@ export default function ComprasPage() {
             >
               <Download className="mr-2 h-4 w-4" />
               Imprimir Recibo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Agregar Pago */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar Pago</DialogTitle>
+            <DialogDescription>
+              Agregar pago para la compra #
+              {selectedPurchaseForPayment?.transaction_id}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Monto del Pago</Label>
+              <Input
+                type="number"
+                value={newPaymentAmount}
+                onChange={(e) => setNewPaymentAmount(Number(e.target.value))}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+              />
+              {selectedPurchaseForPayment && (
+                <p className="text-sm text-gray-600">
+                  Monto pendiente:{" "}
+                  {formatCurrency(
+                    selectedPurchaseForPayment.total_transaction -
+                      (selectedPurchaseForPayment.total_paid || 0)
+                  )}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Método de Pago</Label>
+              <Select
+                value={newPaymentMethod}
+                onValueChange={setNewPaymentMethod}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Efectivo">Efectivo</SelectItem>
+                  <SelectItem value="Transferencia">Transferencia</SelectItem>
+                  <SelectItem value="Tarjeta">Tarjeta</SelectItem>
+                  <SelectItem value="Cheque">Cheque</SelectItem>
+                  <SelectItem value="Credito30">Crédito 30 días</SelectItem>
+                  <SelectItem value="Credito60">Crédito 60 días</SelectItem>
+                  <SelectItem value="Credito90">Crédito 90 días</SelectItem>
+                  <SelectItem value="Otro">Otro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fecha del Pago</Label>
+              <Input
+                type="date"
+                value={newPaymentDate}
+                onChange={(e) => setNewPaymentDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notas (Opcional)</Label>
+              <Input
+                value={newPaymentNote}
+                onChange={(e) => setNewPaymentNote(e.target.value)}
+                placeholder="Agregar notas al pago..."
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closePaymentModal}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAddPayment}
+              disabled={
+                isProcessingNewPayment || !newPaymentAmount || !newPaymentMethod
+              }
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isProcessingNewPayment ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  Procesando...
+                </>
+              ) : (
+                "Agregar Pago"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmación de Pago Excedente */}
+      <Dialog
+        open={showPaymentConfirmationModal}
+        onOpenChange={setShowPaymentConfirmationModal}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Pago Excedente</DialogTitle>
+            <DialogDescription>
+              El monto del pago excede el monto pendiente. ¿Desea continuar?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-yellow-800">
+                <strong>Monto del pago:</strong>{" "}
+                {formatCurrency(pendingPaymentData?.amount || 0)}
+              </p>
+              <p className="text-sm text-yellow-800">
+                <strong>Monto pendiente:</strong>{" "}
+                {selectedPurchaseForPayment &&
+                  formatCurrency(
+                    selectedPurchaseForPayment.total_transaction -
+                      (selectedPurchaseForPayment.total_paid || 0)
+                  )}
+              </p>
+              <p className="text-sm text-yellow-800">
+                <strong>Exceso:</strong>{" "}
+                {selectedPurchaseForPayment &&
+                  formatCurrency(
+                    (pendingPaymentData?.amount || 0) -
+                      (selectedPurchaseForPayment.total_transaction -
+                        (selectedPurchaseForPayment.total_paid || 0))
+                  )}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelExcessPayment}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmExcessPayment}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              Confirmar Pago Excedente
             </Button>
           </DialogFooter>
         </DialogContent>
