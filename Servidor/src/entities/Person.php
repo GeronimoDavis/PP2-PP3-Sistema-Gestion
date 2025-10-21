@@ -10,7 +10,6 @@ class Person {
     public string $phone;
     public ?string $notes;
     public string $address;
-    public bool $provider;
     public string $tax_type;
     public bool $active;
 
@@ -24,7 +23,6 @@ class Person {
         $this->phone = $data['phone'];
         $this->notes = $data['notes'] ?? null;
         $this->address = $data['address'];
-        $this->provider = isset($data['provider']) ? (bool)$data['provider'] : false;
         $this->tax_type = $data['tax_type'];
         $this->active = isset($data['active']) ? (bool)$data['active'] : true;
     }
@@ -40,7 +38,6 @@ class Person {
             'phone' => $this->phone,
             'notes' => $this->notes,
             'address' => $this->address,
-            'provider' => $this->provider,
             'tax_type' => $this->tax_type,
             'active' => $this->active,
         ];

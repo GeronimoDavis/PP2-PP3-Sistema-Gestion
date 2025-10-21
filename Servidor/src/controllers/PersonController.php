@@ -114,55 +114,6 @@ class PersonController {
         }
     }
 
-    public function clientPerson(Request $request, Response $response, $args)
-    {
-        try {
-            $id = $args['id'];
-            $person = $this->personService->getById($id);
-        }
-        catch (Throwable $e) {
-            $response->getBody()->write(json_encode(['error' => 'Error updating person: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
-        }
-    }
-
-    public function providerPerson(Request $request, Response $response, $args)
-    {
-        try {
-            $id = $args['id'];
-            $person = $this->personService->getById($id);
-        }
-        catch (Throwable $e) {
-            $response->getBody()->write(json_encode(['error' => 'Error updating person: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
-        }
-    }   
-
-    public function getAllActiveClients(Request $request, Response $response, $args)
-    {
-        try {
-            $clients = $this->personService->getAllActiveClients();
-            $response->getBody()->write(json_encode(['clients' => $clients]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-        }
-        catch (Throwable $e) {
-            $response->getBody()->write(json_encode(['error' => 'Error fetching all active clients: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
-        }
-    }
-
-    public function getAllActiveProviders(Request $request, Response $response, $args)
-    {
-        try {
-            $providers = $this->personService->getAllActiveProviders();
-            $response->getBody()->write(json_encode(['providers' => $providers]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-        }
-        catch (Throwable $e) {
-            $response->getBody()->write(json_encode(['error' => 'Error fetching all active providers: ' . $e->getMessage()]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
-        }
-    }
 
     // Obtiene todas las personas eliminadas (papelera)
     public function getAllDeletedPersons(Request $request, Response $response): Response

@@ -216,7 +216,7 @@ class PaymentsService {
     {
         try {
             $query = "
-                SELECT p.* 
+                SELECT p.*, t.is_sale
                 FROM payments p
                 INNER JOIN transaction t ON p.transaction_id = t.transaction_id
                 WHERE t.person_id = ?
@@ -229,7 +229,7 @@ class PaymentsService {
 
             $payments = [];
             foreach ($rows as $row) {
-                $payments[] = new Payments(
+                $payment = new Payments(
                     $row['payment_id'],
                     $row['transaction_id'],
                     (float)$row['amount'],
@@ -237,6 +237,11 @@ class PaymentsService {
                     new DateTime($row['date']),
                     $row['note'] ?? ""
                 );
+                
+                // Agregar información del tipo de transacción
+                $paymentArray = $payment->toArray();
+                $paymentArray['is_sale'] = (bool)$row['is_sale'];
+                $payments[] = $paymentArray;
             }
 
             return $payments;

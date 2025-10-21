@@ -24,7 +24,7 @@ import type { DateRange } from "react-day-picker";
 import { addDays, subDays, format } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { getAllActiveClients } from "@/api/personsApi";
+import { getPersons } from "@/api/personsApi";
 import {
   getTotalSales,
   getRecentTransactions,
@@ -81,7 +81,7 @@ export default function DashboardPage() {
           getRecentTransactions(fromDate, toDate),
           getSalesWithPendingBalance(fromDate, toDate),
           getSalesSummary(fromDate, toDate),
-          getAllActiveClients(),
+          getPersons(),
           getProductsWithoutStock(),
         ]);
 

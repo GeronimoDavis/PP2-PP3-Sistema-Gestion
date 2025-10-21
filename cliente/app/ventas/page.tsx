@@ -403,6 +403,7 @@ export default function VentasPage() {
     start_date: "",
     end_date: "",
     client_name: "",
+    transaction_id: "",
     limit: 10 as number | undefined,
     sort_by: "transaction_id",
     sort_direction: "desc",
@@ -936,6 +937,7 @@ export default function VentasPage() {
       start_date: "",
       end_date: "",
       client_name: "",
+      transaction_id: "",
       limit: 10,
       sort_by: "transaction_id",
       sort_direction: "desc",
@@ -2184,7 +2186,7 @@ export default function VentasPage() {
               </CardDescription>
 
               {/* Filtros */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4">
                 <div className="space-y-2">
                   <Label>Fecha Desde</Label>
                   <Input
@@ -2212,6 +2214,16 @@ export default function VentasPage() {
                     value={salesFilters.client_name}
                     onChange={(e) =>
                       handleSalesFilterChange("client_name", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>ID Transacción</Label>
+                  <Input
+                    placeholder="Buscar por ID..."
+                    value={salesFilters.transaction_id}
+                    onChange={(e) =>
+                      handleSalesFilterChange("transaction_id", e.target.value)
                     }
                   />
                 </div>
@@ -2279,7 +2291,7 @@ export default function VentasPage() {
                             variant="ghost"
                             onClick={() => requestSalesSort("transaction_id")}
                           >
-                            Nº Venta
+                            Transacción N°
                             {getSalesSortIndicator("transaction_id")}
                           </Button>
                         </TableHead>
@@ -2339,19 +2351,17 @@ export default function VentasPage() {
                           sale.total_transaction,
                           sale.total_paid
                         );
-                        // Calcular el número de venta: la más reciente tiene el número más alto
-                        const saleNumber =
-                          totalSales -
-                          ((currentPage - 1) * itemsPerPage + index);
+                        // Usar el ID de transacción como número de venta
+                        const saleNumber = sale.transaction_id;
                         return (
                           <TableRow key={sale.transaction_id}>
                             <TableCell className="font-medium">
                               <div>
-                                <div className="font-semibold">
-                                  Venta #{saleNumber}
-                                </div>
-                                <div className="text-xs text-gray-500">
+                                <div className="font-bold">
                                   Transacción N°{sale.transaction_id}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  Venta #{saleNumber}
                                 </div>
                               </div>
                             </TableCell>

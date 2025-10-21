@@ -71,7 +71,6 @@ export default function ClientesPage() {
     email: "",
     address: "",
     notes: "",
-    provider: false,
   });
   const [originalClients, setOriginalClients] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -81,7 +80,6 @@ export default function ClientesPage() {
     direction: "ascending",
   });
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   // Estados para el modal de detalles
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -90,13 +88,19 @@ export default function ClientesPage() {
     sales: [],
     purchases: [],
   });
-  const [clientPayments, setClientPayments] = useState([]);
+  const [clientPayments, setClientPayments] = useState({
+    all: [],
+    sales: [],
+    purchases: [],
+  });
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [clientBalance, setClientBalance] = useState({
-    total: 0,
-    sales: 0,
-    purchases: 0,
-    payments: 0,
+    salesBalance: 0, // Saldo de ventas (a cobrar)
+    purchasesBalance: 0, // Saldo de compras (a pagar)
+    totalSales: 0,
+    totalPurchases: 0,
+    totalSalesPayments: 0,
+    totalPurchasesPayments: 0,
   });
 
   // Estados para el modal de edición
@@ -112,7 +116,6 @@ export default function ClientesPage() {
     email: "",
     address: "",
     notes: "",
-    provider: false,
   });
 
   const { user, token, validateToken, loading } = useAuth();
@@ -255,14 +258,6 @@ export default function ClientesPage() {
   useEffect(() => {
     let filteredClients = [...originalClients];
 
-    // Apply status filter
-    if (statusFilter !== "all") {
-      const isProvider = statusFilter === "true";
-      filteredClients = filteredClients.filter(
-        (c) => c.provider === isProvider
-      );
-    }
-
     // Apply search filter
     if (searchTerm) {
       const lowercasedTerm = searchTerm.toLowerCase();
@@ -277,7 +272,7 @@ export default function ClientesPage() {
 
     setClients(filteredClients);
     setCurrentPage(1); // Reset page on filter change
-  }, [searchTerm, statusFilter, originalClients]);
+  }, [searchTerm, originalClients]);
 
   // Opcional: Mostrar un loader mientras se valida
   if (loading) {
@@ -326,10 +321,8 @@ export default function ClientesPage() {
     }
 
     try {
-      // Asegurar que provider sea un booleano
       const dataToSend = {
         ...clientData,
-        provider: Boolean(clientData.provider),
       };
 
       //crear el cliente
@@ -346,7 +339,6 @@ export default function ClientesPage() {
         email: "",
         address: "",
         notes: "",
-        provider: false,
       });
       clearFormErrors();
 
@@ -415,7 +407,6 @@ export default function ClientesPage() {
         email: person.email || "",
         address: person.address || "",
         notes: person.notes || "",
-        provider: Boolean(person.provider),
       });
       clearEditFormErrors();
       setIsEditDialogOpen(true);
@@ -440,7 +431,6 @@ export default function ClientesPage() {
     }
 
     try {
-      // Asegurar que provider sea un booleano
       const dataToSend = {
         name: editClientData.name,
         company_name: editClientData.company_name,
@@ -450,7 +440,6 @@ export default function ClientesPage() {
         email: editClientData.email,
         address: editClientData.address,
         notes: editClientData.notes,
-        provider: Boolean(editClientData.provider),
       };
 
       await updatePerson(editClientData.person_id, dataToSend);
@@ -492,13 +481,19 @@ export default function ClientesPage() {
 
       setClientTransactions({ sales, purchases });
 
-      // Obtener pagos del cliente - Usando el nuevo endpoint
+      // Obtener pagos del cliente - Usando el nuevo endpoint con separación
       const paymentsData = await getPaymentsByPersonId(clientId);
-      const clientPayments = paymentsData.payments || [];
+      const allPayments = paymentsData.payments || [];
+      const salesPayments = paymentsData.sales_payments || [];
+      const purchasesPayments = paymentsData.purchases_payments || [];
 
-      setClientPayments(clientPayments);
+      setClientPayments({
+        all: allPayments,
+        sales: salesPayments,
+        purchases: purchasesPayments,
+      });
 
-      // Calcular saldo
+      // Calcular totales
       const totalSales = sales.reduce(
         (sum, sale) => sum + parseFloat(sale.total_transaction || 0),
         0
@@ -507,21 +502,26 @@ export default function ClientesPage() {
         (sum, purchase) => sum + parseFloat(purchase.total_transaction || 0),
         0
       );
-      const totalPayments = clientPayments.reduce(
+      const totalSalesPayments = salesPayments.reduce(
+        (sum, payment) => sum + parseFloat(payment.amount || 0),
+        0
+      );
+      const totalPurchasesPayments = purchasesPayments.reduce(
         (sum, payment) => sum + parseFloat(payment.amount || 0),
         0
       );
 
-      // Saldo = (Ventas - Compras) - Pagos
-      // Si es positivo, el cliente debe dinero
-      // Si es negativo, el cliente tiene saldo a favor
-      const balance = totalSales - totalPurchases - totalPayments;
+      // Calcular saldos separados
+      const salesBalance = totalSales - totalSalesPayments; // Saldo a cobrar
+      const purchasesBalance = totalPurchases - totalPurchasesPayments; // Saldo a pagar
 
       setClientBalance({
-        total: balance,
-        sales: totalSales,
-        purchases: totalPurchases,
-        payments: totalPayments,
+        salesBalance,
+        purchasesBalance,
+        totalSales,
+        totalPurchases,
+        totalSalesPayments,
+        totalPurchasesPayments,
       });
 
       setIsDetailsModalOpen(true);
@@ -669,7 +669,6 @@ export default function ClientesPage() {
                   email: "",
                   address: "",
                   notes: "",
-                  provider: false,
                 });
               }
             }}
@@ -869,29 +868,6 @@ export default function ClientesPage() {
                     }
                   />
                 </div>
-
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="provider" className="text-right">
-                    Cliente/Proveedor
-                  </Label>
-                  <Select
-                    value={clientData.provider ? "true" : "false"}
-                    onValueChange={(value) =>
-                      setClientData({
-                        ...clientData,
-                        provider: value === "true",
-                      })
-                    }
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Proveedor</SelectItem>
-                      <SelectItem value="false">Cliente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <DialogFooter>
                 <Button
@@ -923,16 +899,6 @@ export default function ClientesPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar por Cliente/Proveedor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="true">Proveedor</SelectItem>
-              <SelectItem value="false">Cliente</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
       {loadingClients ? (
@@ -991,14 +957,6 @@ export default function ClientesPage() {
                         Email{getSortIndicator("email")}
                       </Button>
                     </TableHead>
-                    <TableHead className="text-right">
-                      <Button
-                        variant="ghost"
-                        onClick={() => requestSort("provider")}
-                      >
-                        Cliente/Proveedor{getSortIndicator("provider")}
-                      </Button>
-                    </TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1012,15 +970,6 @@ export default function ClientesPage() {
                       <TableCell>{client.tax_id}</TableCell>
                       <TableCell>{client.phone}</TableCell>
                       <TableCell>{client.email}</TableCell>
-                      <TableCell className="text-right">
-                        <Badge
-                          className={`${
-                            client.provider ? "bg-yellow-500" : "bg-teal-500"
-                          }`}
-                        >
-                          {client.provider ? "Proveedor" : "Cliente"}
-                        </Badge>
-                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1149,20 +1098,6 @@ export default function ClientesPage() {
                           <p className="font-medium">{selectedClient.notes}</p>
                         </div>
                       )}
-                      <div>
-                        <Label className="text-gray-500">
-                          Tipo de Persona{" "}
-                        </Label>
-                        <Badge
-                          className={`${
-                            selectedClient.provider
-                              ? "bg-yellow-500"
-                              : "bg-teal-500"
-                          } mt-1`}
-                        >
-                          {selectedClient.provider ? "Proveedor" : "Cliente"}
-                        </Badge>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1179,7 +1114,10 @@ export default function ClientesPage() {
                           Total Ventas
                         </Label>
                         <p className="text-xl font-bold text-blue-600">
-                          ${clientBalance.sales.toFixed(2)}
+                          ${clientBalance.totalSales.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Pagos: ${clientBalance.totalSalesPayments.toFixed(2)}
                         </p>
                       </div>
                       <div className="bg-orange-50 p-4 rounded-lg">
@@ -1187,41 +1125,73 @@ export default function ClientesPage() {
                           Total Compras
                         </Label>
                         <p className="text-xl font-bold text-orange-600">
-                          ${clientBalance.purchases.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <Label className="text-gray-500 text-sm">
-                          Total Pagos
-                        </Label>
-                        <p className="text-xl font-bold text-green-600">
-                          ${clientBalance.payments.toFixed(2)}
-                        </p>
-                      </div>
-                      <div
-                        className={`${
-                          clientBalance.total >= 0
-                            ? "bg-red-50"
-                            : "bg-emerald-50"
-                        } p-4 rounded-lg`}
-                      >
-                        <Label className="text-gray-500 text-sm">
-                          Saldo Restante
-                        </Label>
-                        <p
-                          className={`text-xl font-bold ${
-                            clientBalance.total >= 0
-                              ? "text-red-600"
-                              : "text-emerald-600"
-                          }`}
-                        >
-                          ${Math.abs(clientBalance.total).toFixed(2)}
+                          ${clientBalance.totalPurchases.toFixed(2)}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {clientBalance.total >= 0
-                            ? "A cobrar"
-                            : "A favor del cliente"}
+                          Pagos: $
+                          {clientBalance.totalPurchasesPayments.toFixed(2)}
                         </p>
+                      </div>
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <Label className="text-gray-500 text-sm">
+                          Saldo Ventas
+                        </Label>
+                        <p className="text-xl font-bold text-red-600">
+                          ${clientBalance.salesBalance.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">A cobrar</p>
+                      </div>
+                      <div className="bg-yellow-50 p-4 rounded-lg">
+                        <Label className="text-gray-500 text-sm">
+                          Saldo Compras
+                        </Label>
+                        <p className="text-xl font-bold text-yellow-600">
+                          ${clientBalance.purchasesBalance.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">A pagar</p>
+                      </div>
+                    </div>
+
+                    {/* Balance Neto */}
+                    <div className="mt-4 flex justify-center">
+                      <div
+                        className={`${
+                          clientBalance.salesBalance -
+                            clientBalance.purchasesBalance >=
+                          0
+                            ? "bg-emerald-50 border-emerald-200"
+                            : "bg-red-50 border-red-200"
+                        } p-6 rounded-lg border-2 w-full max-w-md`}
+                      >
+                        <Label className="text-gray-600 text-sm font-medium">
+                          Balance Neto
+                        </Label>
+                        <p
+                          className={`text-2xl font-bold mt-2 ${
+                            clientBalance.salesBalance -
+                              clientBalance.purchasesBalance >=
+                            0
+                              ? "text-emerald-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          $
+                          {Math.abs(
+                            clientBalance.salesBalance -
+                              clientBalance.purchasesBalance
+                          ).toFixed(2)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {clientBalance.salesBalance -
+                            clientBalance.purchasesBalance >=
+                          0
+                            ? "Saldo a favor de la empresa"
+                            : "Saldo a favor del cliente/proveedor"}
+                        </p>
+                        <div className="text-xs text-gray-400 mt-2">
+                          Ventas ({clientBalance.salesBalance.toFixed(2)}) -
+                          Compras ({clientBalance.purchasesBalance.toFixed(2)})
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -1234,15 +1204,18 @@ export default function ClientesPage() {
                       Historial de Transacciones
                     </h3>
                     <Tabs defaultValue="sales" className="w-full">
-                      <TabsList className="grid w-full grid-cols-3">
+                      <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="sales">
                           Ventas ({clientTransactions.sales.length})
                         </TabsTrigger>
                         <TabsTrigger value="purchases">
                           Compras ({clientTransactions.purchases.length})
                         </TabsTrigger>
-                        <TabsTrigger value="payments">
-                          Pagos ({clientPayments.length})
+                        <TabsTrigger value="salesPayments">
+                          Pagos Ventas ({clientPayments.sales.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="purchasesPayments">
+                          Pagos Compras ({clientPayments.purchases.length})
                         </TabsTrigger>
                       </TabsList>
 
@@ -1401,9 +1374,9 @@ export default function ClientesPage() {
                         )}
                       </TabsContent>
 
-                      {/* Tab de Pagos */}
-                      <TabsContent value="payments">
-                        {clientPayments.length > 0 ? (
+                      {/* Tab de Pagos de Ventas */}
+                      <TabsContent value="salesPayments">
+                        {clientPayments.sales.length > 0 ? (
                           <div className="border rounded-lg">
                             <Table>
                               <TableHeader>
@@ -1418,7 +1391,7 @@ export default function ClientesPage() {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {clientPayments.map((payment) => (
+                                {clientPayments.sales.map((payment) => (
                                   <TableRow key={payment.payment_id}>
                                     <TableCell>
                                       {new Date(
@@ -1447,7 +1420,58 @@ export default function ClientesPage() {
                           </div>
                         ) : (
                           <div className="text-center py-8 text-gray-500">
-                            No hay pagos registrados
+                            No hay pagos de ventas registrados
+                          </div>
+                        )}
+                      </TabsContent>
+
+                      {/* Tab de Pagos de Compras */}
+                      <TabsContent value="purchasesPayments">
+                        {clientPayments.purchases.length > 0 ? (
+                          <div className="border rounded-lg">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Fecha</TableHead>
+                                  <TableHead>Método</TableHead>
+                                  <TableHead>Transacción #</TableHead>
+                                  <TableHead>Nota</TableHead>
+                                  <TableHead className="text-right">
+                                    Monto
+                                  </TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {clientPayments.purchases.map((payment) => (
+                                  <TableRow key={payment.payment_id}>
+                                    <TableCell>
+                                      {new Date(
+                                        payment.date
+                                      ).toLocaleDateString("es-AR")}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">
+                                        {payment.type}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      #{payment.transaction_id}
+                                    </TableCell>
+                                    <TableCell>{payment.note || "-"}</TableCell>
+                                    <TableCell className="text-right font-medium text-blue-600">
+                                      $
+                                      {parseFloat(payment.amount || 0).toFixed(
+                                        2
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            No hay pagos de compras registrados
                           </div>
                         )}
                       </TabsContent>
@@ -1486,7 +1510,6 @@ export default function ClientesPage() {
               email: "",
               address: "",
               notes: "",
-              provider: false,
             });
           }
         }}
@@ -1677,29 +1700,6 @@ export default function ClientesPage() {
                   })
                 }
               />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-provider" className="text-right">
-                Cliente/Proveedor
-              </Label>
-              <Select
-                value={editClientData.provider ? "true" : "false"}
-                onValueChange={(value) =>
-                  setEditClientData({
-                    ...editClientData,
-                    provider: value === "true",
-                  })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Seleccionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">Proveedor</SelectItem>
-                  <SelectItem value="false">Cliente</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>

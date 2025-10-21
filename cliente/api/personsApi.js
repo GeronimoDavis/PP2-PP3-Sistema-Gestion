@@ -20,7 +20,6 @@ const getPersonById = async (id) => {
 
 const createPerson = async (personData) => {
   try {
-    
     const response = await api.post("/person/create", personData);
     return response.data;
   } catch (error) {
@@ -46,30 +45,10 @@ const updatePersonStatus = async (id) => {
   }
 };
 
-const getAllActiveClients = async () => {
-  try {
-    const response = await api.get("/person/activeclients");
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-const getAllActiveProviders = async () => {
-  try {
-    const response = await api.get("/person/activeproviders");
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
 export {
   getPersons,
   getPersonById,
   createPerson,
   updatePerson,
   updatePersonStatus,
-  getAllActiveClients,
-  getAllActiveProviders,
 };

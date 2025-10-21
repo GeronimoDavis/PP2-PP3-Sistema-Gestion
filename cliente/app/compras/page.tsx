@@ -61,7 +61,7 @@ import {
   getProductByName,
   updateProductStockForPurchase,
 } from "@/api/productsApi";
-import { getAllActiveProviders } from "@/api/personsApi";
+import { getPersons } from "@/api/personsApi";
 import {
   createPurchase,
   getPurchasesHistory,
@@ -256,6 +256,7 @@ export default function ComprasPage() {
     start_date: "",
     end_date: "",
     provider_name: "",
+    transaction_id: "",
     limit: 10 as number | undefined,
     sort_by: "date",
     sort_direction: "desc",
@@ -756,11 +757,11 @@ export default function ComprasPage() {
   // cargar lista de proveedores desde la API
   const loadProviders = async () => {
     try {
-      const response = await getAllActiveProviders();
+      const response = await getPersons();
 
       // Ordenar proveedores por nombre
       const sortedProviders =
-        response.providers?.sort((a: any, b: any) =>
+        response.persons?.sort((a: any, b: any) =>
           a.name.localeCompare(b.name)
         ) || [];
 
@@ -862,6 +863,7 @@ export default function ComprasPage() {
       start_date: "",
       end_date: "",
       provider_name: "",
+      transaction_id: "",
       limit: 10 as number | undefined,
       sort_by: "date",
       sort_direction: "desc",
@@ -1677,7 +1679,7 @@ export default function ComprasPage() {
               </CardDescription>
 
               {/* Filtros */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4">
                 <div className="space-y-2">
                   <Label>Fecha Desde</Label>
                   <Input
@@ -1706,6 +1708,19 @@ export default function ComprasPage() {
                     onChange={(e) =>
                       handlePurchasesFilterChange(
                         "provider_name",
+                        e.target.value
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>ID Transacción</Label>
+                  <Input
+                    placeholder="Buscar por ID..."
+                    value={purchasesFilters.transaction_id}
+                    onChange={(e) =>
+                      handlePurchasesFilterChange(
+                        "transaction_id",
                         e.target.value
                       )
                     }
@@ -1775,7 +1790,7 @@ export default function ComprasPage() {
                               requestPurchasesSort("transaction_id")
                             }
                           >
-                            Nº Compra
+                            Transacción N°
                             {getPurchasesSortIndicator("transaction_id")}
                           </Button>
                         </TableHead>
@@ -1818,64 +1833,73 @@ export default function ComprasPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {purchasesHistory.map((purchase) => (
-                        <TableRow key={purchase.transaction_id}>
-                          <TableCell className="font-medium">
-                            #{purchase.transaction_id}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">
-                                {purchase.provider_name}
-                              </div>
-                              {purchase.provider_company && (
-                                <div className="text-sm text-muted-foreground">
-                                  {purchase.provider_company}
+                      {purchasesHistory.map((purchase, index) => {
+                        // Usar el ID de transacción como número de compra
+                        return (
+                          <TableRow key={purchase.transaction_id}>
+                            <TableCell className="font-medium">
+                              <div>
+                                <div className="font-bold">
+                                  Transacción N°{purchase.transaction_id}
                                 </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>{formatDate(purchase.date)}</TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(purchase.total_transaction)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(purchase.total_paid || 0)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className={getPaymentStatusColor(purchase)}>
-                              {getPaymentStatusText(purchase)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleViewPurchaseDetails(
-                                    purchase.transaction_id
-                                  )
-                                }
-                                disabled={isLoadingPurchaseDetails}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">
+                                  {purchase.provider_name}
+                                </div>
+                                {purchase.provider_company && (
+                                  <div className="text-sm text-muted-foreground">
+                                    {purchase.provider_company}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>{formatDate(purchase.date)}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(purchase.total_transaction)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(purchase.total_paid || 0)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge
+                                className={getPaymentStatusColor(purchase)}
                               >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {(purchase.total_paid || 0) <
-                                purchase.total_transaction && (
+                                {getPaymentStatusText(purchase)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-2 justify-end">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => openPaymentModal(purchase)}
-                                  className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                                  onClick={() =>
+                                    handleViewPurchaseDetails(
+                                      purchase.transaction_id
+                                    )
+                                  }
+                                  disabled={isLoadingPurchaseDetails}
                                 >
-                                  <Banknote className="h-4 w-4" />
+                                  <Eye className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                {(purchase.total_paid || 0) <
+                                  purchase.total_transaction && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openPaymentModal(purchase)}
+                                    className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                                  >
+                                    <Banknote className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
 

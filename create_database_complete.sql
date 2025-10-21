@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS person (
 	phone VARCHAR(15) NOT NULL,
 	notes TINYTEXT,
 	address VARCHAR(50) NOT NULL,
-	provider BOOL NOT NULL,
 	tax_type ENUM("R.I", "Exento", "R.N.I", "Monotributo", "Consumidor Final"),
 	active BOOLEAN DEFAULT TRUE,
 	PRIMARY KEY(person_id)

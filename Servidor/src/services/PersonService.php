@@ -53,10 +53,6 @@ class PersonService {
                 $params[] = $filters['tax_type'];
             }
             
-            if (isset($filters['provider'])) {
-                $query .= " AND provider = ?";
-                $params[] = filter_var($filters['provider'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
-            }
 
             $query .= " ORDER BY name ASC"; 
 
@@ -95,7 +91,7 @@ class PersonService {
     public function create(Person $person)
     {
         try {
-            $stmt = $this->pdo->prepare("INSERT INTO person (tax_id, company_name, name, email, phone, notes, address, provider, tax_type, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $this->pdo->prepare("INSERT INTO person (tax_id, company_name, name, email, phone, notes, address, tax_type, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $person->tax_id,
                 $person->company_name,
@@ -104,7 +100,6 @@ class PersonService {
                 $person->phone,
                 $person->notes,
                 $person->address,
-                $person->provider ? 1 : 0,
                 $person->tax_type,
                 $person->active ? 1 : 0
             ]);
@@ -134,7 +129,7 @@ class PersonService {
     public function update(Person $person)
     {
         try {
-            $stmt = $this->pdo->prepare("UPDATE person SET tax_id = ?, company_name = ?, name = ?, email = ?, phone = ?, notes = ?, address = ?, provider = ?, tax_type = ? WHERE person_id = ?");
+            $stmt = $this->pdo->prepare("UPDATE person SET tax_id = ?, company_name = ?, name = ?, email = ?, phone = ?, notes = ?, address = ?, tax_type = ? WHERE person_id = ?");
             $stmt->execute([
                 $person->tax_id,
                 $person->company_name,
@@ -143,7 +138,6 @@ class PersonService {
                 $person->phone,
                 $person->notes,
                 $person->address,
-                $person->provider,
                 $person->tax_type,
                 $person->person_id
             ]);
@@ -154,51 +148,6 @@ class PersonService {
         }
     }
 
-    public function getProviderPerson($id)
-    {
-        try {
-            $stmt = $this->pdo->prepare("SELECT * FROM person WHERE provider = 1 AND person_id = ?");
-            $stmt->execute([$id]);
-            $person = $stmt->fetch(PDO::FETCH_ASSOC);
-            return new Person($person);
-        } catch (PDOException $e) {
-            throw new Exception("Error fetching provider person: " . $e->getMessage());
-        }
-    }
-
-    public function getClientPerson($id)
-    {
-        try {
-            $stmt = $this->pdo->prepare("SELECT * FROM person WHERE provider = 0 AND person_id = ?");
-            $stmt->execute([$id]);
-            $person = $stmt->fetch(PDO::FETCH_ASSOC);
-            return new Person($person);
-        } catch (PDOException $e) {
-            throw new Exception("Error fetching client person: " . $e->getMessage());
-        }
-    }
-
-    public function getAllActiveClients() {
-        try {
-            $stmt = $this->pdo->prepare("SELECT * FROM person WHERE provider = 0 AND active = 1");
-            $stmt->execute();
-            $persons = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            return $persons;
-        } catch (PDOException $e) {
-            throw new Exception("Error fetching all active clients: " . $e->getMessage());
-        }
-    }
-
-    public function getAllActiveProviders() {
-        try {
-            $stmt = $this->pdo->prepare("SELECT * FROM person WHERE provider = 1 AND active = 1");
-            $stmt->execute();
-            $persons = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            return $persons;
-        } catch (PDOException $e) {
-            throw new Exception("Error fetching all active providers: " . $e->getMessage());
-        }
-    }
 
     
     public function getAllDeleted()

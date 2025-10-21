@@ -186,14 +186,24 @@ class PaymentsController
             $personId = $args['person_id'];
             $payments = $this->paymentsService->getByPersonId($personId);
             
-            if ($payments) {
-                $paymentsArray = array_map(fn($p) => $p->toArray(), $payments);
-                $response->getBody()->write(json_encode(['payments' => $paymentsArray]));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-            } else {
-                $response->getBody()->write(json_encode(['payments' => []]));
-                return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+            // Separar pagos por tipo de transacción
+            $salesPayments = [];
+            $purchasesPayments = [];
+            
+            foreach ($payments as $payment) {
+                if ($payment['is_sale']) {
+                    $salesPayments[] = $payment;
+                } else {
+                    $purchasesPayments[] = $payment;
+                }
             }
+            
+            $response->getBody()->write(json_encode([
+                'payments' => $payments,
+                'sales_payments' => $salesPayments,
+                'purchases_payments' => $purchasesPayments
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
         } catch (Exception $e) {
             $response->getBody()->write(json_encode(['error' => 'Error fetching payments by person ID: ' . $e->getMessage()]));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(500);
