@@ -2352,16 +2352,12 @@ export default function VentasPage() {
                           sale.total_paid
                         );
                         // Usar el ID de transacción como número de venta
-                        const saleNumber = sale.transaction_id;
                         return (
                           <TableRow key={sale.transaction_id}>
                             <TableCell className="font-medium">
                               <div>
                                 <div className="font-bold">
                                   Transacción N°{sale.transaction_id}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  Venta #{saleNumber}
                                 </div>
                               </div>
                             </TableCell>
