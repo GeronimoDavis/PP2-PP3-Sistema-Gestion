@@ -21,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -59,7 +58,6 @@ interface DeletedPerson {
   name: string;
   email: string;
   phone: string;
-  provider: boolean;
   tax_type: string;
   active: number;
 }
@@ -127,11 +125,6 @@ export default function PapeleraPage() {
     }
   };
 
-  // Función para obtener el tipo de persona
-  const getPersonType = (provider: boolean) => {
-    return provider ? "Proveedor" : "Cliente";
-  };
-
   // Cargar datos al montar el componente
   useEffect(() => {
     if (token && user) {
@@ -170,18 +163,10 @@ export default function PapeleraPage() {
     (person) =>
       person.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      person.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getPersonType(person.provider)
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+      person.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Función para obtener el color del badge
-  const getPersonTypeColor = (provider: boolean) => {
-    return provider
-      ? "bg-blue-100 text-blue-800"
-      : "bg-green-100 text-green-800";
-  };
 
   if (loading) {
     return (
@@ -325,12 +310,10 @@ export default function PapeleraPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[200px]">
-                        Nombre/Empresa
-                      </TableHead>
+                      <TableHead className="w-[200px]">Nombre</TableHead>
+                      <TableHead className="w-[200px]">Razón Social</TableHead>
                       <TableHead className="w-[200px]">Email</TableHead>
                       <TableHead className="w-[150px]">Teléfono</TableHead>
-                      <TableHead className="w-[120px]">Tipo</TableHead>
                       <TableHead className="w-[120px]">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -338,17 +321,11 @@ export default function PapeleraPage() {
                     {filteredPersons.map((person) => (
                       <TableRow key={person.person_id}>
                         <TableCell className="font-medium">
-                          {person.company_name || person.name}
+                          {person.name}
                         </TableCell>
+                        <TableCell>{person.company_name}</TableCell>
                         <TableCell>{person.email}</TableCell>
                         <TableCell>{person.phone}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={getPersonTypeColor(person.provider)}
-                          >
-                            {getPersonType(person.provider)}
-                          </Badge>
-                        </TableCell>
                         <TableCell>
                           <Button
                             className="bg-green-600 hover:bg-green-700"
@@ -463,10 +440,10 @@ export default function PapeleraPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nombre/Empresa</TableHead>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Razón Social</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Teléfono</TableHead>
-                      <TableHead>Tipo</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -474,17 +451,11 @@ export default function PapeleraPage() {
                     {filteredPersons.map((person) => (
                       <TableRow key={person.person_id}>
                         <TableCell className="font-medium">
-                          {person.company_name || person.name}
+                          {person.name}
                         </TableCell>
+                        <TableCell>{person.company_name}</TableCell>
                         <TableCell>{person.email}</TableCell>
                         <TableCell>{person.phone}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={getPersonTypeColor(person.provider)}
-                          >
-                            {getPersonType(person.provider)}
-                          </Badge>
-                        </TableCell>
                         <TableCell>
                           <Button
                             className="bg-green-600 hover:bg-green-700"
@@ -494,7 +465,7 @@ export default function PapeleraPage() {
                                 isOpen: true,
                                 type: "person",
                                 id: person.person_id,
-                                name: person.company_name || person.name,
+                                name: person.name,
                               })
                             }
                           >
