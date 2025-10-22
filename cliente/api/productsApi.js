@@ -147,6 +147,26 @@ const getProductByStatus = async (status) => {
   }
 };
 
+//este es el que se encarga de exportar productos a Excel
+const exportProductsToExcel = async () => {
+  try {
+    const response = await api.get("/product/export-excel");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+//este es el que se encarga de importar productos desde Excel
+const importProductsFromExcel = async (productsData) => {
+  try {
+    const response = await api.post("/product/import-excel", { products: productsData });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 //exportamos las funciones
 export {
   getProducts,
@@ -165,4 +185,6 @@ export {
   updateProductStock,
   updateProductStockForPurchase,
   getProductByStatus,
+  exportProductsToExcel,
+  importProductsFromExcel,
 };

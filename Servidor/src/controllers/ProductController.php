@@ -251,6 +251,109 @@ class ProductController
         }
     }
 
+    public function exportProductsToExcel(Request $request, Response $response): Response
+    {
+        try {
+            $products = $this->productService->getAll();
+            
+            // Crear datos para Excel
+            $excelData = [];
+            $excelData[] = [
+                'Código',
+                'Nombre', 
+                'Categoría',
+                'Stock',
+                'Precio Compra',
+                'Precio Venta',
+                'Stock Mínimo',
+                'Estado'
+            ];
+            
+            foreach ($products as $product) {
+                $excelData[] = [
+                    $product->code,
+                    $product->name,
+                    $product->category_name ?? '',
+                    $product->stock,
+                    $product->purchase_price,
+                    $product->sell_price ?? '',
+                    $product->stock_minimum ?? 5,
+                    $product->active ? 'Activo' : 'Inactivo'
+                ];
+            }
+            
+            $response->getBody()->write(json_encode([
+                'success' => true,
+                'data' => $excelData,
+                'message' => 'Datos preparados para exportar'
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+            
+        } catch (Throwable $e) {
+            throw new Exception("Error exporting products to Excel: " . $e->getMessage());
+        }
+    }
+
+    public function importProductsFromExcel(Request $request, Response $response): Response
+    {
+        try {
+            $data = $request->getParsedBody();
+            
+            if (!isset($data['products']) || !is_array($data['products'])) {
+                throw new Exception("Datos de productos no válidos");
+            }
+            
+            $importedCount = 0;
+            $errors = [];
+            
+            foreach ($data['products'] as $index => $productData) {
+                try {
+                    // Validar datos requeridos
+                    if (empty($productData['code']) || empty($productData['name'])) {
+                        $errors[] = "Fila " . ($index + 1) . ": Código y nombre son obligatorios";
+                        continue;
+                    }
+                    
+                    // Verificar si el producto ya existe
+                    $existingProduct = $this->productService->getByCode($productData['code']);
+                    if ($existingProduct) {
+                        $errors[] = "Fila " . ($index + 1) . ": El código '{$productData['code']}' ya existe";
+                        continue;
+                    }
+                    
+                    // Crear el producto
+                    $product = new Product([
+                        'code' => $productData['code'],
+                        'name' => $productData['name'],
+                        'category_id' => $productData['category_id'] ?? null,
+                        'stock' => $productData['stock'] ?? 0,
+                        'purchase_price' => $productData['purchase_price'] ?? 0,
+                        'sell_price' => $productData['sell_price'] ?? null,
+                        'stock_minimum' => $productData['stock_minimum'] ?? 5,
+                        'active' => $productData['active'] ?? true
+                    ]);
+                    
+                    $this->productService->create($product);
+                    $importedCount++;
+                    
+                } catch (Exception $e) {
+                    $errors[] = "Fila " . ($index + 1) . ": " . $e->getMessage();
+                }
+            }
+            
+            $response->getBody()->write(json_encode([
+                'success' => true,
+                'imported_count' => $importedCount,
+                'errors' => $errors,
+                'message' => "Se importaron {$importedCount} productos exitosamente"
+            ]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+            
+        } catch (Throwable $e) {
+            throw new Exception("Error importing products from Excel: " . $e->getMessage());
+        }
+    }
+
 }
 
     

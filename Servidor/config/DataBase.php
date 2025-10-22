@@ -16,8 +16,8 @@ class DataBase {
         $host = $_ENV["DB_HOST"] ?? '127.0.0.1';
         $port = $_ENV["DB_PORT"] ?? '3306';
         $dbname = $_ENV["DB_NAME"] ?? 'stockRepuestos';
-        $user = $_ENV["DB_USER"] ?? 'root';
-        $pass = $_ENV["DB_PASS"] ?? '';
+        $user = $_ENV["DB_USER"] ?? 'willian';
+        $pass = $_ENV["DB_PASS"] ?? '1993';
         
         /*
         // Para XAMPP, usar socket en lugar de host:port

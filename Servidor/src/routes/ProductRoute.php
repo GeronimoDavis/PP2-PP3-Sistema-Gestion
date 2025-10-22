@@ -23,5 +23,7 @@ $app->group('/product', function(RouteCollectorProxy $group) use ($productContro
     $group->put('/updateStockForPurchase/{id}', [$productController, 'updateProductStockForPurchase']);
     $group->get('/deleted', [$productController, 'getAllDeletedProducts']);
     $group->put('/restore/{id}', [$productController, 'restoreProduct']);
+    $group->get('/export-excel', [$productController, 'exportProductsToExcel']);
+    $group->post('/import-excel', [$productController, 'importProductsFromExcel']);
 
 })->add(new AuthMiddleware());

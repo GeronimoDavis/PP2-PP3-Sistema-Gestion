@@ -72,6 +72,8 @@ import {
   getProductByCategory,
   createProduct,
   updateProduct,
+  exportProductsToExcel,
+  importProductsFromExcel,
 } from "@/api/productsApi";
 import {
   getCategories,
@@ -965,54 +967,49 @@ export default function InventarioPage() {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
-      // Preparar los datos para exportar
-      const exportData = products.map(product => ({
-        'Código': product.code,
-        'Nombre': product.name,
-        'Categoría': product.category_name,
-        'Stock': product.stock,
-        'Precio Compra': product.purchase_price,
-        'Precio Venta': product.sell_price || '',
-        'Stock Mínimo': product.stock_minimum || 5,
-        'Estado': product.active ? 'Activo' : 'Inactivo'
-      }));
-
-      // Crear un nuevo libro de trabajo
-      const wb = XLSX.utils.book_new();
+      // Obtener datos del backend
+      const response = await exportProductsToExcel();
       
-      // Crear una hoja de trabajo con los datos
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      
-      // Ajustar el ancho de las columnas
-      const colWidths = [
-        { wch: 15 }, // Código
-        { wch: 30 }, // Nombre
-        { wch: 20 }, // Categoría
-        { wch: 10 }, // Stock
-        { wch: 15 }, // Precio Compra
-        { wch: 15 }, // Precio Venta
-        { wch: 15 }, // Stock Mínimo
-        { wch: 10 }  // Estado
-      ];
-      ws['!cols'] = colWidths;
+      if (response.success && response.data) {
+        // Crear un nuevo libro de trabajo
+        const wb = XLSX.utils.book_new();
+        
+        // Crear una hoja de trabajo con los datos del backend
+        const ws = XLSX.utils.aoa_to_sheet(response.data);
+        
+        // Ajustar el ancho de las columnas
+        const colWidths = [
+          { wch: 15 }, // Código
+          { wch: 30 }, // Nombre
+          { wch: 20 }, // Categoría
+          { wch: 10 }, // Stock
+          { wch: 15 }, // Precio Compra
+          { wch: 15 }, // Precio Venta
+          { wch: 15 }, // Stock Mínimo
+          { wch: 10 }  // Estado
+        ];
+        ws['!cols'] = colWidths;
 
-      // Agregar la hoja al libro
-      XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+        // Agregar la hoja al libro
+        XLSX.utils.book_append_sheet(wb, ws, 'Productos');
 
-      // Generar el archivo Excel
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      
-      // Crear un blob y descargarlo
-      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const fileName = `productos_${new Date().toISOString().split('T')[0]}.xlsx`;
-      saveAs(data, fileName);
+        // Generar el archivo Excel
+        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        
+        // Crear un blob y descargarlo
+        const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const fileName = `productos_${new Date().toISOString().split('T')[0]}.xlsx`;
+        saveAs(data, fileName);
 
-      toast({
-        title: "Exportación exitosa",
-        description: `Se exportaron ${products.length} productos a ${fileName}`,
-      });
+        toast({
+          title: "Exportación exitosa",
+          description: `Se exportaron los productos a ${fileName}`,
+        });
+      } else {
+        throw new Error('Error al obtener datos del servidor');
+      }
     } catch (error) {
       console.error('Error al exportar:', error);
       toast({
@@ -1023,7 +1020,7 @@ export default function InventarioPage() {
     }
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!selectedFile) {
       toast({
         title: "Archivo requerido",
@@ -1036,7 +1033,7 @@ export default function InventarioPage() {
     try {
       const reader = new FileReader();
       
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
@@ -1105,14 +1102,43 @@ export default function InventarioPage() {
             return;
           }
           
-          // TODO: Aquí se enviarían los datos al backend para procesarlos
-          // Por ahora solo mostramos un resumen
-          toast({
-            title: "Archivo procesado",
-            description: `Se encontraron ${importedProducts.length} productos válidos en el archivo. Listo para importar al sistema.`,
-          });
-          
-          console.log('Productos importados:', importedProducts);
+          // Enviar datos al backend para procesarlos
+          try {
+            const response = await importProductsFromExcel(importedProducts);
+            
+            if (response.success) {
+              toast({
+                title: "Importación exitosa",
+                description: `Se importaron ${response.imported_count} productos exitosamente.`,
+              });
+              
+              // Recargar la lista de productos
+              await handleGetProducts();
+              
+              // Cerrar el modal y limpiar el archivo seleccionado
+              setIsImportExportDialogOpen(false);
+              setSelectedFile(null);
+              
+              // Mostrar errores si los hay
+              if (response.errors && response.errors.length > 0) {
+                console.warn('Errores durante la importación:', response.errors);
+                toast({
+                  title: "Algunos productos no se importaron",
+                  description: `Se encontraron ${response.errors.length} errores. Revisa la consola para más detalles.`,
+                  variant: "destructive",
+                });
+              }
+            } else {
+              throw new Error('Error en la respuesta del servidor');
+            }
+          } catch (apiError) {
+            console.error('Error al importar productos:', apiError);
+            toast({
+              title: "Error al importar",
+              description: "No se pudieron importar los productos. Verifica los datos y vuelve a intentar.",
+              variant: "destructive",
+            });
+          }
           
         } catch (error) {
           console.error('Error al procesar el archivo:', error);
