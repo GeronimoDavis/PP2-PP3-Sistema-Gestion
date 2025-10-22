@@ -1257,18 +1257,23 @@ export default function InventarioPage() {
         ['PROD002', 'Otro Producto', 'Genérica', '0', '0', '35,00', '5', 'Activo']
       ];
 
-      // Convertir a CSV
-      const csvContent = templateData.map(row => 
-        row.map(cell => `"${cell}"`).join(',')
-      ).join('\n');
+      // Crear un libro de trabajo de Excel
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(templateData);
+      
+      // Agregar la hoja al libro
+      XLSX.utils.book_append_sheet(wb, ws, 'Plantilla Productos');
+      
+      // Generar el archivo Excel
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       
       // Crear un blob y descargarlo
-      const data = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      saveAs(data, 'plantilla_productos.csv');
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(data, 'plantilla_productos.xlsx');
 
       toast({
-        title: "Plantilla CSV descargada",
-        description: "Se descargó la plantilla CSV de ejemplo para importar productos.",
+        title: "Plantilla XLSX descargada",
+        description: "Se descargó la plantilla XLSX de ejemplo para importar productos.",
       });
     } catch (error) {
       console.error('Error al generar plantilla:', error);
