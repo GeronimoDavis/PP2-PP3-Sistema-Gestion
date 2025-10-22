@@ -144,6 +144,7 @@ export default function InventarioPage() {
   const [isImportExportDialogOpen, setIsImportExportDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const [sortConfig, setSortConfig] = useState<{
     key: string | null;
@@ -936,13 +937,15 @@ export default function InventarioPage() {
       const file = files[0];
       if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
           file.type === 'application/vnd.ms-excel' ||
+          file.type === 'text/csv' ||
           file.name.endsWith('.xlsx') || 
-          file.name.endsWith('.xls')) {
+          file.name.endsWith('.xls') ||
+          file.name.endsWith('.csv')) {
         setSelectedFile(file);
       } else {
         toast({
           title: "Formato no válido",
-          description: "Por favor selecciona un archivo Excel (.xlsx o .xls).",
+          description: "Por favor selecciona un archivo Excel (.xlsx, .xls) o CSV (.csv).",
           variant: "destructive",
         });
       }
@@ -954,13 +957,15 @@ export default function InventarioPage() {
     if (file) {
       if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
           file.type === 'application/vnd.ms-excel' ||
+          file.type === 'text/csv' ||
           file.name.endsWith('.xlsx') || 
-          file.name.endsWith('.xls')) {
+          file.name.endsWith('.xls') ||
+          file.name.endsWith('.csv')) {
         setSelectedFile(file);
       } else {
         toast({
           title: "Formato no válido",
-          description: "Por favor selecciona un archivo Excel (.xlsx o .xls).",
+          description: "Por favor selecciona un archivo Excel (.xlsx, .xls) o CSV (.csv).",
           variant: "destructive",
         });
       }
@@ -973,40 +978,40 @@ export default function InventarioPage() {
       const response = await exportProductsToExcel();
       
       if (response.success && response.data) {
-        // Crear un nuevo libro de trabajo
-        const wb = XLSX.utils.book_new();
-        
+      // Crear un nuevo libro de trabajo
+      const wb = XLSX.utils.book_new();
+      
         // Crear una hoja de trabajo con los datos del backend
         const ws = XLSX.utils.aoa_to_sheet(response.data);
-        
-        // Ajustar el ancho de las columnas
-        const colWidths = [
-          { wch: 15 }, // Código
-          { wch: 30 }, // Nombre
-          { wch: 20 }, // Categoría
-          { wch: 10 }, // Stock
-          { wch: 15 }, // Precio Compra
-          { wch: 15 }, // Precio Venta
-          { wch: 15 }, // Stock Mínimo
-          { wch: 10 }  // Estado
-        ];
-        ws['!cols'] = colWidths;
+      
+      // Ajustar el ancho de las columnas
+      const colWidths = [
+        { wch: 15 }, // Código
+        { wch: 30 }, // Nombre
+        { wch: 20 }, // Categoría
+        { wch: 10 }, // Stock
+        { wch: 15 }, // Precio Compra
+        { wch: 15 }, // Precio Venta
+        { wch: 15 }, // Stock Mínimo
+        { wch: 10 }  // Estado
+      ];
+      ws['!cols'] = colWidths;
 
-        // Agregar la hoja al libro
-        XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+      // Agregar la hoja al libro
+      XLSX.utils.book_append_sheet(wb, ws, 'Productos');
 
-        // Generar el archivo Excel
-        const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        
-        // Crear un blob y descargarlo
-        const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const fileName = `productos_${new Date().toISOString().split('T')[0]}.xlsx`;
-        saveAs(data, fileName);
+      // Generar el archivo Excel
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      
+      // Crear un blob y descargarlo
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const fileName = `productos_${new Date().toISOString().split('T')[0]}.xlsx`;
+      saveAs(data, fileName);
 
-        toast({
-          title: "Exportación exitosa",
+      toast({
+        title: "Exportación exitosa",
           description: `Se exportaron los productos a ${fileName}`,
-        });
+      });
       } else {
         throw new Error('Error al obtener datos del servidor');
       }
@@ -1035,6 +1040,35 @@ export default function InventarioPage() {
       
       reader.onload = async (e) => {
         try {
+          let jsonData;
+          
+          // Detectar si es CSV o Excel
+          if (selectedFile.name.endsWith('.csv')) {
+            // Procesar archivo CSV
+            const csvText = e.target?.result as string;
+            const lines = csvText.split('\n').filter(line => line.trim());
+            jsonData = lines.map(line => {
+              // Dividir por comas, pero respetando comillas
+              const values = [];
+              let current = '';
+              let inQuotes = false;
+              
+              for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                  inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                  values.push(current.trim());
+                  current = '';
+                } else {
+                  current += char;
+                }
+              }
+              values.push(current.trim());
+              return values;
+            });
+          } else {
+            // Procesar archivo Excel
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           
@@ -1043,12 +1077,13 @@ export default function InventarioPage() {
           const worksheet = workbook.Sheets[sheetName];
           
           // Convertir la hoja a JSON
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          }
           
           if (jsonData.length < 2) {
             toast({
               title: "Archivo vacío",
-              description: "El archivo Excel no contiene datos válidos.",
+              description: "El archivo no contiene datos válidos.",
               variant: "destructive",
             });
             return;
@@ -1067,11 +1102,32 @@ export default function InventarioPage() {
           if (!hasValidHeaders) {
             toast({
               title: "Formato incorrecto",
-              description: "El archivo Excel no tiene el formato esperado. Verifica que contenga las columnas: Código, Nombre, Categoría, Stock, Precio Compra, Precio Venta, Stock Mínimo, Estado.",
+              description: "El archivo no tiene el formato esperado. Verifica que contenga las columnas: Código, Nombre, Categoría, Stock, Precio Compra, Precio Venta, Stock Mínimo, Estado.",
               variant: "destructive",
             });
             return;
           }
+          
+          // Función para convertir formato de precios (europeo a decimal)
+          const convertPriceFormat = (priceStr) => {
+            if (!priceStr || priceStr === '') return 0;
+            
+            // Convertir a string y limpiar
+            let price = priceStr.toString().trim();
+            
+            // Si ya está en formato decimal (contiene punto pero no coma), devolverlo
+            if (price.includes('.') && !price.includes(',')) {
+              return parseFloat(price) || 0;
+            }
+            
+            // Si contiene coma, es formato europeo: 1.250,50 -> 1250.50
+            if (price.includes(',')) {
+              // Remover puntos de miles y cambiar coma por punto
+              price = price.replace(/\./g, '').replace(',', '.');
+            }
+            
+            return parseFloat(price) || 0;
+          };
           
           // Procesar los datos
           const importedProducts = rows
@@ -1082,10 +1138,10 @@ export default function InventarioPage() {
               return {
                 code: code?.toString().trim() || '',
                 name: name?.toString().trim() || '',
-                category: category?.toString().trim() || '',
+                category: (category?.toString().trim() && category?.toString().trim() !== '') ? category.toString().trim() : 'Genérica',
                 stock: parseFloat(stock) || 0,
-                purchase_price: parseFloat(purchasePrice) || 0,
-                sell_price: parseFloat(sellPrice) || null,
+                purchase_price: convertPriceFormat(purchasePrice),
+                sell_price: convertPriceFormat(sellPrice) || null,
                 stock_minimum: parseFloat(stockMinimum) || 5,
                 active: status?.toString().toLowerCase() === 'activo' || true,
                 row: index + 2 // +2 porque empezamos desde la fila 2 (después del header)
@@ -1102,18 +1158,39 @@ export default function InventarioPage() {
             return;
           }
           
+          // Mostrar indicador de carga durante la importación
+          setLoadingProducts(true);
+          setIsImporting(true);
+          
           // Enviar datos al backend para procesarlos
           try {
             const response = await importProductsFromExcel(importedProducts);
             
             if (response.success) {
-              toast({
+          toast({
                 title: "Importación exitosa",
                 description: `Se importaron ${response.imported_count} productos exitosamente.`,
               });
               
-              // Recargar la lista de productos
-              await handleGetProducts();
+              // Recargar la lista de productos para mostrar los nuevos productos
+              setLoadingProducts(true);
+              try {
+                await handleGetProducts();
+                toast({
+                  title: "Lista actualizada",
+                  description: "Los productos importados ya están disponibles en el inventario.",
+                });
+              } catch (error) {
+                console.error('Error al recargar productos:', error);
+                toast({
+                  title: "Productos importados",
+                  description: "Los productos se importaron correctamente, pero hubo un problema al actualizar la lista.",
+                  variant: "destructive",
+                });
+              } finally {
+                setLoadingProducts(false);
+                setIsImporting(false);
+              }
               
               // Cerrar el modal y limpiar el archivo seleccionado
               setIsImportExportDialogOpen(false);
@@ -1150,7 +1227,12 @@ export default function InventarioPage() {
         }
       };
       
+      // Leer como texto para CSV, como ArrayBuffer para Excel
+      if (selectedFile.name.endsWith('.csv')) {
+        reader.readAsText(selectedFile);
+      } else {
       reader.readAsArrayBuffer(selectedFile);
+      }
       
     } catch (error) {
       console.error('Error al leer el archivo:', error);
@@ -1170,60 +1252,23 @@ export default function InventarioPage() {
     try {
       // Crear datos de ejemplo para la plantilla
       const templateData = [
-        {
-          'Código': 'PROD001',
-          'Nombre': 'Producto de Ejemplo',
-          'Categoría': 'Categoría Ejemplo',
-          'Stock': 100,
-          'Precio Compra': 10.50,
-          'Precio Venta': 15.75,
-          'Stock Mínimo': 5,
-          'Estado': 'Activo'
-        },
-        {
-          'Código': 'PROD002',
-          'Nombre': 'Otro Producto',
-          'Categoría': 'Categoría Ejemplo',
-          'Stock': 50,
-          'Precio Compra': 25.00,
-          'Precio Venta': 35.00,
-          'Stock Mínimo': 10,
-          'Estado': 'Activo'
-        }
+        ['Código', 'Nombre', 'Categoría', 'Stock', 'Precio Compra', 'Precio Venta', 'Stock Mínimo', 'Estado'],
+        ['PROD001', 'Producto de Ejemplo', 'Genérica', '0', '0', '15,75', '5', 'Activo'],
+        ['PROD002', 'Otro Producto', 'Genérica', '0', '0', '35,00', '5', 'Activo']
       ];
 
-      // Crear un nuevo libro de trabajo
-      const wb = XLSX.utils.book_new();
-      
-      // Crear una hoja de trabajo con los datos de ejemplo
-      const ws = XLSX.utils.json_to_sheet(templateData);
-      
-      // Ajustar el ancho de las columnas
-      const colWidths = [
-        { wch: 15 }, // Código
-        { wch: 30 }, // Nombre
-        { wch: 20 }, // Categoría
-        { wch: 10 }, // Stock
-        { wch: 15 }, // Precio Compra
-        { wch: 15 }, // Precio Venta
-        { wch: 15 }, // Stock Mínimo
-        { wch: 10 }  // Estado
-      ];
-      ws['!cols'] = colWidths;
-
-      // Agregar la hoja al libro
-      XLSX.utils.book_append_sheet(wb, ws, 'Plantilla Productos');
-
-      // Generar el archivo Excel
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      // Convertir a CSV
+      const csvContent = templateData.map(row => 
+        row.map(cell => `"${cell}"`).join(',')
+      ).join('\n');
       
       // Crear un blob y descargarlo
-      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(data, 'plantilla_productos.xlsx');
+      const data = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      saveAs(data, 'plantilla_productos.csv');
 
       toast({
-        title: "Plantilla descargada",
-        description: "Se descargó la plantilla de ejemplo para importar productos.",
+        title: "Plantilla CSV descargada",
+        description: "Se descargó la plantilla CSV de ejemplo para importar productos.",
       });
     } catch (error) {
       console.error('Error al generar plantilla:', error);
@@ -1738,7 +1783,7 @@ export default function InventarioPage() {
                     </h3>
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-gray-600">
-                        Sube un archivo Excel (.xlsx o .xls) con los productos a importar.
+                        Sube un archivo Excel (.xlsx, .xls) o CSV (.csv) con los productos a importar.
                       </p>
                       <Button
                         variant="outline"
@@ -1785,15 +1830,15 @@ export default function InventarioPage() {
                           <Upload className="mx-auto h-12 w-12 text-gray-400" />
                           <div>
                             <p className="text-sm font-medium text-gray-900">
-                              Arrastra tu archivo Excel aquí
+                              Arrastra tu archivo aquí
                             </p>
                             <p className="text-xs text-gray-500">
-                              o haz clic para seleccionar (.xlsx, .xls)
+                              o haz clic para seleccionar (.xlsx, .xls, .csv)
                             </p>
                           </div>
                           <input
                             type="file"
-                            accept=".xlsx,.xls"
+                            accept=".xlsx,.xls,.csv"
                             onChange={handleFileSelect}
                             className="hidden"
                             id="file-upload"
@@ -1810,11 +1855,20 @@ export default function InventarioPage() {
 
                     <Button 
                       onClick={handleImport}
-                      disabled={!selectedFile}
+                      disabled={!selectedFile || isImporting}
                       className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300"
                     >
+                      {isImporting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Importando...
+                        </>
+                      ) : (
+                        <>
                       <Upload className="mr-2 h-4 w-4" />
                       Importar Productos
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -1827,6 +1881,7 @@ export default function InventarioPage() {
                     setIsImportExportDialogOpen(false);
                     setSelectedFile(null);
                     setIsDragOver(false);
+                    setIsImporting(false);
                   }}
                 >
                   Cerrar

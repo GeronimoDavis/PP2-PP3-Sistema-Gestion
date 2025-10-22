@@ -52,6 +52,22 @@ class CategoryService{
         }
     }
 
+    public function getByName($name){
+        try{
+            $stmt = $this->pdo->prepare("SELECT * FROM category WHERE name = ? AND active = 1");
+            $stmt->execute([$name]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if(!$row){
+                return null;
+            }
+
+            return new Category($row);
+        }catch(PDOException $e){
+            throw new Exception("Error fetching category by name '$name': " . $e->getMessage());
+        }
+    }
+
     public function create(Category $category){
         try{
             $stmt = $this->pdo->prepare("INSERT INTO category (name) VALUES (?)");

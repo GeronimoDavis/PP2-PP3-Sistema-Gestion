@@ -321,11 +321,33 @@ class ProductController
                         continue;
                     }
                     
+                    // Buscar o crear categoría "Genérica" si no se especifica
+                    $categoryId = null;
+                    if (isset($productData['category']) && $productData['category'] && $productData['category'] !== 'Genérica') {
+                        // Buscar categoría existente por nombre
+                        $categoryService = new \Services\CategoryService();
+                        $existingCategory = $categoryService->getByName($productData['category']);
+                        if ($existingCategory) {
+                            $categoryId = $existingCategory->category_id;
+                        }
+                    }
+                    
+                    // Si no se encontró categoría o es "Genérica", buscar/crear "Genérica"
+                    if (!$categoryId) {
+                        $categoryService = new \Services\CategoryService();
+                        $genericCategory = $categoryService->getByName('Genérica');
+                        if (!$genericCategory) {
+                            // Crear categoría "Genérica" si no existe
+                            $genericCategory = $categoryService->create(new \Entities\Category(['name' => 'Genérica']));
+                        }
+                        $categoryId = $genericCategory->category_id;
+                    }
+                    
                     // Crear el producto
                     $product = new Product([
                         'code' => $productData['code'],
                         'name' => $productData['name'],
-                        'category_id' => $productData['category_id'] ?? null,
+                        'category_id' => $categoryId,
                         'stock' => $productData['stock'] ?? 0,
                         'purchase_price' => $productData['purchase_price'] ?? 0,
                         'sell_price' => $productData['sell_price'] ?? null,

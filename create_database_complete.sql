@@ -53,11 +53,11 @@ CREATE TABLE IF NOT EXISTS category(
 -- Tabla de productos (CON CAMPO stock_minimum INCLUIDO)
 CREATE TABLE IF NOT EXISTS product(
 	product_id INT PRIMARY KEY AUTO_INCREMENT UNIQUE,
-	name VARCHAR(50),
-	code VARCHAR(20) NOT NULL UNIQUE,
+	name VARCHAR(255),
+	code VARCHAR(255) NOT NULL UNIQUE,
 	stock MEDIUMINT,
-	sell_price FLOAT,
-	purchase_price FLOAT,
+	sell_price decimal(15,2),
+	purchase_price decimal(15,2),
 	category_id INT,
 	stock_minimum INT DEFAULT 5 COMMENT 'Límite mínimo de stock para considerar stock bajo',
 	active BOOLEAN DEFAULT TRUE,
@@ -93,7 +93,7 @@ CREATE TABLE items(
 	transaction_id INT,
 	product_id INT,
 	quantity MEDIUMINT,
-	price FLOAT,
+	price decimal(15,2),
 	FOREIGN KEY(transaction_id) REFERENCES transaction(transaction_id),
 	FOREIGN KEY(product_id) REFERENCES product(product_id)
 );
@@ -102,7 +102,7 @@ CREATE TABLE items(
 CREATE TABLE extras(
 	extra_id INT PRIMARY KEY AUTO_INCREMENT,
 	transaction_id INT NOT NULL,
-	price FLOAT,
+	price decimal(15,2),
 	note VARCHAR(50),
 	type ENUM("Mano de obra", "Envio", "Descuento"),
 	FOREIGN KEY(transaction_id) REFERENCES transaction(transaction_id)
