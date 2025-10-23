@@ -1,8 +1,8 @@
 function formatNumber(number) {
-  return number.toLocaleString("es-AR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  }).format(number);
 }
 
 export { formatNumber };

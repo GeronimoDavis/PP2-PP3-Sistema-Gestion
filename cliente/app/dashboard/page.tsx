@@ -164,7 +164,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  $ {formatNumber(totalSales.total_sales)}
+                  {formatNumber(totalSales.total_sales)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {/* +20.1% respecto al mes anterior */}
@@ -180,7 +180,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  $ {formatNumber(totalPurchases.total_purchases)}
+                  {formatNumber(totalPurchases.total_purchases)}
                 </div>
               </CardContent>
             </Card>

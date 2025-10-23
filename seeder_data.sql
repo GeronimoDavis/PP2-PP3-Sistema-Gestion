@@ -43,33 +43,33 @@ INSERT INTO category (name) VALUES
 -- =============================================
 -- INSERTAR PERSONAS (CLIENTES Y PROVEEDORES)
 -- =============================================
-INSERT INTO person (tax_id, company_name, name, email, phone, notes, address, provider, tax_type) VALUES
+INSERT INTO person (tax_id, company_name, name, email, phone, notes, address, tax_type) VALUES
 -- PROVEEDORES
-('20123456789', 'Repuestos Automotrices SA', 'Juan Pérez', 'ventas@repautosa.com', '011-4567-8901', 'Proveedor principal', 'Av. Córdoba 1234', true, 'R.I'),
-('20234567890', 'Distribuidora AutoParts', 'María González', 'pedidos@autoparts.com', '011-5678-9012', 'Buen precio en filtros', 'Av. Rivadavia 5678', true, 'R.I'),
-('20345678901', 'Motores y Transmisiones', 'Carlos Rodríguez', 'info@motorestrans.com', '011-6789-0123', 'Especialista en motor', 'Av. San Martín 9012', true, 'R.I'),
-('20456789012', 'Frenos Premium SRL', 'Ana Martínez', 'contacto@frenospremium.com', '011-7890-1234', 'Frenos importados', 'Av. Belgrano 3456', true, 'R.I'),
-('20567890123', 'Eléctricos del Sur', 'Pedro López', 'ventas@electricsur.com', '011-8901-2345', 'Componentes eléctricos', 'Av. Independencia 7890', true, 'R.I'),
-('23678901234', 'Lubricantes Total', 'Laura Fernández', 'pedidos@lubricantestotal.com', '011-9012-3456', 'Aceites y lubricantes', 'Av. Corrientes 2345', true, 'Monotributo'),
-('20789012345', 'Neumáticos Express', 'Roberto Silva', 'info@neumaticosexpress.com', '011-0123-4567', 'Neumáticos de todas las marcas', 'Av. Callao 6789', true, 'R.I'),
-('23890123456', 'Suspensión y Dirección', 'Patricia Gómez', 'ventas@suspdireccion.com', '011-1234-5678', 'Amortiguadores y dirección', 'Av. Santa Fe 1234', true, 'Monotributo'),
+('20123456789', 'Repuestos Automotrices SA', 'Juan Pérez', 'ventas@repautosa.com', '011-4567-8901', 'Proveedor principal', 'Av. Córdoba 1234', 'R.I'),
+('20234567890', 'Distribuidora AutoParts', 'María González', 'pedidos@autoparts.com', '011-5678-9012', 'Buen precio en filtros', 'Av. Rivadavia 5678', 'R.I'),
+('20345678901', 'Motores y Transmisiones', 'Carlos Rodríguez', 'info@motorestrans.com', '011-6789-0123', 'Especialista en motor', 'Av. San Martín 9012', 'R.I'),
+('20456789012', 'Frenos Premium SRL', 'Ana Martínez', 'contacto@frenospremium.com', '011-7890-1234', 'Frenos importados', 'Av. Belgrano 3456', 'R.I'),
+('20567890123', 'Eléctricos del Sur', 'Pedro López', 'ventas@electricsur.com', '011-8901-2345', 'Componentes eléctricos', 'Av. Independencia 7890', 'R.I'),
+('23678901234', 'Lubricantes Total', 'Laura Fernández', 'pedidos@lubricantestotal.com', '011-9012-3456', 'Aceites y lubricantes', 'Av. Corrientes 2345', 'Monotributo'),
+('20789012345', 'Neumáticos Express', 'Roberto Silva', 'info@neumaticosexpress.com', '011-0123-4567', 'Neumáticos de todas las marcas', 'Av. Callao 6789', 'R.I'),
+('23890123456', 'Suspensión y Dirección', 'Patricia Gómez', 'ventas@suspdireccion.com', '011-1234-5678', 'Amortiguadores y dirección', 'Av. Santa Fe 1234', 'Monotributo'),
 
 -- CLIENTES
-('20987654321', 'Taller Mecánico Central', 'Miguel Herrera', 'taller@central.com', '011-2345-6789', 'Taller de confianza', 'Av. Mitre 5678', false, 'R.I'),
-('23876543210', 'Autoservicio Rápido', 'Claudia Morales', 'autoservicio@rapido.com', '011-3456-7890', 'Service express', 'Av. Pueyrredón 9012', false, 'Monotributo'),
-('20765432109', 'Mecánica Profesional', 'Daniel Castro', 'mecanica@profesional.com', '011-4567-8901', 'Reparaciones generales', 'Av. Brasil 3456', false, 'R.I'),
-('23654321098', 'Taller Norte', 'Silvia Romero', 'contacto@tallernorte.com', '011-5678-9012', 'Especialista en transmisiones', 'Av. Cabildo 7890', false, 'Monotributo'),
-('20543210987', 'Repuestos y Service', 'Fernando Díaz', 'repuestos@service.com', '011-6789-0123', 'Taller completo', 'Av. Libertador 1234', false, 'R.I'),
-('23432109876', 'Mecánica del Oeste', 'Graciela Vega', 'mecanica@oeste.com', '011-7890-1234', 'Atención personalizada', 'Av. Rivadavia 5678', false, 'Monotributo'),
-('20321098765', 'Autopartes San Martín', 'Julio Mendoza', 'autopartes@sanmartin.com', '011-8901-2345', 'Venta de repuestos', 'Av. San Martín 9012', false, 'R.I'),
-('23210987654', 'Taller del Sur', 'Mónica Blanco', 'taller@sur.com', '011-9012-3456', 'Reparaciones especializadas', 'Av. Avellaneda 3456', false, 'Monotributo'),
-('20109876543', 'Mecánica Integral', 'Ricardo Peña', 'mecanica@integral.com', '011-0123-4567', 'Todos los servicios', 'Av. Córdoba 7890', false, 'R.I'),
-('23098765432', 'Service Express', 'Alejandra Ruiz', 'service@express.com', '011-1234-5678', 'Atención rápida', 'Av. Callao 1234', false, 'Monotributo'),
-('20987654320', 'Taller Central', 'Andrés Giménez', 'taller@central2.com', '011-2345-6789', 'Especialista en frenos', 'Av. Corrientes 5678', false, 'R.I'),
-('23876543219', 'Autopartes Premium', 'Lucía Torres', 'autopartes@premium.com', '011-3456-7890', 'Repuestos de calidad', 'Av. Santa Fe 9012', false, 'Monotributo'),
-('20765432118', 'Mecánica Moderna', 'Gustavo Acosta', 'mecanica@moderna.com', '011-4567-8901', 'Tecnología avanzada', 'Av. Belgrano 3456', false, 'R.I'),
-('23654321017', 'Taller Especializado', 'Beatriz Luna', 'taller@especializado.com', '011-5678-9012', 'Diagnóstico computarizado', 'Av. Independencia 7890', false, 'Monotributo'),
-('20543210916', 'Repuestos González', 'Eduardo González', 'repuestos@gonzalez.com', '011-6789-0123', 'Amplio stock', 'Av. Mitre 1234', false, 'R.I');
+('20987654321', 'Taller Mecánico Central', 'Miguel Herrera', 'taller@central.com', '011-2345-6789', 'Taller de confianza', 'Av. Mitre 5678', 'R.I'),
+('23876543210', 'Autoservicio Rápido', 'Claudia Morales', 'autoservicio@rapido.com', '011-3456-7890', 'Service express', 'Av. Pueyrredón 9012', 'Monotributo'),
+('20765432109', 'Mecánica Profesional', 'Daniel Castro', 'mecanica@profesional.com', '011-4567-8901', 'Reparaciones generales', 'Av. Brasil 3456',  'R.I'),
+('23654321098', 'Taller Norte', 'Silvia Romero', 'contacto@tallernorte.com', '011-5678-9012', 'Especialista en transmisiones', 'Av. Cabildo 7890',  'Monotributo'),
+('20543210987', 'Repuestos y Service', 'Fernando Díaz', 'repuestos@service.com', '011-6789-0123', 'Taller completo', 'Av. Libertador 1234',  'R.I'),
+('23432109876', 'Mecánica del Oeste', 'Graciela Vega', 'mecanica@oeste.com', '011-7890-1234', 'Atención personalizada', 'Av. Rivadavia 5678',  'Monotributo'),
+('20321098765', 'Autopartes San Martín', 'Julio Mendoza', 'autopartes@sanmartin.com', '011-8901-2345', 'Venta de repuestos', 'Av. San Martín 9012',  'R.I'),
+('23210987654', 'Taller del Sur', 'Mónica Blanco', 'taller@sur.com', '011-9012-3456', 'Reparaciones especializadas', 'Av. Avellaneda 3456',  'Monotributo'),
+('20109876543', 'Mecánica Integral', 'Ricardo Peña', 'mecanica@integral.com', '011-0123-4567', 'Todos los servicios', 'Av. Córdoba 7890',  'R.I'),
+('23098765432', 'Service Express', 'Alejandra Ruiz', 'service@express.com', '011-1234-5678', 'Atención rápida', 'Av. Callao 1234',  'Monotributo'),
+('20987654320', 'Taller Central', 'Andrés Giménez', 'taller@central2.com', '011-2345-6789', 'Especialista en frenos', 'Av. Corrientes 5678',  'R.I'),
+('23876543219', 'Autopartes Premium', 'Lucía Torres', 'autopartes@premium.com', '011-3456-7890', 'Repuestos de calidad', 'Av. Santa Fe 9012',  'Monotributo'),
+('20765432118', 'Mecánica Moderna', 'Gustavo Acosta', 'mecanica@moderna.com', '011-4567-8901', 'Tecnología avanzada', 'Av. Belgrano 3456',  'R.I'),
+('23654321017', 'Taller Especializado', 'Beatriz Luna', 'taller@especializado.com', '011-5678-9012', 'Diagnóstico computarizado', 'Av. Independencia 7890',  'Monotributo'),
+('20543210916', 'Repuestos González', 'Eduardo González', 'repuestos@gonzalez.com', '011-6789-0123', 'Amplio stock', 'Av. Mitre 1234',  'R.I');
 
 -- =============================================
 -- INSERTAR EMPRESAS DE TRANSPORTE

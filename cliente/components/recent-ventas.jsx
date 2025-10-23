@@ -11,7 +11,7 @@ export function RecentVentas({ nombreCliente, fechaVenta, montoVenta }) {
         <p className="text-sm font-medium leading-none">{nombreCliente}</p>
         <p className="text-sm text-muted-foreground">{fechaVenta}</p>
       </div>
-      <div className="ml-auto font-medium">$ {montoVenta}</div>
+      <div className="ml-auto font-medium">{montoVenta}</div>
     </div>
   );
 }
